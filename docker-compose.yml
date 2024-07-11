@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python /app/manage.py migrate && 
+             python /app/manage.py collectstatic --noinput && 
+             gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
+    volumes:
+      - ./backend:/app
+      - ./backend/static:/vol/web/static
+      - ./backend/media:/vol/web/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_NAME=app_db
+      - DB_USER=app_user
+      - DB_PASSWORD=app_password
+      - DB_HOST=db
+      - DEBUG=1
+
+volumes:
+  postgres_data:

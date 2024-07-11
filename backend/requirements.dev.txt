@@ -1,0 +1,14 @@
+Django>=3.2.4,<3.3
+djangorestframework>=3.12.4,<3.13
+psycopg2-binary>=2.8.6,<2.9
+drf-spectacular>=0.15.1,<0.16
+Pillow>=8.2.0,<8.3.0
+django-cors-headers
+django-extensions==3.2.3
+coverage>=5.5
+flake8>=3.9.2
+black>=21.5b1
+mypy>=0.812
+isort>=5.8.0
+django-debug-toolbar>=3.2.1
+djangorestframework-simplejwt>=4.7.2
