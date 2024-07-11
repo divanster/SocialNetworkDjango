@@ -25,7 +25,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     ingredients = IngredientSerializer(many=True, read_only=True)
     images = RecipeImageSerializer(many=True, read_only=True)
-    average_rating = serializers.ReadOnlyField()
+    average_rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe

@@ -24,19 +24,18 @@ RUN python -m venv /py && \
     apk add --update --no-cache --virtual .tmp-build-deps \
         build-base postgresql-dev musl-dev zlib zlib-dev && \
     /py/bin/pip install -r /tmp/requirements.txt && \
-    /py/bin/pip install gunicorn whitenoise && \
+    /py/bin/pip install gunicorn whitenoise psycopg2-binary && \
     if [ "$DEV" = "true" ]; then /py/bin/pip install -r /tmp/requirements.dev.txt; fi && \
     rm -rf /tmp && \
     apk del .tmp-build-deps && \
-    adduser \
-        --disabled-password \
-        --no-create-home \
-        django-user && \
+    adduser --disabled-password --no-create-home django-user && \
     mkdir -p /vol/web/media && \
     mkdir -p /vol/web/static && \
-    chown -R django-user:django-user /vol && \
-    chmod -R 755 /vol && \
-    /py/bin/python manage.py collectstatic --noinput
+    mkdir -p /tmp/static && \
+    chown -R django-user:django-user /vol/web && \
+    chown -R django-user:django-user /tmp/static && \
+    chmod -R 777 /vol/web && \
+    chmod -R 777 /tmp/static
 
 # Add /py/bin to the PATH environment variable
 ENV PATH="/py/bin:$PATH"

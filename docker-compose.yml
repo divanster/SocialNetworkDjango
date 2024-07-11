@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
   db:
@@ -15,13 +15,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "python /app/manage.py migrate && 
+      sh -c "python /app/manage.py makemigrations && 
+             python /app/manage.py migrate && 
              python /app/manage.py collectstatic --noinput && 
+             cp -r /app/static/* /vol/web/static && 
              gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
     volumes:
       - ./backend:/app
-      - ./backend/static:/vol/web/static
-      - ./backend/media:/vol/web/media
+      - /Users/apple/100DayPython/RecipeDjangoBackendFrontend/vol/web:/vol/web
     ports:
       - "8000:8000"
     depends_on:
