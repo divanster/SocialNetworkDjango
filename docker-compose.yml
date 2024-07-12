@@ -15,7 +15,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "python /app/manage.py makemigrations && 
+      sh -c "python /app/manage.py wait_for_db && 
+             python /app/manage.py makemigrations && 
              python /app/manage.py migrate && 
              python /app/manage.py collectstatic --noinput && 
              cp -r /app/static/* /vol/web/static && 
@@ -27,12 +28,8 @@ services:
       - "8000:8000"
     depends_on:
       - db
-    environment:
-      - DB_NAME=app_db
-      - DB_USER=app_user
-      - DB_PASSWORD=app_password
-      - DB_HOST=db
-      - DEBUG=1
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
