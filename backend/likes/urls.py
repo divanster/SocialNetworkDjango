@@ -3,7 +3,6 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-# Assuming you have a LikeViewSet in your views.py
 router.register(r'likes', views.LikeViewSet)
 
 urlpatterns = [

@@ -7,12 +7,12 @@ from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/follows/', include('follows.urls')),
-    path('api/likes/', include('likes.urls')),
-    path('api/messenger/', include('messenger.urls')),
-    path('api/recipes/', include('recipes.urls')),
-    path('api/users/', include('users.urls')),
-    path('api/comments/', include('comments.urls')),
+    path('api/', include('comments.urls')),
+    path('api/', include('follows.urls')),
+    path('api/', include('likes.urls')),
+    path('api/', include('messenger.urls')),
+    path('api/', include('recipes.urls')),
+    path('api/', include('users.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
