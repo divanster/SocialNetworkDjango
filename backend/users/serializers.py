@@ -1,9 +1,15 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
+from .models import CustomUser
 
-User = get_user_model()
 
-class UserSerializer(serializers.ModelSerializer):
+class CustomUserSerializer(serializers.ModelSerializer):
+    profile_picture_url = serializers.SerializerMethodField()
+
     class Meta:
-        model = User
-        fields = ['id', 'username', 'email']
+        model = CustomUser
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'profile_picture', 'profile_picture_url']
+
+    def get_profile_picture_url(self, obj):
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        return obj.gravatar_url
