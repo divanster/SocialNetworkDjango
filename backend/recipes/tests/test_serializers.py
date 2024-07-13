@@ -1,8 +1,10 @@
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 from recipes.models import Recipe, Tag, Ingredient, Rating, User
-from comments.models import Comment  # Import Comment model for testing
-from recipes.serializers import RecipeSerializer, TagSerializer, IngredientSerializer, RatingSerializer, CommentSerializer
+from comments.models import Comment
+from recipes.serializers import RecipeSerializer, TagSerializer, IngredientSerializer, RatingSerializer, \
+    CommentSerializer
+
 
 class TagSerializerTests(TestCase):
     def test_tag_serializer(self):
@@ -11,12 +13,14 @@ class TagSerializerTests(TestCase):
         serializer = TagSerializer(tag)
         self.assertEqual(serializer.data, {'id': tag.id, 'name': 'Vegan'})
 
+
 class IngredientSerializerTests(TestCase):
     def test_ingredient_serializer(self):
         """Test ingredient serializer"""
         ingredient = Ingredient.objects.create(name='Tomato')
         serializer = IngredientSerializer(ingredient)
         self.assertEqual(serializer.data, {'id': ingredient.id, 'name': 'Tomato'})
+
 
 class RecipeSerializerTests(TestCase):
     def setUp(self):
@@ -47,6 +51,7 @@ class RecipeSerializerTests(TestCase):
         self.assertEqual(recipe.author, self.user)
         self.assertEqual(recipe.tags.count(), 2)
         self.assertEqual(recipe.ingredients.count(), 2)
+
 
 class RatingSerializerTests(TestCase):
     def setUp(self):
