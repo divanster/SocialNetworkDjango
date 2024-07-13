@@ -1,7 +1,16 @@
+import uuid
+import os
 from django.db import models
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+
+def recipe_image_file_path(instance, filename):
+    """Generate file path for new recipe image"""
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    return os.path.join('uploads/recipe/', filename)
 
 
 class Tag(models.Model):
@@ -21,11 +30,14 @@ class Ingredient(models.Model):
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
-    image = models.ImageField(upload_to='recipes/', null=True, blank=True)
+    instructions = models.TextField(default='')  # Add the instructions field with a default value
+    image = models.ImageField(upload_to=recipe_image_file_path, null=True, blank=True)  # Use the custom function here
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, related_name='recipes', blank=True)
     ingredients = models.ManyToManyField(Ingredient, related_name='recipes', blank=True)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes', default=None, null=True,
+                               blank=True)  # Add default, null, and blank
 
     def __str__(self):
         return self.title
