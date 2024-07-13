@@ -1,0 +1,41 @@
+# Ignore Python bytecode files
+**/__pycache__/
+**/*.py[cod]
+
+# Ignore virtual environment directories
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.venv/
+
+# Ignore local development settings
+.settings/
+
+# Ignore local database
+db.sqlite3
+
+# Ignore media files
+media/
+
+# Ignore static files
+.static/
+.vol/
+
+# Ignore log files
+*.log
+
+# Ignore system-specific files
+.DS_Store
+
+# Ignore git and other version control folders
+.git
+.hg
+.svn
+
+# Ignore PyCharm project files
+.idea/
+
+# Ignore Visual Studio Code project files
+.vscode/

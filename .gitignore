@@ -1,0 +1,62 @@
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+ENV.bak/
+venv.bak/
+.venv/
+.pytest_cache/
+*~
+
+
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+.static/
+.vol/
+
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# PyCharm
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# VSCode
+.vscode/
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+*.env
+
+# macOS
+.DS_Store
+
+# Docker
+*.log
+Dockerfile
+docker-compose.yml
