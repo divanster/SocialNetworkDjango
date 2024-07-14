@@ -19,7 +19,6 @@ services:
              python /app/manage.py makemigrations && 
              python /app/manage.py migrate && 
              python /app/manage.py collectstatic --noinput && 
-             cp -r /app/static/* /vol/web/static && 
              gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
     volumes:
       - ./backend:/app

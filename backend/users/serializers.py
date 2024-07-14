@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import CustomUser
 
-
 class CustomUserSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
 
@@ -12,4 +11,4 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def get_profile_picture_url(self, obj):
         if obj.profile_picture:
             return obj.profile_picture.url
-        return obj.gravatar_url
+        return '/static/images/profile_picture.png'
