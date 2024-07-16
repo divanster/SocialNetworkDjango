@@ -7,4 +7,7 @@ router.register(r'users', CustomUserViewSet, basename='user')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('', include('djoser.urls')),
+    path('', include('djoser.urls.jwt')),
+
 ]
