@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from recipes.models import Recipe, Tag, Ingredient, Rating
+from .models import Recipe, Tag, Ingredient, Rating
 from comments.models import Comment  # Import Comment from the comments app
+from comments.serializers import CommentSerializer
+
 
 class IngredientSerializer(serializers.ModelSerializer):
     """Serializer for ingredients."""
@@ -10,6 +12,7 @@ class IngredientSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
         read_only_fields = ['id']
 
+
 class TagSerializer(serializers.ModelSerializer):
     """Serializer for tags."""
 
@@ -18,20 +21,15 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
         read_only_fields = ['id']
 
+
 class RatingSerializer(serializers.ModelSerializer):
     value = serializers.IntegerField(min_value=1, max_value=5)
+
     class Meta:
         model = Rating
         fields = ['id', 'user', 'recipe', 'value']
         read_only_fields = ['id', 'user', 'recipe']
 
-class CommentSerializer(serializers.ModelSerializer):
-    """Serializer for comments."""
-
-    class Meta:
-        model = Comment
-        fields = ['id', 'user', 'recipe', 'content', 'created_at']
-        read_only_fields = ['id', 'user', 'recipe', 'created_at']
 
 class RecipeSerializer(serializers.ModelSerializer):
     """Serializer for recipes."""
@@ -99,6 +97,7 @@ class RecipeDetailSerializer(RecipeSerializer):
 
     class Meta(RecipeSerializer.Meta):
         fields = RecipeSerializer.Meta.fields + ['ratings', 'comments']
+
 
 class RecipeImageSerializer(serializers.ModelSerializer):
     """Serializer for uploading images to recipes."""

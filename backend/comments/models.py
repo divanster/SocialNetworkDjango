@@ -4,6 +4,7 @@ from recipes.models import Recipe
 
 User = get_user_model()
 
+
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     recipe = models.ForeignKey(Recipe, related_name='comments', on_delete=models.CASCADE)
@@ -11,4 +12,4 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.text
+        return f'Comment by {self.user.username} on {self.recipe.title}'

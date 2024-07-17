@@ -1,5 +1,3 @@
-import uuid
-import os
 from django.db import models
 from django.contrib.auth import get_user_model
 
@@ -8,6 +6,8 @@ User = get_user_model()
 
 def recipe_image_file_path(instance, filename):
     """Generate file path for new recipe image"""
+    import uuid
+    import os
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/recipe/', filename)
