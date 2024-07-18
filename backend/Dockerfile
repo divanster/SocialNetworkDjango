@@ -1,6 +1,7 @@
 FROM python:3.9-alpine3.13
 
 ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH="/app:/app/backend"
 
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
@@ -31,6 +32,8 @@ RUN python -m venv /py && \
     chmod -R 777 /vol/web && \
     chmod -R 777 /app/static && \
     chmod -R 777 /app/staticfiles
+
+COPY ./migration_questioner.py /app/migration_questioner.py
 
 ENV PATH="/py/bin:$PATH"
 

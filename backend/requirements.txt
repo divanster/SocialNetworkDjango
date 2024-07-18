@@ -2,19 +2,21 @@ asgiref==3.8.1
 attrs==23.2.0
 certifi==2024.7.4
 cffi==1.16.0
+channels==4.1.0
+channels-redis==4.2.0
 charset-normalizer==3.3.2
 cryptography==42.0.8
 defusedxml==0.8.0rc2
-Django==3.2.25
+Django==4.2.14  # Updated to the latest LTS version
 django-cors-headers==4.4.0
 django-environ==0.11.2
 django-extensions==3.2.3
 django-gravatar==0.1.0
 django-templated-mail==1.1.1
-djangorestframework==3.12.4
+djangorestframework==3.14.0  # Updated to the latest version
 djangorestframework-simplejwt==5.3.1
 djoser==2.2.3
-drf-spectacular==0.15.1
+drf-spectacular==0.24.1  # Updated to the latest version
 drf-yasg==1.21.7
 gunicorn==22.0.0
 idna==3.7
@@ -22,9 +24,10 @@ inflection==0.5.1
 iniconfig==2.0.0
 jsonschema==4.23.0
 jsonschema-specifications==2023.12.1
+msgpack==1.0.8
 oauthlib==3.2.2
 packaging==24.1
-Pillow==8.2.0
+Pillow==9.5.0  # Updated to a newer version
 pluggy==1.5.0
 psycopg2==2.9.9
 pycparser==2.22
@@ -34,6 +37,7 @@ pytest-django==4.8.0
 python3-openid==3.2.0
 pytz==2024.1
 PyYAML==6.0.1
+redis==5.0.7
 referencing==0.35.1
 requests==2.32.3
 requests-oauthlib==2.0.0

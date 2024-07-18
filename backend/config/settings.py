@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from migration_questioner import NonInteractiveMigrationQuestioner
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,6 +25,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'djoser',
     'corsheaders',
+    'channels',
     'django_extensions',
     'users.apps.UsersConfig',
     'follows.apps.FollowsConfig',
@@ -30,6 +33,7 @@ INSTALLED_APPS = [
     'recipes.apps.RecipesConfig',
     'messenger.apps.MessengerConfig',
     'comments.apps.CommentsConfig',
+    'notifications.apps.NotificationsConfig',
 ]
 
 MIDDLEWARE = [
@@ -63,6 +67,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+
+ASGI_APPLICATION = 'config.asgi.application'
+
 
 DATABASES = {
     'default': {
@@ -201,3 +208,21 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+# Configure the channel layers, here using Redis as the backend
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('redis', 6379)],
+        },
+    },
+}
+
+
+MIGRATION_MODULES = {
+    "default": {
+        "QUESTIONER": NonInteractiveMigrationQuestioner
+    }
+}

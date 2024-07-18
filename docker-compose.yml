@@ -15,10 +15,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "python /app/manage.py wait_for_db && 
-             python /app/manage.py makemigrations && 
-             python /app/manage.py migrate && 
-             python /app/manage.py collectstatic --noinput && 
+      sh -c "PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db && 
+             PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
+             PYTHONPATH=/app:/app/backend python /app/manage.py migrate_noninteractive &&
+             PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput && 
              gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
     volumes:
       - ./backend:/app
