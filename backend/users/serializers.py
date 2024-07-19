@@ -32,7 +32,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def get_profile_picture_url(self, obj):
         if obj.profile_picture:
             return obj.profile_picture.url
-        return '/static/images/profile_picture.png'
+        return '/static/images/default_profile.png'
 
     def validate_first_name(self, value):
         """Ensure the first name is at least 2 characters long."""

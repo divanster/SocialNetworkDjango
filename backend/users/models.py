@@ -25,6 +25,15 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, username, password, **extra_fields)
 
 
+def user_profile_picture_file_path(instance, filename):
+    """Generate file path for new user profile picture"""
+    import uuid
+    import os
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    return os.path.join('uploads/profile_pictures/', filename)
+
+
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)
@@ -33,7 +42,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True, default='default_images/default_profile.jpg')
 
     objects = CustomUserManager()
 
@@ -47,4 +56,4 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def profile_picture_url(self):
         if self.profile_picture:
             return self.profile_picture.url
-        return '/static/images/profile_picture.png'
+        return '/static/default_images/default_profile.jpg'
