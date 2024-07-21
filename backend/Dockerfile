@@ -3,6 +3,7 @@ FROM python:3.9-alpine3.13
 # Set environment variables
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH="/app:/app/backend"
+ENV DEV=true
 
 # Copy requirements files
 COPY ./requirements.txt /tmp/requirements.txt
@@ -24,7 +25,9 @@ RUN python -m venv /py && \
     apk add --no-cache graphviz graphviz-dev fontconfig ttf-dejavu && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     /py/bin/pip install gunicorn whitenoise psycopg2-binary pygraphviz && \
-    if [ "$DEV" = "true" ]; then /py/bin/pip install -r /tmp/requirements.dev.txt; fi && \
+    echo "DEV is $DEV" && \
+    if [ "$DEV" = "true" ]; then echo "Installing dev requirements"; /py/bin/pip install -r /tmp/requirements.dev.txt; fi && \
+    /py/bin/pip list && \
     rm -rf /tmp && \
     apk del .tmp-build-deps && \
     adduser --disabled-password --no-create-home django-user && \

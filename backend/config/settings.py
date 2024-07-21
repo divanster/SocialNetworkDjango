@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+
+from django.conf import settings
+
 from migration_questioner import NonInteractiveMigrationQuestioner
 
 
@@ -36,6 +39,9 @@ INSTALLED_APPS = [
     'notifications.apps.NotificationsConfig',
 ]
 
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -47,6 +53,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware'] + MIDDLEWARE
 
 ROOT_URLCONF = 'config.urls'
 
@@ -226,4 +235,17 @@ MIGRATION_MODULES = {
     "default": {
         "QUESTIONER": NonInteractiveMigrationQuestioner
     }
+}
+
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+    'localhost',
+    # Add other IPs if needed, e.g., '192.168.1.1',
+]
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG,
+    'INTERCEPT_REDIRECTS': False,
+    # Add other configurations as needed
 }

@@ -29,6 +29,8 @@ services:
       - db
     env_file:
       - .env
+    environment:
+      - DEV=true
 
 volumes:
   postgres_data:

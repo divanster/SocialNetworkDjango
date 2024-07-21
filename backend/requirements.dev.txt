@@ -1,4 +1,4 @@
 django-debug-toolbar==4.4.6
-djangorestframework==3.12.4
-drf-spectacular==0.15.1
-Pillow==8.2.0
+djangorestframework==3.14.0
+drf-spectacular==0.24.1
+Pillow==9.5.0
