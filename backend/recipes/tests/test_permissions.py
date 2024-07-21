@@ -6,7 +6,6 @@ from recipes.models import Recipe
 
 User = get_user_model()
 
-
 class RecipePermissionsTest(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -22,6 +21,7 @@ class RecipePermissionsTest(APITestCase):
         self.recipe = Recipe.objects.create(
             title='Test Recipe',
             description='Test Description',
+            instructions='Test Instructions',  # Ensure all required fields are provided
             author=self.user
         )
         self.client = APIClient()

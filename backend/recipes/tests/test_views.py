@@ -6,7 +6,6 @@ from recipes.models import Recipe
 
 User = get_user_model()
 
-
 class RecipeAPITests(APITestCase):
 
     def setUp(self):
@@ -23,7 +22,9 @@ class RecipeAPITests(APITestCase):
         data = {
             'title': 'Test Recipe',
             'description': 'Test Description',
-            'author': self.user.id
+            'instructions': 'Test Instructions',  # Ensure all required fields are provided
+            'tags': [{'name': 'Tag1'}, {'name': 'Tag2'}],
+            'ingredients': [{'name': 'Ingredient1'}, {'name': 'Ingredient2'}],
         }
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -34,11 +35,13 @@ class RecipeAPITests(APITestCase):
         Recipe.objects.create(
             title='Test Recipe 1',
             description='Test Description 1',
+            instructions='Test Instructions 1',  # Ensure all required fields are provided
             author=self.user
         )
         Recipe.objects.create(
             title='Test Recipe 2',
             description='Test Description 2',
+            instructions='Test Instructions 2',  # Ensure all required fields are provided
             author=self.user
         )
         url = reverse('recipe-list')
@@ -51,6 +54,7 @@ class RecipeAPITests(APITestCase):
         recipe = Recipe.objects.create(
             title='Test Recipe',
             description='Test Description',
+            instructions='Test Instructions',  # Ensure all required fields are provided
             author=self.user
         )
         url = reverse('recipe-detail', kwargs={'pk': recipe.pk})
@@ -62,13 +66,14 @@ class RecipeAPITests(APITestCase):
         recipe = Recipe.objects.create(
             title='Test Recipe',
             description='Test Description',
+            instructions='Test Instructions',  # Ensure all required fields are provided
             author=self.user
         )
         url = reverse('recipe-detail', kwargs={'pk': recipe.pk})
         data = {
             'title': 'Updated Recipe',
             'description': 'Updated Description',
-            'author': self.user.id
+            'instructions': 'Updated Instructions',  # Ensure all required fields are provided
         }
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -79,6 +84,7 @@ class RecipeAPITests(APITestCase):
         recipe = Recipe.objects.create(
             title='Test Recipe',
             description='Test Description',
+            instructions='Test Instructions',  # Ensure all required fields are provided
             author=self.user
         )
         url = reverse('recipe-detail', kwargs={'pk': recipe.pk})

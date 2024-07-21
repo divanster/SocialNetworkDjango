@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from .models import Recipe, Rating, Tag, Ingredient, RecipeImage
 from .serializers import RecipeSerializer, RatingSerializer, TagSerializer, IngredientSerializer, RecipeImageSerializer, \
@@ -12,7 +12,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Ensure JSONParser is included
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -43,6 +43,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
 
 
 class RatingViewSet(viewsets.ModelViewSet):
