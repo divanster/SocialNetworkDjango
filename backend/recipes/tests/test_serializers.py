@@ -2,8 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 from recipes.models import Recipe, Tag, Ingredient, Rating, User
 from comments.models import Comment
-from recipes.serializers import RecipeSerializer, TagSerializer, IngredientSerializer, RatingSerializer, \
-    CommentSerializer
+from recipes.serializers import RecipeSerializer, TagSerializer, IngredientSerializer, RatingSerializer, CommentSerializer
 
 
 class TagSerializerTests(TestCase):

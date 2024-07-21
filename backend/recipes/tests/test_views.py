@@ -6,6 +6,7 @@ from recipes.models import Recipe
 
 User = get_user_model()
 
+
 class RecipeAPITests(APITestCase):
 
     def setUp(self):

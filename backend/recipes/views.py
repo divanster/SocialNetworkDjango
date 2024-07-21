@@ -5,17 +5,14 @@ from rest_framework.response import Response
 from .models import Recipe, Rating, Tag, Ingredient, RecipeImage
 from .serializers import RecipeSerializer, RatingSerializer, TagSerializer, IngredientSerializer, RecipeImageSerializer, \
     RecipeDetailSerializer
+from .permissions import IsAuthorOrReadOnly
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    def get_parser_classes(self):
-        if self.action in ['upload_image']:
-            return [MultiPartParser, FormParser]
-        return super().get_parser_classes()
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
