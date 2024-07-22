@@ -15,10 +15,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db && 
+      sh -c "PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db &&
              PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
              PYTHONPATH=/app:/app/backend python /app/manage.py migrate_noninteractive &&
-             PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput && 
+             PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput &&
              gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
     volumes:
       - ./backend:/app
@@ -28,9 +28,20 @@ services:
     depends_on:
       - db
     env_file:
-      - .env
+      - ./backend/.env  # Updated path
     environment:
       - DEV=true
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # This is useful for certain file systems that don't support inotify.
 
 volumes:
   postgres_data:

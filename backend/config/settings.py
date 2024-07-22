@@ -1,19 +1,24 @@
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
-
 from django.conf import settings
-
 from migration_questioner import NonInteractiveMigrationQuestioner
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Use environment variables for sensitive information
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-default-secret-key')
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+
+# Function to check if tests are running
+def is_running_tests():
+    return 'test' in sys.argv
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -23,9 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework_simplejwt',
-    'rest_framework.authtoken',
-    'drf_spectacular',
+    'rest_framework_simplejwt.token_blacklist',
     'djoser',
     'corsheaders',
     'channels',
@@ -39,8 +42,9 @@ INSTALLED_APPS = [
     'notifications.apps.NotificationsConfig',
 ]
 
-if DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
+# Include Debug Toolbar only if not running tests
+if DEBUG and not is_running_tests():
+    INSTALLED_APPS.append('debug_toolbar')
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -54,8 +58,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-if DEBUG:
-    MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware'] + MIDDLEWARE
+# Add Debug Toolbar middleware only if not running tests
+if DEBUG and not is_running_tests():
+    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -76,9 +81,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-
 ASGI_APPLICATION = 'config.asgi.application'
-
 
 DATABASES = {
     'default': {
@@ -107,13 +110,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 STATIC_URL = '/static/'
@@ -127,9 +126,9 @@ STATICFILES_DIRS = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 AUTH_USER_MODEL = 'users.CustomUser'
 
+# Django Rest Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -142,13 +141,14 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+# JWT Configuration
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=10),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': 'your-secret-key',  # Replace with your secret key
+    'SIGNING_KEY': os.environ.get('DJANGO_SECRET_KEY', 'your-default-secret-key'),
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
@@ -160,6 +160,7 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
+# Djoser configuration
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': True,
@@ -192,9 +193,10 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
 }
 
-
+# CORS Configuration
 CORS_ALLOWED_ORIGINS = [origin for origin in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if origin]
 
+# Static files storage
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Email Configuration
@@ -205,7 +207,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
-# Security Settings
+# Security Settings for Production
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
@@ -219,7 +221,6 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-
 # Configure the channel layers, here using Redis as the backend
 CHANNEL_LAYERS = {
     'default': {
@@ -230,22 +231,21 @@ CHANNEL_LAYERS = {
     },
 }
 
-
+# Migration modules configuration
 MIGRATION_MODULES = {
     "default": {
         "QUESTIONER": NonInteractiveMigrationQuestioner
     }
 }
 
-
+# Internal IPs for Django Debug Toolbar
 INTERNAL_IPS = [
     '127.0.0.1',
     'localhost',
-    # Add other IPs if needed, e.g., '192.168.1.1',
 ]
 
+# Django Debug Toolbar Configuration
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG,
+    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
     'INTERCEPT_REDIRECTS': False,
-    # Add other configurations as needed
 }
