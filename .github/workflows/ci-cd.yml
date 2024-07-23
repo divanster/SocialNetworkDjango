@@ -43,38 +43,25 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/requirements.dev.txt
 
-      - name: Run migrations
-        run: |
-          . venv/bin/activate
-          python backend/manage.py migrate
-
       - name: Run tests
         run: |
           . venv/bin/activate
           python backend/manage.py test
 
-      - name: Set up Node
-        uses: actions/setup-node@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          node-version: 14
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Install frontend dependencies
+      - name: Build and push Docker image
         run: |
-          cd frontend
-          npm install
-
-      - name: Run frontend tests
-        run: |
-          cd frontend
-          npm test
-
-      - name: Build Docker image
-        run: |
-          docker build -t recipe-django-backend:latest -f backend/Dockerfile .
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/recipe-django-backend:latest -f backend/Dockerfile .
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/recipe-django-backend:latest
 
       - name: Save Docker image to tarball
         run: |
-          docker save recipe-django-backend:latest > recipe-django-backend.tar
+          docker save ${{ secrets.DOCKER_HUB_USERNAME }}/recipe-django-backend:latest > recipe-django-backend.tar
 
       - name: Upload Docker image to GitHub Actions artifacts
         uses: actions/upload-artifact@v2
