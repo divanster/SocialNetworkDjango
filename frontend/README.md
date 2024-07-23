@@ -29,42 +29,69 @@ Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
+# Recipe Sharing Application
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+This is a recipe sharing application with a Django backend and React frontend, featuring user authentication, real-time messaging, and notifications.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Features
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- User authentication (registration, login, logout)
+- Recipe creation, editing, and deletion
+- Real-time messaging between users
+- Notifications for various events (e.g., new messages, new comments on recipes)
+- Image upload for recipes and user profiles
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Technology Stack
 
-## Learn More
+- **Backend**: Django, Django REST Framework, Channels (for WebSockets), PostgreSQL
+- **Frontend**: React, Redux, Bootstrap
+- **CI/CD**: GitHub Actions
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Installation
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Backend
 
-### Code Splitting
+1. Create a virtual environment and activate it:
+   ```sh
+   python -m venv venv
+   source venv/bin/activate
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+2. Install the required packages:
+   ```sh
+   pip install -r requirements.txt
+   pip install -r requirements.dev.txt
+   ```
 
-### Analyzing the Bundle Size
+3. Apply the migrations:
+   ```sh
+   python manage.py migrate
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+4. Run the development server:
+   ```sh
+   python manage.py runserver
+   ```
 
-### Making a Progressive Web App
+### Frontend
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+1. Navigate to the frontend directory:
+   ```sh
+   cd frontend
+   ```
 
-### Advanced Configuration
+2. Install the dependencies:
+   ```sh
+   npm install
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+3. Start the development server:
+   ```sh
+   npm start
+   ```
 
-### Deployment
+## Running Tests
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Backend
+```sh
+python manage.py test

@@ -43,10 +43,30 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/requirements.dev.txt
 
+      - name: Run migrations
+        run: |
+          . venv/bin/activate
+          python backend/manage.py migrate
+
       - name: Run tests
         run: |
           . venv/bin/activate
           python backend/manage.py test
+
+      - name: Set up Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test
 
       - name: Build Docker image
         run: |
