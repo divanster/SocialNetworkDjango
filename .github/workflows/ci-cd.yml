@@ -43,6 +43,7 @@ jobs:
         run: |
           python -m venv venv
           . venv/bin/activate
+          pip install --upgrade pip
           pip install -r backend/requirements.txt
           pip install -r backend/requirements.dev.txt
 
@@ -62,9 +63,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '18'
 
       # Step 7: Install Node.js dependencies
+      - name: Install Node.js dependencies
         run: |
           cd frontend
           npm install
@@ -100,6 +102,7 @@ jobs:
           docker save divanster/recipe-django-backend:latest > recipe-django-backend.tar
 
       # Step 13: Upload Docker image to GitHub Actions artifacts
+      - name: Upload Docker image to GitHub Actions artifacts
         uses: actions/upload-artifact@v2
         with:
           name: recipe-django-backend-image
