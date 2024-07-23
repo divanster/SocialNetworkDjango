@@ -32,7 +32,7 @@ class Recipe(models.Model):
     description = models.TextField()
     instructions = models.TextField(default='')
     image = models.ImageField(upload_to=recipe_image_file_path, null=True, blank=True,
-                              default='default_images/default_recipe.jpeg')
+                              default='static/default_images/default_recipe.jpeg')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, related_name='recipes', blank=True)

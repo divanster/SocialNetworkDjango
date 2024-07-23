@@ -42,7 +42,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True, default='default_images/default_profile.jpg')
+    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True,
+                                        default='static/default_images/profile_picture.png')
 
     objects = CustomUserManager()
 
