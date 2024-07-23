@@ -40,7 +40,10 @@ const Recipes: React.FC = () => {
           <div key={recipe.id}>
             <h2>{recipe.title}</h2>
             <p>{recipe.description}</p>
-            {recipe.image && <img src={recipe.image} alt={recipe.title} />}
+            <img
+              src={recipe.image || 'http://localhost:8000/static/default_images/default_recipe.jpeg'}
+              alt={recipe.title}
+            />
           </div>
         ))
       )}

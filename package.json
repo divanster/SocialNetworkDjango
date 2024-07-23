@@ -1,0 +1,13 @@
+{
+  "name": "root-project",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "echo \"Starting the root project\"",
+    "build": "echo \"Building the root project\"",
+    "test": "echo \"Running tests on the root project\""
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+  }
+}

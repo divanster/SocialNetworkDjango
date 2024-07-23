@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'channels',
     'django_extensions',
+    'drf_spectacular',
     'users.apps.UsersConfig',
     'follows.apps.FollowsConfig',
     'likes.apps.LikesConfig',

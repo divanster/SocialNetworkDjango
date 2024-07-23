@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Recipe, Tag, Ingredient, Rating
+from .models import Recipe, Tag, Ingredient, Rating, RecipeImage
 from comments.models import Comment  # Import Comment from the comments app
 from comments.serializers import CommentSerializer
 
@@ -36,13 +36,13 @@ class RecipeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, required=False)
     ingredients = IngredientSerializer(many=True, required=False)
     average_rating = serializers.DecimalField(max_digits=3, decimal_places=2, read_only=True)
-    user = serializers.StringRelatedField(read_only=True)
+    author = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Recipe
         fields = [
             'id', 'title', 'description', 'instructions', 'tags',
-            'ingredients', 'average_rating', 'image', 'user'
+            'ingredients', 'average_rating', 'image', 'author'
         ]
         read_only_fields = ['id', 'average_rating']
 
@@ -67,7 +67,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         tags = validated_data.pop('tags', [])
         ingredients = validated_data.pop('ingredients', [])
         recipe = Recipe.objects.create(**validated_data)
-        recipe.user = self.context['request'].user
+        recipe.author = self.context['request'].user
         recipe.save()
         self._get_or_create_tags(tags, recipe)
         self._get_or_create_ingredients(ingredients, recipe)

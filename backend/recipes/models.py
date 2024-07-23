@@ -37,8 +37,7 @@ class Recipe(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, related_name='recipes', blank=True)
     ingredients = models.ManyToManyField(Ingredient, related_name='recipes', blank=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes', default=None, null=True,
-                               blank=True)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes', null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
