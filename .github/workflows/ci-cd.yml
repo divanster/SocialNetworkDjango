@@ -30,11 +30,11 @@ jobs:
     steps:
       # Step 1: Checkout the code from the repository
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # Step 2: Set up Python environment
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.9
 
@@ -47,63 +47,75 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/requirements.dev.txt
 
-      # Step 4: Run linters for Python
+      # Step 4: Install flake8
+      - name: Install flake8
+        run: |
+          . venv/bin/activate
+          pip install flake8
+
+      # Step 5: Run linters for Python
       - name: Run flake8
         run: |
           . venv/bin/activate
           flake8 backend
 
-      # Step 5: Run code formatter for Python
+      # Step 6: Install black
+      - name: Install black
+        run: |
+          . venv/bin/activate
+          pip install black
+
+      # Step 7: Run code formatter for Python
       - name: Run black
         run: |
           . venv/bin/activate
           black --check backend
 
-      # Step 6: Set up Node.js environment
+      # Step 8: Set up Node.js environment
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # Step 7: Install Node.js dependencies
+      # Step 9: Install Node.js dependencies
       - name: Install Node.js dependencies
         run: |
           cd frontend
           npm install
 
-      # Step 8: Run linters for JavaScript/TypeScript
+      # Step 10: Run linters for JavaScript/TypeScript
       - name: Run eslint
         run: |
           cd frontend
           npm run lint
 
-      # Step 9: Run tests for Python
+      # Step 11: Run tests for Python
       - name: Run tests
         run: |
           . venv/bin/activate
           python backend/manage.py test
 
-      # Step 10: Login to Docker Hub
+      # Step 12: Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      # Step 11: Build and push Docker image
+      # Step 13: Build and push Docker image
       - name: Build and push Docker image
         run: |
-          docker build -t divanster/recipe-django-backend:latest -f backend/Dockerfile .
-          docker push divanster/recipe-django-backend:latest
+          docker build -t your-dockerhub-username/your-repo-name:latest -f backend/Dockerfile .
+          docker push your-dockerhub-username/your-repo-name:latest
 
-      # Step 12: Save Docker image to tarball
+      # Step 14: Save Docker image to tarball
       - name: Save Docker image to tarball
         run: |
-          docker save divanster/recipe-django-backend:latest > recipe-django-backend.tar
+          docker save your-dockerhub-username/your-repo-name:latest > recipe-django-backend.tar
 
-      # Step 13: Upload Docker image to GitHub Actions artifacts
+      # Step 15: Upload Docker image to GitHub Actions artifacts
       - name: Upload Docker image to GitHub Actions artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: recipe-django-backend-image
           path: recipe-django-backend.tar
