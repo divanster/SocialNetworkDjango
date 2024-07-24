@@ -36,11 +36,12 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'users.apps.UsersConfig',
     'follows.apps.FollowsConfig',
-    'likes.apps.LikesConfig',
+    'reactions.apps.ReactionsConfig',
     'social.apps.RecipesConfig',
     'messenger.apps.MessengerConfig',
     'comments.apps.CommentsConfig',
     'notifications.apps.NotificationsConfig',
+    'albums.apps.AlbumsConfig',
 ]
 
 # Include Debug Toolbar only if not running tests

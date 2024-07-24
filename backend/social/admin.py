@@ -1,44 +1,30 @@
+# backend/social/admin.py
 from django.contrib import admin
-from .models import Recipe, Tag, Ingredient, Rating, RecipeImage
+from .models import Post, Rating, PostImage, Tag
 
 
-class RecipeAdmin(admin.ModelAdmin):
-    list_display = ['title', 'author', 'created_at', 'updated_at', 'average_rating']
-    list_filter = ['author', 'tags', 'ingredients']
-    search_fields = ['title', 'description']
-    readonly_fields = ['created_at', 'updated_at', 'average_rating']
-    fieldsets = (
-        (None, {'fields': ('title', 'description', 'instructions', 'image', 'author')}),
-        ('Associations', {'fields': ('tags', 'ingredients')}),
-        ('Dates', {'fields': ('created_at', 'updated_at')}),
-        ('Ratings', {'fields': ('average_rating',)}),
-    )
+@admin.register(Post)
+class PostAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'author', 'created_at']
+    list_filter = ['author', 'tags', 'created_at']
+    search_fields = ['title', 'author__username']
 
 
-class TagAdmin(admin.ModelAdmin):
-    list_display = ['name']
-    search_fields = ['name']
-
-
-class IngredientAdmin(admin.ModelAdmin):
-    list_display = ['name']
-    search_fields = ['name']
-
-
+@admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
-    list_display = ['recipe', 'user', 'value']
-    list_filter = ['recipe', 'user']
-    search_fields = ['recipe__title', 'user__email']
+    list_display = ['id', 'post', 'user', 'value']
+    list_filter = ['post', 'user', 'value']
+    search_fields = ['post__title', 'user__username']
 
 
-class RecipeImageAdmin(admin.ModelAdmin):
-    list_display = ['recipe', 'image']
-    list_filter = ['recipe']
-    search_fields = ['recipe__title']
+@admin.register(PostImage)
+class PostImageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'post', 'image']
+    list_filter = ['post']
+    search_fields = ['post__title']
 
 
-admin.site.register(Recipe, RecipeAdmin)
-admin.site.register(Tag, TagAdmin)
-admin.site.register(Ingredient, IngredientAdmin)
-admin.site.register(Rating, RatingAdmin)
-admin.site.register(RecipeImage, RecipeImageAdmin)
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name']
+    search_fields = ['name']

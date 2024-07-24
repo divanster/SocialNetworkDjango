@@ -3,9 +3,9 @@
   <component name="FacetManager">
     <facet type="django" name="Django">
       <configuration>
-        <option name="rootFolder" value="$MODULE_DIR$" />
+        <option name="rootFolder" value="$MODULE_DIR$/../RecipeDjangoBackendFrontend" />
         <option name="settingsModule" value="config/settings.py" />
-        <option name="manageScript" value="$MODULE_DIR$/manage.py" />
+        <option name="manageScript" value="$MODULE_DIR$/../RecipeDjangoBackendFrontend/manage.py" />
         <option name="environment" value="&lt;map/&gt;" />
         <option name="doNotUseTestRunner" value="false" />
         <option name="trackFilePattern" value="migrations" />
@@ -17,7 +17,7 @@
       <sourceFolder url="file://$MODULE_DIR$/backend" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (RecipeDjangoBackendFrontend)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.11 (SocialNetworkDjango)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">

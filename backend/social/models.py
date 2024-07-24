@@ -1,16 +1,16 @@
+# backend/social/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
-def recipe_image_file_path(instance, filename):
-    """Generate file path for new recipe image"""
+def post_image_file_path(instance, filename):
     import uuid
     import os
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
-    return os.path.join('uploads/recipe/', filename)
+    return os.path.join('uploads/post/', filename)
 
 
 class Tag(models.Model):
@@ -20,24 +20,15 @@ class Tag(models.Model):
         return self.name
 
 
-class Ingredient(models.Model):
-    name = models.CharField(max_length=255)
-
-    def __str__(self):
-        return self.name
-
-
-class Recipe(models.Model):
+class Post(models.Model):
     title = models.CharField(max_length=255)
-    description = models.TextField()
-    instructions = models.TextField(default='')
-    image = models.ImageField(upload_to=recipe_image_file_path, null=True, blank=True,
-                              default='static/default_images/default_recipe.jpeg')
+    content = models.TextField()
+    image = models.ImageField(upload_to=post_image_file_path, null=True, blank=True,
+                              default='static/default_images/default_post.jpeg')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    tags = models.ManyToManyField(Tag, related_name='social', blank=True)
-    ingredients = models.ManyToManyField(Ingredient, related_name='social', blank=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social', null=True, blank=True)
+    tags = models.ManyToManyField(Tag, related_name='posts', blank=True)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts', null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -54,17 +45,17 @@ class Recipe(models.Model):
 
 
 class Rating(models.Model):
-    recipe = models.ForeignKey(Recipe, related_name='ratings', on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, related_name='ratings', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     value = models.PositiveSmallIntegerField()
 
     class Meta:
-        unique_together = ('recipe', 'user')
+        unique_together = ('post', 'user')
 
     def __str__(self):
-        return f"{self.recipe.title} - {self.value} Stars"
+        return f"{self.post.title} - {self.value} Stars"
 
 
-class RecipeImage(models.Model):
-    recipe = models.ForeignKey(Recipe, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='social/images/')
+class PostImage(models.Model):
+    post = models.ForeignKey(Post, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='posts/images/')

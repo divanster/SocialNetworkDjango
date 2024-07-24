@@ -22,7 +22,7 @@ services:
              gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
     volumes:
       - ./backend:/app
-      - /Users/apple/100DayPython/RecipeDjangoBackendFrontend/vol/web:/vol/web
+      - /Users/apple/100DayPython/SocialNetworkDjango/vol/web:/vol/web
     ports:
       - "8000:8000"
     depends_on:
