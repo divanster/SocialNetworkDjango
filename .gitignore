@@ -1,62 +1,39 @@
 # Python
-*.pyc
 __pycache__/
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-ENV/
-ENV.bak/
-venv.bak/
-.venv/
-.pytest_cache/
-*~
-
+*.py[cod]
+*.egg
+*.egg-info/
+.eggs/
+*.sqlite3
 
 # Django
 *.log
 *.pot
 *.pyc
-__pycache__/
+*~
+staticfiles/
+local_settings.py
 db.sqlite3
-media/
-.static/
-.vol/
+/media
 
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# PyCharm
-.idea/
+# Visual Studio Code
 .vscode/
-*.iml
-*.sublime-project
-*.sublime-workspace
-
-# VSCode
-.vscode/
-
-# Unit test / coverage reports
-.coverage
-.tox
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Environments
-.env
-*.env
 
 # macOS
 .DS_Store
 
 # Docker
-*.log
-Dockerfile
-docker-compose.yml
+*.swp
+.vol
+docker-compose.override.yml
+.env
+
+# Build directories
+build/
+dist/
+coverage/
