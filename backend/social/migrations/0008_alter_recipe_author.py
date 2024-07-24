@@ -9,13 +9,13 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('recipes', '0007_alter_recipe_image'),
+        ('social', '0007_alter_recipe_image'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='recipe',
             name='author',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='recipes', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='social', to=settings.AUTH_USER_MODEL),
         ),
     ]

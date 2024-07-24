@@ -32,7 +32,7 @@ class RatingSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    """Serializer for recipes."""
+    """Serializer for social."""
     tags = TagSerializer(many=True, required=False)
     ingredients = IngredientSerializer(many=True, required=False)
     average_rating = serializers.DecimalField(max_digits=3, decimal_places=2, read_only=True)
@@ -100,7 +100,7 @@ class RecipeDetailSerializer(RecipeSerializer):
 
 
 class RecipeImageSerializer(serializers.ModelSerializer):
-    """Serializer for uploading images to recipes."""
+    """Serializer for uploading images to social."""
 
     class Meta:
         model = Recipe

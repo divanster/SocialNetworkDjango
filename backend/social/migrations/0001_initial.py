@@ -27,10 +27,10 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('title', models.CharField(max_length=255)),
                 ('description', models.TextField()),
-                ('image', models.ImageField(blank=True, null=True, upload_to='recipes/')),
+                ('image', models.ImageField(blank=True, null=True, upload_to='social/')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('ingredients', models.ManyToManyField(blank=True, related_name='recipes', to='recipes.Ingredient')),
+                ('ingredients', models.ManyToManyField(blank=True, related_name='social', to='social.Ingredient')),
             ],
         ),
         migrations.CreateModel(
@@ -44,21 +44,21 @@ class Migration(migrations.Migration):
             name='RecipeImage',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('image', models.ImageField(upload_to='recipes/images/')),
-                ('recipe', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='images', to='recipes.recipe')),
+                ('image', models.ImageField(upload_to='social/images/')),
+                ('recipe', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='images', to='social.recipe')),
             ],
         ),
         migrations.AddField(
             model_name='recipe',
             name='tags',
-            field=models.ManyToManyField(blank=True, related_name='recipes', to='recipes.Tag'),
+            field=models.ManyToManyField(blank=True, related_name='social', to='social.Tag'),
         ),
         migrations.CreateModel(
             name='Rating',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('value', models.PositiveSmallIntegerField()),
-                ('recipe', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ratings', to='recipes.recipe')),
+                ('recipe', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ratings', to='social.recipe')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
             options={

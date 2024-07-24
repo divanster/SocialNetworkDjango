@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'follows.apps.FollowsConfig',
     'likes.apps.LikesConfig',
-    'recipes.apps.RecipesConfig',
+    'social.apps.RecipesConfig',
     'messenger.apps.MessengerConfig',
     'comments.apps.CommentsConfig',
     'notifications.apps.NotificationsConfig',

@@ -3,8 +3,8 @@ from django.apps import AppConfig
 
 class RecipesConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'recipes'
+    name = 'social'
     verbose_name = 'Recipes'
 
     # def ready(self):
-    #     import recipes.signals
+    #     import social.signals

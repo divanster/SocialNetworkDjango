@@ -35,9 +35,9 @@ class Recipe(models.Model):
                               default='static/default_images/default_recipe.jpeg')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    tags = models.ManyToManyField(Tag, related_name='recipes', blank=True)
-    ingredients = models.ManyToManyField(Ingredient, related_name='recipes', blank=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recipes', null=True, blank=True)
+    tags = models.ManyToManyField(Tag, related_name='social', blank=True)
+    ingredients = models.ManyToManyField(Ingredient, related_name='social', blank=True)
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social', null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -67,4 +67,4 @@ class Rating(models.Model):
 
 class RecipeImage(models.Model):
     recipe = models.ForeignKey(Recipe, related_name='images', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='recipes/images/')
+    image = models.ImageField(upload_to='social/images/')

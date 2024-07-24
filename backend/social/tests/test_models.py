@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from recipes.models import Recipe, Tag, Ingredient, Rating
+from social.models import Recipe, Tag, Ingredient, Rating
 
 User = get_user_model()
 

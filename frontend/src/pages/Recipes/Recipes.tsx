@@ -13,7 +13,7 @@ const Recipes: React.FC = () => {
         const response = await axios.get('http://localhost:8000/api/recipes/');
         setRecipes(response.data.results); // Use the correct data structure
       } catch (err) {
-        console.error('Error fetching recipes:', err); // Log any errors
+        console.error('Error fetching social:', err); // Log any errors
         setError(err instanceof Error ? err.message : 'An error occurred'); // Update the error handling
       } finally {
         setLoading(false);

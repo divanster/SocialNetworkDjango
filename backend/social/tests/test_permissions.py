@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.urls import reverse
-from recipes.models import Recipe
+from social.models import Recipe
 
 User = get_user_model()
 

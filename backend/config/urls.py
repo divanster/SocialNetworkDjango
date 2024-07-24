@@ -12,7 +12,7 @@ urlpatterns = [
     path('api/', include('follows.urls')),
     path('api/', include('likes.urls')),
     path('api/', include('messenger.urls')),
-    path('api/', include('recipes.urls')),
+    path('api/', include('social.urls')),
     path('api/', include('users.urls')),
     path('api/', include('notifications.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
