@@ -1,17 +1,13 @@
-# notifications/views.py
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+# backend/notifications/views.py
+from rest_framework import viewsets, permissions
 from .models import Notification
 from .serializers import NotificationSerializer
-from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
-@extend_schema(parameters=[OpenApiParameter(name='id', description='ID of the notification', required=True, type=int,
-                                            location=OpenApiParameter.PATH)])
 class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-    def get_queryset(self):
-        user = self.request.user
-        return Notification.objects.filter(recipient=user)
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)

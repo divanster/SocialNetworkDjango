@@ -7,4 +7,4 @@ class ReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reaction
         fields = ['id', 'user', 'post', 'emoji', 'created_at']
-        read_only_fields = ['created_at']
+        read_only_fields = ['id', 'user', 'created_at']

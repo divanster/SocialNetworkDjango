@@ -3,6 +3,7 @@ from rest_framework import viewsets, permissions
 from .models import Album, Photo
 from .serializers import AlbumSerializer, PhotoSerializer
 
+
 class AlbumViewSet(viewsets.ModelViewSet):
     queryset = Album.objects.all()
     serializer_class = AlbumSerializer
@@ -10,6 +11,7 @@ class AlbumViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
 
 class PhotoViewSet(viewsets.ModelViewSet):
     queryset = Photo.objects.all()

@@ -6,7 +6,6 @@ User = get_user_model()
 
 
 def album_image_file_path(instance, filename):
-    """Generate file path for new album image"""
     import uuid
     import os
     ext = filename.split('.')[-1]

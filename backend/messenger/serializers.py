@@ -1,3 +1,4 @@
+# backend/messenger/serializers.py
 from rest_framework import serializers
 from .models import Message
 
@@ -5,5 +6,5 @@ from .models import Message
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'recipient', 'content', 'timestamp']
-        read_only_fields = ['timestamp']
+        fields = ['id', 'sender', 'receiver', 'content', 'timestamp']
+        read_only_fields = ['id', 'sender', 'timestamp']

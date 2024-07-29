@@ -1,11 +1,10 @@
+# backend/comments/serializers.py
 from rest_framework import serializers
 from .models import Comment
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    """Serializer for comments."""
-
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'recipe', 'text', 'created_at']
-        read_only_fields = ['id', 'user', 'recipe', 'created_at']
+        fields = ['id', 'user', 'post', 'content', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']

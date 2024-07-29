@@ -10,6 +10,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: "redis:alpine"
+
   web:
     build:
       context: ./backend
@@ -17,7 +20,7 @@ services:
     command: >
       sh -c "PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db &&
              PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
-             PYTHONPATH=/app:/app/backend python /app/manage.py migrate_noninteractive &&
+             PYTHONPATH=/app:/app/backend python /app/manage.py migrate --noinput &&
              PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput &&
              gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
     volumes:
@@ -27,6 +30,23 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - redis
+    env_file:
+      - ./backend/.env
+    environment:
+      - DEV=true
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python /app/manage.py runworker default --verbosity 2
+    volumes:
+      - ./backend:/app
+      - /Users/apple/100DayPython/SocialNetworkDjango/vol/web:/vol/web
+    depends_on:
+      - db
+      - redis
     env_file:
       - ./backend/.env
     environment:
