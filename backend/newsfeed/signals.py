@@ -1,4 +1,5 @@
 # backend/newsfeed/signals.py
+import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from social.models import Post
@@ -9,6 +10,8 @@ from stories.models import Story
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+logger = logging.getLogger(__name__)
+
 channel_layer = get_channel_layer()
 
 
@@ -18,11 +21,13 @@ channel_layer = get_channel_layer()
 @receiver(post_save, sender=Album)
 @receiver(post_save, sender=Story)
 def update_feed(sender, instance, created, **kwargs):
+    message = f'New update: {instance}'
+    logger.info(message)
     async_to_sync(channel_layer.group_send)(
         'newsfeed',
         {
             'type': 'feed_message',
-            'message': f'New update: {instance}'
+            'message': message
         }
     )
 
@@ -33,10 +38,12 @@ def update_feed(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=Album)
 @receiver(post_delete, sender=Story)
 def remove_from_feed(sender, instance, **kwargs):
+    message = f'Removed: {instance}'
+    logger.info(message)
     async_to_sync(channel_layer.group_send)(
         'newsfeed',
         {
             'type': 'feed_message',
-            'message': f'Removed: {instance}'
+            'message': message
         }
     )
