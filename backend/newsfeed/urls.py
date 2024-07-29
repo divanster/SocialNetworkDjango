@@ -1,7 +1,7 @@
 # backend/newsfeed/urls.py
 from django.urls import path
-from .views import user_feed
+from .views import UserFeedView
 
 urlpatterns = [
-    path('feed/', user_feed, name='user_feed'),
+    path('feed/', UserFeedView.as_view(), name='user_feed'),
 ]

@@ -1,6 +1,7 @@
 # backend/migration_questioner.py
 from django.db.migrations.questioner import MigrationQuestioner
 
+
 class NonInteractiveMigrationQuestioner(MigrationQuestioner):
     def ask_rename(self, model_name, old_name, new_name, field_instance):
         return True
