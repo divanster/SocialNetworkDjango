@@ -36,3 +36,35 @@
     transform: rotate(360deg);
   }
 }
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+    margin-bottom: 20px;
+}
+
+.card .btn {
+    margin-top: 10px;
+}
+
+.navbar .badge-pill {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.75rem;
+}
+
+.navbar .nav-link {
+    position: relative;
+}
+
+.container-fluid {
+    padding: 0;
+}
+
+.row {
+    margin: 0;
+}
