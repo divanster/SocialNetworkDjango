@@ -16,7 +16,8 @@ class Reaction(models.Model):
         ('angry', 'Angry'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, related_name='reactions',
+                             on_delete=models.CASCADE)
     emoji = models.CharField(max_length=10, choices=EMOJI_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
 
