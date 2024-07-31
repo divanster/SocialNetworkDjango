@@ -1,7 +1,13 @@
+# backend/users/models.py
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from django.db import models
+from django.conf import settings
+from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
+from django.contrib.auth import get_user_model
 
 
 class CustomUserManager(BaseUserManager):
@@ -26,33 +32,12 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, username, password, **extra_fields)
 
 
-def user_profile_picture_file_path(instance, filename):
-    """Generate file path for new user profile picture"""
-    import uuid
-    import os
-    ext = filename.split('.')[-1]
-    filename = f'{uuid.uuid4()}.{ext}'
-    return os.path.join('uploads/profile_pictures/', filename)
-
-
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    GENDER_CHOICES = [
-        ('M', 'Male'),
-        ('F', 'Female'),
-        ('N', 'Not specified'),
-    ]
-
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)
-    first_name = models.CharField(max_length=30, blank=True)
-    last_name = models.CharField(max_length=30, blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True,
-                                        default='static/default_images/profile_picture.png')
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
-    date_of_birth = models.DateField(null=True, blank=True)
 
     objects = CustomUserManager()
 
@@ -62,27 +47,55 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
-    def save(self, *args, **kwargs):
-        # Ensure username is set to the part of email before "@" if not provided
-        if not self.username:
-            email_username = self.email.split('@')[0]
-            self.username = email_username
 
-        # Ensure full name is populated based on first_name and last_name if not provided
-        if not self.first_name and not self.last_name:
-            self.first_name = self.email.split('@')[0]  # Fallback to part of email
+def user_profile_picture_file_path(instance, filename):
+    """Generate file path for new user profile picture"""
+    import uuid
+    import os
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    return os.path.join('uploads/profile_pictures/', filename)
 
-        # Perform any additional validation or cleanup here
-        super(CustomUser, self).save(*args, **kwargs)
 
-    def clean(self):
-        # Add custom validation if needed
-        if self.date_of_birth and self.date_of_birth > timezone.now().date():
-            raise ValidationError(_('Date of birth cannot be in the future.'))
-        super().clean()
+class UserProfile(models.Model):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('N', 'Not specified'),
+    ]
+
+    RELATIONSHIP_STATUS_CHOICES = [
+        ('S', 'Single'),
+        ('M', 'Married'),
+        ('D', 'Divorced'),
+        ('W', 'Widowed'),
+        ('P', 'In a relationship'),
+        ('C', 'Complicated'),
+    ]
+
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name='profile')
+    first_name = models.CharField(max_length=30, blank=True)
+    last_name = models.CharField(max_length=30, blank=True)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
+    date_of_birth = models.DateField(null=True, blank=True)
+    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True,
+                                        default='static/default_images/profile_picture.png')
+    bio = models.TextField(blank=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    town = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    relationship_status = models.CharField(max_length=1, choices=RELATIONSHIP_STATUS_CHOICES, default='S')
+
+    def __str__(self):
+        return f'{self.user.username} Profile'
 
     @property
     def profile_picture_url(self):
         if self.profile_picture:
             return self.profile_picture.url
         return '/static/default_images/default_profile.jpg'
+
+    def clean(self):
+        if self.date_of_birth and self.date_of_birth > timezone.now().date():
+            raise ValidationError(_('Date of birth cannot be in the future.'))
+        super().clean()

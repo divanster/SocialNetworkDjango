@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import CustomUser
-from .serializers import CustomUserSerializer
+from .models import CustomUser, UserProfile
+from .serializers import CustomUserSerializer, UserProfileSerializer
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):
@@ -13,3 +13,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return UserProfile.objects.filter(user=self.request.user)

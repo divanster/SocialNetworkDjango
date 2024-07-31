@@ -1,4 +1,3 @@
-# backend/newsfeed/views.py
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,15 +16,27 @@ class UserFeedView(GenericAPIView):
     def get(self, request, *args, **kwargs):
         user = request.user
 
-        posts = Post.objects.filter(author=user).select_related('author').prefetch_related('comments', 'reactions',
-                                                                                           'tags', 'images',
-                                                                                           'ratings').order_by(
-            '-created_at')
-        comments = Comment.objects.filter(user=user).select_related('user', 'post').order_by('-created_at')
-        reactions = Reaction.objects.filter(user=user).select_related('user', 'post').order_by('-created_at')
-        albums = Album.objects.filter(user=user).select_related('user').prefetch_related('photos').order_by(
-            '-created_at')
-        stories = Story.objects.filter(user=user).select_related('user').order_by('-created_at')
+        posts = Post.objects.filter(author=user)\
+            .select_related('author')\
+            .prefetch_related('comments', 'reactions', 'tags', 'images', 'ratings')\
+            .order_by('-created_at')
+
+        comments = Comment.objects.filter(user=user)\
+            .select_related('user', 'post')\
+            .order_by('-created_at')
+
+        reactions = Reaction.objects.filter(user=user)\
+            .select_related('user', 'post')\
+            .order_by('-created_at')
+
+        albums = Album.objects.filter(user=user)\
+            .select_related('user')\
+            .prefetch_related('photos')\
+            .order_by('-created_at')
+
+        stories = Story.objects.filter(user=user)\
+            .select_related('user')\
+            .order_by('-created_at')
 
         feed_data = {
             'posts': posts,

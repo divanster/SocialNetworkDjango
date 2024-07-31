@@ -1,15 +1,14 @@
-# backend/comments/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
-from social.models import Post
+from social.models import Post  # Adjust import as needed
 
 User = get_user_model()
 
 
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)  # Make nullable temporarily
-    content = models.TextField(null=True, blank=True)  # Also make content nullable
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments', null=True, blank=True)
+    content = models.TextField(default='No content')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

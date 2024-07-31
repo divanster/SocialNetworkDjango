@@ -22,12 +22,14 @@ const NewsFeed: React.FC = () => {
         const getNewsFeedData = async () => {
             try {
                 const postsData = await fetchNewsFeed();
+                console.log('Posts data:', postsData);
                 setPosts(postsData.posts || []);
 
                 const albumsData = await fetchAlbums();
-                setAlbums(albumsData.albums || []);
+                console.log('Albums data:', albumsData);
+                setAlbums(Array.isArray(albumsData.albums) ? albumsData.albums : []);
             } catch (error) {
-                console.error('Error fetching news feed data', error);
+                console.error('Error fetching news feed data:', error);
             }
         };
 
@@ -44,7 +46,7 @@ const NewsFeed: React.FC = () => {
                     <CreatePost />
                     <CreateAlbum />
                     {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}
-                    {albums.length > 0 ? albums.map(album => (
+                    {Array.isArray(albums) && albums.length > 0 ? albums.map(album => (
                         <Album key={album.id} album={album} />
                     )) : <p>No albums available</p>}
                 </Col>
