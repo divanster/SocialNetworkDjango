@@ -1,45 +1,57 @@
-// frontend/src/pages/NewsFeed.tsx
 import React, { useEffect, useState } from 'react';
-import fetchNewsFeed from '../services/api';
+import {
+    fetchNewsFeed,
+    fetchAlbums
+} from '../services/api';
 import Posts from '../components/CentralNewsFeed/Posts';
+import Album from '../components/FeedItem/Album';
 import Profile from '../components/LeftSidebar/Profile';
 import FriendRequests from '../components/RightSidebar/FriendRequests';
 import Birthdays from '../components/RightSidebar/Birthdays';
 import Contacts from '../components/RightSidebar/Contacts';
-import { Container, Row, Col, Card } from 'react-bootstrap';
+import CreatePost from '../components/CentralNewsFeed/CreatePost';
+import CreateAlbum from '../components/CentralNewsFeed/CreateAlbum';
+import { Container, Row, Col } from 'react-bootstrap';
+import './NewsFeed.css';
 
 const NewsFeed: React.FC = () => {
-    const [feed, setFeed] = useState<any>({ posts: [], comments: [], reactions: [], albums: [], stories: [] });
+    const [posts, setPosts] = useState<any[]>([]);
+    const [albums, setAlbums] = useState<any[]>([]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            const data = await fetchNewsFeed();
-            setFeed(data);
+        const getNewsFeedData = async () => {
+            try {
+                const postsData = await fetchNewsFeed();
+                setPosts(postsData.posts || []);
+
+                const albumsData = await fetchAlbums();
+                setAlbums(albumsData.albums || []);
+            } catch (error) {
+                console.error('Error fetching news feed data', error);
+            }
         };
-        fetchData();
+
+        getNewsFeedData();
     }, []);
 
     return (
         <Container fluid>
             <Row>
-                <Col md={3}>
+                <Col xs={12} md={3} className="left-sidebar">
                     <Profile />
                 </Col>
-                <Col md={6}>
-                    <Card className="mb-4 p-3">
-                        <Posts posts={feed.posts} />
-                    </Card>
+                <Col xs={12} md={6} className="central-news-feed">
+                    <CreatePost />
+                    <CreateAlbum />
+                    {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}
+                    {albums.length > 0 ? albums.map(album => (
+                        <Album key={album.id} album={album} />
+                    )) : <p>No albums available</p>}
                 </Col>
-                <Col md={3}>
-                    <Card className="mb-4 p-3">
-                        <FriendRequests />
-                    </Card>
-                    <Card className="mb-4 p-3">
-                        <Birthdays />
-                    </Card>
-                    <Card className="mb-4 p-3">
-                        <Contacts />
-                    </Card>
+                <Col xs={12} md={3} className="right-sidebar">
+                    <FriendRequests />
+                    <Birthdays />
+                    <Contacts />
                 </Col>
             </Row>
         </Container>

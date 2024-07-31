@@ -8,3 +8,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'sender', 'receiver', 'notification_type', 'text', 'created_at', 'is_read']
         read_only_fields = ['id', 'sender', 'created_at']
+
+
+class NotificationCountSerializer(serializers.Serializer):
+    count = serializers.IntegerField()

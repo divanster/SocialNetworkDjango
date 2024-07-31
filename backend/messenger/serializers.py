@@ -8,3 +8,8 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = ['id', 'sender', 'receiver', 'content', 'timestamp']
         read_only_fields = ['id', 'sender', 'timestamp']
+
+
+class MessageCountSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+

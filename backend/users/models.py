@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 
 class CustomUserManager(BaseUserManager):
@@ -35,6 +36,12 @@ def user_profile_picture_file_path(instance, filename):
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('N', 'Not specified'),
+    ]
+
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)
     first_name = models.CharField(max_length=30, blank=True)
@@ -44,6 +51,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
     profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True,
                                         default='static/default_images/profile_picture.png')
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
+    date_of_birth = models.DateField(null=True, blank=True)
 
     objects = CustomUserManager()
 
@@ -52,6 +61,25 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+    def save(self, *args, **kwargs):
+        # Ensure username is set to the part of email before "@" if not provided
+        if not self.username:
+            email_username = self.email.split('@')[0]
+            self.username = email_username
+
+        # Ensure full name is populated based on first_name and last_name if not provided
+        if not self.first_name and not self.last_name:
+            self.first_name = self.email.split('@')[0]  # Fallback to part of email
+
+        # Perform any additional validation or cleanup here
+        super(CustomUser, self).save(*args, **kwargs)
+
+    def clean(self):
+        # Add custom validation if needed
+        if self.date_of_birth and self.date_of_birth > timezone.now().date():
+            raise ValidationError(_('Date of birth cannot be in the future.'))
+        super().clean()
 
     @property
     def profile_picture_url(self):

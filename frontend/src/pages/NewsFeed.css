@@ -1,0 +1,28 @@
+/* frontend/src/pages/NewsFeed.css */
+
+.left-sidebar,
+.central-news-feed,
+.right-sidebar {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.left-sidebar {
+    position: sticky;
+    top: 70px;
+}
+
+.right-sidebar {
+    position: sticky;
+    top: 70px;
+}
+
+.central-news-feed {
+    padding-top: 15px;
+}
+
+.central-news-feed form {
+    margin-bottom: 20px;
+}

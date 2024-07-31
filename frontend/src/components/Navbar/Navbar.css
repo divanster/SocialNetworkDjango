@@ -1,0 +1,17 @@
+/* frontend/src/components/Navbar/Navbar.css */
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.navbar-nav .nav-link {
+    margin-right: 15px;
+}
+
+.form-inline .form-control {
+    width: auto;
+}
+
+.badge-pill {
+    margin-left: 5px;
+}

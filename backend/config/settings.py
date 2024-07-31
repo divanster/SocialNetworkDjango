@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'follows.apps.FollowsConfig',
     'reactions.apps.ReactionsConfig',
     'stories.apps.StoriesConfig',
-    'social.apps.RecipesConfig',
+    'social.apps.SocialConfig',
     'messenger.apps.MessengerConfig',
     'newsfeed.apps.NewsfeedConfig',
     'pages.apps.PagesConfig',
@@ -197,6 +197,20 @@ SPECTACULAR_SETTINGS = {
         'defaultModelsExpandDepth': -1,
     },
     'COMPONENT_SPLIT_REQUEST': True,
+    'SECURITY': [
+        {
+            'BearerAuth': []
+        }
+    ],
+    'SCHEMA_COERCE': {
+        'securitySchemes': {
+            'BearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT'
+            }
+        }
+    },
 }
 
 # CORS Configuration
