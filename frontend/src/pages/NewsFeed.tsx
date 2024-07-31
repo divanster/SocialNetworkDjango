@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-    fetchNewsFeed,
-    fetchAlbums
-} from '../services/api';
+import axios from 'axios';
 import Posts from '../components/CentralNewsFeed/Posts';
 import Album from '../components/FeedItem/Album';
 import Profile from '../components/LeftSidebar/Profile';
@@ -14,6 +11,14 @@ import CreateAlbum from '../components/CentralNewsFeed/CreateAlbum';
 import { Container, Row, Col } from 'react-bootstrap';
 import './NewsFeed.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+const getHeaders = () => ({
+    headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+    }
+});
+
 const NewsFeed: React.FC = () => {
     const [posts, setPosts] = useState<any[]>([]);
     const [albums, setAlbums] = useState<any[]>([]);
@@ -21,13 +26,10 @@ const NewsFeed: React.FC = () => {
     useEffect(() => {
         const getNewsFeedData = async () => {
             try {
-                const postsData = await fetchNewsFeed();
-                console.log('Posts data:', postsData);
-                setPosts(postsData.posts || []);
-
-                const albumsData = await fetchAlbums();
-                console.log('Albums data:', albumsData);
-                setAlbums(Array.isArray(albumsData.albums) ? albumsData.albums : []);
+                const response = await axios.get(`${API_URL}/newsfeed/feed/`, getHeaders());
+                console.log('Posts data:', response.data);
+                setPosts(response.data.posts || []);
+                setAlbums(response.data.albums || []);
             } catch (error) {
                 console.error('Error fetching news feed data:', error);
             }
@@ -46,7 +48,7 @@ const NewsFeed: React.FC = () => {
                     <CreatePost />
                     <CreateAlbum />
                     {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}
-                    {Array.isArray(albums) && albums.length > 0 ? albums.map(album => (
+                    {albums.length > 0 ? albums.map(album => (
                         <Album key={album.id} album={album} />
                     )) : <p>No albums available</p>}
                 </Col>
