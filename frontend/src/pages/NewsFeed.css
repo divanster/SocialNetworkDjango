@@ -1,28 +1,37 @@
-/* frontend/src/pages/NewsFeed.css */
-
 .left-sidebar,
-.central-news-feed,
 .right-sidebar {
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    margin-bottom: 20px;
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 20px;
 }
 
 .left-sidebar {
-    position: sticky;
-    top: 70px;
+    left: 0;
+    width: 250px; /* Adjust this width based on your preference */
 }
 
 .right-sidebar {
-    position: sticky;
-    top: 70px;
+    right: 0;
+    width: 250px; /* Adjust this width based on your preference */
 }
 
 .central-news-feed {
-    padding-top: 15px;
+    margin-left: 270px; /* Adjust this margin based on the left sidebar width */
+    margin-right: 270px; /* Adjust this margin based on the right sidebar width */
+    overflow-y: auto;
+    padding: 20px;
 }
 
-.central-news-feed form {
-    margin-bottom: 20px;
+.newsfeed-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.newsfeed-content {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 20px;
 }

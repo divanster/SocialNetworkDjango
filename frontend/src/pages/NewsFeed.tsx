@@ -8,7 +8,6 @@ import Birthdays from '../components/RightSidebar/Birthdays';
 import Contacts from '../components/RightSidebar/Contacts';
 import CreatePost from '../components/CentralNewsFeed/CreatePost';
 import CreateAlbum from '../components/CentralNewsFeed/CreateAlbum';
-import { Container, Row, Col } from 'react-bootstrap';
 import './NewsFeed.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
@@ -39,26 +38,24 @@ const NewsFeed: React.FC = () => {
     }, []);
 
     return (
-        <Container fluid>
-            <Row>
-                <Col xs={12} md={3} className="left-sidebar">
-                    <Profile />
-                </Col>
-                <Col xs={12} md={6} className="central-news-feed">
-                    <CreatePost />
-                    <CreateAlbum />
-                    {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}
-                    {albums.length > 0 ? albums.map(album => (
-                        <Album key={album.id} album={album} />
-                    )) : <p>No albums available</p>}
-                </Col>
-                <Col xs={12} md={3} className="right-sidebar">
-                    <FriendRequests />
-                    <Birthdays />
-                    <Contacts />
-                </Col>
-            </Row>
-        </Container>
+        <div className="newsfeed-container">
+            <div className="left-sidebar">
+                <Profile />
+            </div>
+            <div className="right-sidebar">
+                <FriendRequests />
+                <Birthdays />
+                <Contacts />
+            </div>
+            <div className="central-news-feed newsfeed-content">
+                <CreatePost />
+                <CreateAlbum />
+                {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}
+                {albums.length > 0 ? albums.map(album => (
+                    <Album key={album.id} album={album} />
+                )) : <p>No albums available</p>}
+            </div>
+        </div>
     );
 };
 
