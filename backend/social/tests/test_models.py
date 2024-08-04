@@ -23,14 +23,14 @@ class RecipeModelTests(TestCase):
 
     def test_create_recipe(self):
         recipe = Recipe.objects.create(
-            title='Test Recipe',
+            title='Test ReactRouterBootstrap',
             description='Test Description',
             author=self.user
         )
         recipe.tags.add(self.tag)
         recipe.ingredients.add(self.ingredient)
 
-        self.assertEqual(recipe.title, 'Test Recipe')
+        self.assertEqual(recipe.title, 'Test ReactRouterBootstrap')
         self.assertEqual(recipe.description, 'Test Description')
         self.assertEqual(recipe.author, self.user)
         self.assertIn(self.tag, recipe.tags.all())
@@ -38,15 +38,15 @@ class RecipeModelTests(TestCase):
 
     def test_recipe_str(self):
         recipe = Recipe.objects.create(
-            title='Test Recipe',
+            title='Test ReactRouterBootstrap',
             description='Test Description',
             author=self.user
         )
-        self.assertEqual(str(recipe), 'Test Recipe')
+        self.assertEqual(str(recipe), 'Test ReactRouterBootstrap')
 
     def test_average_rating(self):
         recipe = Recipe.objects.create(
-            title='Test Recipe',
+            title='Test ReactRouterBootstrap',
             description='Test Description',
             author=self.user
         )

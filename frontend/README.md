@@ -29,14 +29,14 @@ Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-# Recipe Sharing Application
+# ReactRouterBootstrap Sharing Application
 
 This is a recipe sharing application with a Django backend and React frontend, featuring user authentication, real-time messaging, and notifications.
 
 ## Features
 
 - User authentication (registration, login, logout)
-- Recipe creation, editing, and deletion
+- ReactRouterBootstrap creation, editing, and deletion
 - Real-time messaging between users
 - Notifications for various events (e.g., new messages, new comments on recipes)
 - Image upload for recipes and user profiles

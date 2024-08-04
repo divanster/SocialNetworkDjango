@@ -22,9 +22,11 @@ const CreatePost: React.FC = () => {
         }
 
         try {
+            const token = localStorage.getItem('token');
+            console.log('Token:', token); // Log token
             const response = await axios.post(`${API_URL}/posts/`, formData, {
                 headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
                 }
             });
@@ -35,11 +37,12 @@ const CreatePost: React.FC = () => {
             setImages(null);
             setError(null);
         } catch (error) {
-            console.error('Error creating post', error);
+            console.error('Error creating post:', error);
             if (axios.isAxiosError(error)) {
+                console.error('Response Error:', error.response); // Log error response
                 setError(error.response?.data?.detail || 'An error occurred');
             } else {
-                setError('An error occurred');
+                setError('An unexpected error occurred');
             }
         }
     };

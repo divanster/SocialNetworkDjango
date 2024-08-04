@@ -56,7 +56,7 @@ class RatingSerializerTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user('testuser', 'test@example.com', 'testpass')
         self.recipe = Recipe.objects.create(
-            title='Test Recipe',
+            title='Test ReactRouterBootstrap',
             description='Test Description',
             instructions='Test Instructions',
             author=self.user

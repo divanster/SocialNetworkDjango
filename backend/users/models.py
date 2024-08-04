@@ -73,12 +73,14 @@ class UserProfile(models.Model):
         ('C', 'Complicated'),
     ]
 
-    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name='profile')
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE,
+                                related_name='profile')
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
     date_of_birth = models.DateField(null=True, blank=True)
-    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path, null=True, blank=True,
+    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path,
+                                        null=True, blank=True,
                                         default='static/default_images/profile_picture.png')
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)

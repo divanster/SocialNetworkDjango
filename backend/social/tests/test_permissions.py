@@ -19,7 +19,7 @@ class RecipePermissionsTest(APITestCase):
             password='testpass123'
         )
         self.recipe = Recipe.objects.create(
-            title='Test Recipe',
+            title='Test ReactRouterBootstrap',
             description='Test Description',
             instructions='Test Instructions',  # Ensure all required fields are provided
             author=self.user
@@ -29,21 +29,21 @@ class RecipePermissionsTest(APITestCase):
     def test_author_can_edit_own_recipe(self):
         self.client.force_authenticate(user=self.user)
         url = reverse('recipe-detail', args=[self.recipe.id])
-        data = {'title': 'Updated Recipe'}
+        data = {'title': 'Updated ReactRouterBootstrap'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.recipe.refresh_from_db()
-        self.assertEqual(self.recipe.title, 'Updated Recipe')
+        self.assertEqual(self.recipe.title, 'Updated ReactRouterBootstrap')
 
     def test_non_author_cannot_edit_recipe(self):
         self.client.force_authenticate(user=self.user2)
         url = reverse('recipe-detail', args=[self.recipe.id])
-        data = {'title': 'Updated Recipe'}
+        data = {'title': 'Updated ReactRouterBootstrap'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_non_authenticated_user_cannot_edit_recipe(self):
         url = reverse('recipe-detail', args=[self.recipe.id])
-        data = {'title': 'Updated Recipe'}
+        data = {'title': 'Updated ReactRouterBootstrap'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

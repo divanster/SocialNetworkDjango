@@ -21,21 +21,28 @@ const getHeaders = () => ({
 const NewsFeed: React.FC = () => {
     const [posts, setPosts] = useState<any[]>([]);
     const [albums, setAlbums] = useState<any[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const getNewsFeedData = async () => {
             try {
                 const response = await axios.get(`${API_URL}/newsfeed/feed/`, getHeaders());
-                console.log('Posts data:', response.data);
                 setPosts(response.data.posts || []);
                 setAlbums(response.data.albums || []);
+                setLoading(false);
             } catch (error) {
                 console.error('Error fetching news feed data:', error);
+                setError('Failed to fetch news feed data.');
+                setLoading(false);
             }
         };
 
         getNewsFeedData();
     }, []);
+
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>{error}</p>;
 
     return (
         <div className="newsfeed-container">
@@ -47,7 +54,7 @@ const NewsFeed: React.FC = () => {
                 <Birthdays />
                 <Contacts />
             </div>
-            <div className="central-news-feed newsfeed-content">
+            <div className="central-news-feed">
                 <CreatePost />
                 <CreateAlbum />
                 {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}

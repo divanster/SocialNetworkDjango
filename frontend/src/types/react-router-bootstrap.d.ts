@@ -1,20 +1,20 @@
-export interface Tag {
-  id: number;
-  name: string;
-}
+declare module 'react-router-bootstrap' {
+  import { ComponentType } from 'react';
+  import { LinkProps } from 'react-router-dom';
+  import { NavLinkProps } from 'react-router-dom';
+  import { ButtonProps } from 'react-bootstrap';
 
-export interface Ingredient {
-  id: number;
-  name: string;
-}
+  interface LinkContainerProps extends LinkProps {
+    exact?: boolean;
+    strict?: boolean;
+    isActive?(match: any, location: any): boolean;
+  }
 
-export interface Recipe {
-  id: number;
-  title: string;
-  description: string;
-  instructions: string;
-  tags: Tag[];
-  ingredients: Ingredient[];
-  average_rating: string;
-  image: string | null;
+  export const LinkContainer: ComponentType<LinkContainerProps>;
+
+  interface ButtonLinkContainerProps extends ButtonProps {
+    to: string;
+  }
+
+  export const ButtonLinkContainer: ComponentType<ButtonLinkContainerProps>;
 }

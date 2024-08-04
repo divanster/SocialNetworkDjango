@@ -1,49 +1,31 @@
-// frontend/src/components/Navbar/Navbar.tsx
-import React, { useEffect, useState } from 'react';
-import { Navbar, Nav, Form, FormControl, Button, Badge } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { FaBell, FaEnvelope } from 'react-icons/fa';
-import { fetchNotificationsCount, fetchMessagesCount } from '../../services/api';
+import React from 'react';
+import { Navbar, Nav, NavDropdown } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
 
 const CustomNavbar: React.FC = () => {
-    const [notificationsCount, setNotificationsCount] = useState(0);
-    const [messagesCount, setMessagesCount] = useState(0);
-
-    useEffect(() => {
-        const getCounts = async () => {
-            try {
-                const notifications = await fetchNotificationsCount();
-                const messages = await fetchMessagesCount();
-                setNotificationsCount(notifications);
-                setMessagesCount(messages);
-            } catch (error) {
-                console.error('Error fetching counts', error);
-            }
-        };
-        getCounts();
-    }, []);
-
     return (
-        <Navbar bg="light" expand="lg">
-            <Navbar.Brand as={Link} to="/">MyApp</Navbar.Brand>
+        <Navbar bg="dark" variant="dark" expand="lg">
+            <LinkContainer to="/">
+                <Navbar.Brand>My Social Network</Navbar.Brand>
+            </LinkContainer>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
             <Navbar.Collapse id="basic-navbar-nav">
-                <Nav className="mr-auto">
-                    <Nav.Link as={Link} to="/feed">Feed</Nav.Link>
-                </Nav>
-                <Form className="d-flex">
-                    <FormControl type="text" placeholder="Search" className="mr-sm-2" />
-                    <Button variant="outline-success">Search</Button>
-                </Form>
-                <Nav>
-                    <Nav.Link href="#">
-                        <FaBell size={20} />
-                        {notificationsCount > 0 && <Badge pill bg="danger">{notificationsCount}</Badge>}
-                    </Nav.Link>
-                    <Nav.Link href="#">
-                        <FaEnvelope size={20} />
-                        {messagesCount > 0 && <Badge pill bg="danger">{messagesCount}</Badge>}
-                    </Nav.Link>
+                <Nav className="me-auto">
+                    <LinkContainer to="/feed">
+                        <Nav.Link>Feed</Nav.Link>
+                    </LinkContainer>
+                    <LinkContainer to="/profile">
+                        <Nav.Link>Profile</Nav.Link>
+                    </LinkContainer>
+                    <NavDropdown title="More" id="basic-nav-dropdown">
+                        <LinkContainer to="/settings">
+                            <NavDropdown.Item>Settings</NavDropdown.Item>
+                        </LinkContainer>
+                        <NavDropdown.Divider />
+                        <LinkContainer to="/logout">
+                            <NavDropdown.Item>Logout</NavDropdown.Item>
+                        </LinkContainer>
+                    </NavDropdown>
                 </Nav>
             </Navbar.Collapse>
         </Navbar>

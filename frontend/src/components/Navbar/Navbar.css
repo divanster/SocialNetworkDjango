@@ -1,17 +1,23 @@
-/* frontend/src/components/Navbar/Navbar.css */
-
-.navbar-brand {
-    font-weight: bold;
+.custom-navbar {
+    background-color: #343a40; /* Dark background */
+    color: #f8f9fa; /* Light text */
 }
 
-.navbar-nav .nav-link {
-    margin-right: 15px;
+.custom-navbar .navbar-brand,
+.custom-navbar .nav-link,
+.custom-navbar .dropdown-item {
+    color: #f8f9fa; /* Light text */
 }
 
-.form-inline .form-control {
-    width: auto;
+.custom-navbar .nav-link:hover,
+.custom-navbar .dropdown-item:hover {
+    color: #d1d1d1; /* Slightly lighter text on hover */
 }
 
-.badge-pill {
-    margin-left: 5px;
+.custom-navbar .dropdown-item {
+    background-color: #343a40; /* Match background color */
+}
+
+.custom-navbar .dropdown-item:hover {
+    background-color: #495057; /* Darker background on hover */
 }
