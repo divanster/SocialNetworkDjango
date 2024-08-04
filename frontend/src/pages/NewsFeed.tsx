@@ -9,18 +9,20 @@ import Contacts from '../components/RightSidebar/Contacts';
 import CreatePost from '../components/CentralNewsFeed/CreatePost';
 import CreateAlbum from '../components/CentralNewsFeed/CreateAlbum';
 import './NewsFeed.css';
+import { Post } from '../types/post';
+import { Album as AlbumType } from '../types/album';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const getHeaders = () => ({
     headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`
+        Authorization: `Bearer ${localStorage.getItem('token') || ''}`
     }
 });
 
 const NewsFeed: React.FC = () => {
-    const [posts, setPosts] = useState<any[]>([]);
-    const [albums, setAlbums] = useState<any[]>([]);
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [albums, setAlbums] = useState<AlbumType[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 

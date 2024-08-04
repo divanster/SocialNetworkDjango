@@ -1,15 +1,8 @@
-// frontend/src/components/FeedItem/Album.tsx
 import React from 'react';
+import { Album as AlbumType } from '../../types/album';
 
 interface AlbumProps {
-    album: {
-        id: number;
-        title: string;
-        description: string;
-        user: string;
-        created_at: string;
-        photos: { id: number; image: string; description: string }[];
-    };
+    album: AlbumType;
 }
 
 const Album: React.FC<AlbumProps> = ({ album }) => {
@@ -17,16 +10,14 @@ const Album: React.FC<AlbumProps> = ({ album }) => {
         <div className="album">
             <h2>{album.title}</h2>
             <p>{album.description}</p>
-            <p><strong>User:</strong> {album.user}</p>
-            <div>
-                <strong>Photos:</strong>
+            <div className="photos">
                 {album.photos.map(photo => (
-                    <img key={photo.id} src={photo.image} alt="Album" style={{ width: '100%', height: 'auto' }} />
+                    <div key={photo.id} className="photo">
+                        <img src={photo.image} alt={photo.description} />
+                        <p>{photo.description}</p>
+                    </div>
                 ))}
             </div>
-            <p className="text-muted">
-                Created on {new Date(album.created_at).toLocaleDateString()}
-            </p>
         </div>
     );
 };

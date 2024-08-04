@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/posts';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const CreatePost: React.FC = () => {
     const [title, setTitle] = useState('');
@@ -23,8 +23,7 @@ const CreatePost: React.FC = () => {
 
         try {
             const token = localStorage.getItem('token');
-            console.log('Token:', token); // Log token
-            const response = await axios.post(`${API_URL}/posts/`, formData, {
+            const response = await axios.post(`${API_URL}/social/posts/`, formData, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
@@ -39,7 +38,6 @@ const CreatePost: React.FC = () => {
         } catch (error) {
             console.error('Error creating post:', error);
             if (axios.isAxiosError(error)) {
-                console.error('Response Error:', error.response); // Log error response
                 setError(error.response?.data?.detail || 'An error occurred');
             } else {
                 setError('An unexpected error occurred');
