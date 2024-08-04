@@ -6,14 +6,20 @@ const CreateAlbum: React.FC = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [photos, setPhotos] = useState<FileList | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        setError(null);
+        setSuccess(null);
+
         const formData = new FormData();
         formData.append('title', title);
         formData.append('description', description);
+
         if (photos) {
-            Array.from(photos).forEach(photo => {
+            Array.from(photos).forEach((photo) => {
                 formData.append('photos_upload', photo);
             });
         }
@@ -26,13 +32,24 @@ const CreateAlbum: React.FC = () => {
                 },
             });
             console.log('Album created successfully:', response.data);
+            setTitle('');
+            setDescription('');
+            setPhotos(null);
+            setSuccess('Album created successfully!');
         } catch (error) {
             console.error('Error creating album:', error);
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.detail || 'An error occurred while creating the album.');
+            } else {
+                setError('An unexpected error occurred.');
+            }
         }
     };
 
     return (
         <Form onSubmit={handleSubmit}>
+            {error && <div className="alert alert-danger">{error}</div>}
+            {success && <div className="alert alert-success">{success}</div>}
             <Form.Group>
                 <Form.Label>Title</Form.Label>
                 <Form.Control
