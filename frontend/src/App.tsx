@@ -9,13 +9,13 @@ import NotFound from './components/NotFound';  // Assuming you have a NotFound c
 const App: React.FC = () => {
     return (
         <Router>
-            <Navbar />
+            <Navbar />  {/* Navbar will be displayed on all pages */}
             <Routes>
-                <Route path="/" element={<Navigate to="/feed" />} />
-                <Route path="/feed" element={<NewsFeed />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="*" element={<NotFound />} />  {/* Handles undefined routes */}
+                <Route path="/" element={<Navigate to="/feed" />} />  {/* Redirect to /feed */}
+                <Route path="/feed" element={<NewsFeed />} />  {/* Display NewsFeed component */}
+                <Route path="/login" element={<Login />} />  {/* Display Login component */}
+                <Route path="/signup" element={<Signup />} />  {/* Display Signup component */}
+                <Route path="*" element={<NotFound />} />  {/* Handle undefined routes */}
             </Routes>
         </Router>
     );

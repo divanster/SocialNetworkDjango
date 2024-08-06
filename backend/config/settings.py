@@ -49,8 +49,8 @@ INSTALLED_APPS = [
 ]
 
 # Include Debug Toolbar only if not running tests
-if DEBUG and not is_running_tests():
-    INSTALLED_APPS.append('debug_toolbar')
+# if DEBUG and not is_running_tests():
+#     INSTALLED_APPS.append('debug_toolbar')
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -65,8 +65,8 @@ MIDDLEWARE = [
 ]
 
 # Add Debug Toolbar middleware only if not running tests
-if DEBUG and not is_running_tests():
-    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+# if DEBUG and not is_running_tests():
+#     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -274,6 +274,10 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
@@ -282,7 +286,12 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'channels': {
+            'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,
         },
