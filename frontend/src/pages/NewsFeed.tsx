@@ -41,6 +41,31 @@ const NewsFeed: React.FC = () => {
         };
 
         getNewsFeedData();
+
+        // WebSocket connection
+        const socket = new WebSocket('ws://localhost:8000/ws/posts/');
+
+        socket.onopen = () => {
+            console.log('WebSocket connection opened');
+        };
+
+        socket.onmessage = (event) => {
+            console.log('WebSocket message received:', event.data);
+            const newPost = JSON.parse(event.data).message;
+            setPosts(prevPosts => [newPost, ...prevPosts]);
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket connection closed');
+        };
+
+        return () => {
+            socket.close();  // Ensure the WebSocket connection is closed when the component unmounts
+        };
     }, []);
 
     if (loading) return <p>Loading...</p>;

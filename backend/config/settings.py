@@ -213,12 +213,8 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-CORS_ALLOWED_ORIGINS = [origin for origin in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if origin]
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://127.0.0.1:3000",
-# ]
-
+CORS_ALLOWED_ORIGINS = [origin for origin in
+                        os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if origin]
 
 # Static files storage
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -273,7 +269,6 @@ DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
     'INTERCEPT_REDIRECTS': False,
 }
-
 
 LOGGING = {
     'version': 1,

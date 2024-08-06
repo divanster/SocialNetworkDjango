@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:13
@@ -20,7 +22,7 @@ services:
              PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
              PYTHONPATH=/app:/app/backend python /app/manage.py migrate --noinput &&
              PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput &&
-             gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"
+             daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./backend:/app
       - /Users/apple/100DayPython/SocialNetworkDjango/vol/web:/vol/web
@@ -60,8 +62,8 @@ services:
       - "3000:3000"
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - NODE_OPTIONS=--openssl-legacy-provider  # Add this line
-      - REACT_APP_API_URL=http://web:8000/api   # Adjust as needed for your API
+      - NODE_OPTIONS=--openssl-legacy-provider
+      - REACT_APP_API_URL=http://localhost:8000/api
 
 volumes:
   postgres_data:

@@ -48,3 +48,4 @@ sqlparse==0.5.0
 uritemplate==4.1.1
 urllib3==2.2.2
 whitenoise==6.7.0
+daphne==4.0.0
