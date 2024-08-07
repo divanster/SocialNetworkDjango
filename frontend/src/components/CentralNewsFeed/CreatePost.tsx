@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
 import { useWebSocket } from '../../contexts/WebSocketContext';
+import { useNavigate } from 'react-router-dom';
 import './CreatePost.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const CreatePost: React.FC = () => {
   const { socket } = useWebSocket();
+  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState<FileList | null>(null);
@@ -15,6 +17,14 @@ const CreatePost: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setError('You must be logged in to create a post.');
+      navigate('/login');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('title', title);
     formData.append('content', content);
@@ -25,7 +35,6 @@ const CreatePost: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const response = await axios.post(`${API_URL}/social/posts/`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -44,7 +53,15 @@ const CreatePost: React.FC = () => {
     } catch (error) {
       console.error('Error creating post:', error);
       if (axios.isAxiosError(error)) {
-        setError(error.response?.data?.detail || 'An error occurred');
+        if (error.response?.status === 401) {
+          // If unauthorized, clear tokens and redirect to login
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          setError('Session expired. Please log in again.');
+          navigate('/login');
+        } else {
+          setError(error.response?.data?.detail || 'An error occurred');
+        }
       } else {
         setError('An unexpected error occurred');
       }

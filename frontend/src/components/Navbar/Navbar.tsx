@@ -1,8 +1,17 @@
 import React from 'react';
 import { Navbar, Nav, NavDropdown } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
+import { logout } from '../../services/auth'; // Adjust the path according to your folder structure
+import { useNavigate } from 'react-router-dom'; // Use useNavigate instead of useHistory
 
 const CustomNavbar: React.FC = () => {
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login'); // Use navigate instead of history.push
+    };
+
     return (
         <Navbar bg="dark" variant="dark" expand="lg">
             <LinkContainer to="/">
@@ -22,9 +31,7 @@ const CustomNavbar: React.FC = () => {
                             <NavDropdown.Item>Settings</NavDropdown.Item>
                         </LinkContainer>
                         <NavDropdown.Divider />
-                        <LinkContainer to="/logout">
-                            <NavDropdown.Item>Logout</NavDropdown.Item>
-                        </LinkContainer>
+                        <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
                     </NavDropdown>
                 </Nav>
             </Navbar.Collapse>
