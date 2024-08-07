@@ -1,4 +1,3 @@
-# backend/social/views.py
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Post
