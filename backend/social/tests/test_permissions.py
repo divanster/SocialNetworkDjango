@@ -1,49 +1,29 @@
+import pytest
+from rest_framework.test import APIRequestFactory
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from social.permissions import IsAuthorOrReadOnly
+from social.models import Post
 from django.contrib.auth import get_user_model
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
-from django.urls import reverse
-from social.models import Recipe
 
 User = get_user_model()
 
-class RecipePermissionsTest(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser1',
-            email='test1@example.com',
-            password='testpass123'
-        )
-        self.user2 = User.objects.create_user(
-            username='testuser2',
-            email='test2@example.com',
-            password='testpass123'
-        )
-        self.recipe = Recipe.objects.create(
-            title='Test ReactRouterBootstrap',
-            description='Test Description',
-            instructions='Test Instructions',  # Ensure all required fields are provided
-            author=self.user
-        )
-        self.client = APIClient()
 
-    def test_author_can_edit_own_recipe(self):
-        self.client.force_authenticate(user=self.user)
-        url = reverse('recipe-detail', args=[self.recipe.id])
-        data = {'title': 'Updated ReactRouterBootstrap'}
-        response = self.client.patch(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.recipe.refresh_from_db()
-        self.assertEqual(self.recipe.title, 'Updated ReactRouterBootstrap')
+@pytest.mark.django_db
+def test_is_author_or_read_only_permission():
+    factory = APIRequestFactory()
+    user = User.objects.create_user(email='author@example.com', password='password123')
+    another_user = User.objects.create_user(email='another@example.com',
+                                            password='password123')
+    post = Post.objects.create(title='Test Post', content='This is a test post.',
+                               author=user)
 
-    def test_non_author_cannot_edit_recipe(self):
-        self.client.force_authenticate(user=self.user2)
-        url = reverse('recipe-detail', args=[self.recipe.id])
-        data = {'title': 'Updated ReactRouterBootstrap'}
-        response = self.client.patch(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    request = factory.get('/')
+    request.user = user
+    permission = IsAuthorOrReadOnly()
 
-    def test_non_authenticated_user_cannot_edit_recipe(self):
-        url = reverse('recipe-detail', args=[self.recipe.id])
-        data = {'title': 'Updated ReactRouterBootstrap'}
-        response = self.client.patch(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    # Check if author has permission
+    assert permission.has_object_permission(request, None, post) == True
+
+    # Check if another user does not have permission
+    request.user = another_user
+    assert permission.has_object_permission(request, None, post) == False
