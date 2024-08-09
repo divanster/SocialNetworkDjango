@@ -1,0 +1,27 @@
+.profile-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.profile-picture {
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
+  display: block;
+  object-fit: cover;
+}
+
+.profile-form {
+  margin-top: 20px;
+}
+
+.profile-form .form-group {
+  margin-bottom: 15px;
+}
+
+.profile-form .btn {
+  width: 100%;
+}

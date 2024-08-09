@@ -6,7 +6,6 @@ router = DefaultRouter()
 router.register(r'users', CustomUserViewSet, basename='users')
 router.register(r'profile', UserProfileViewSet, basename='profile')
 
-
 urlpatterns = [
     path('', include(router.urls)),
     path('', include('djoser.urls')),
