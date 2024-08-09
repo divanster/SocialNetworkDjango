@@ -14,7 +14,7 @@ export const login = async (email: string, password: string) => {
 };
 
 export const signup = async (formData: FormData) => {
-    const response = await axios.post(`${API_URL}/users/`, formData, {
+    const response = await axios.post(`${API_URL}/auth/signup/`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
         },

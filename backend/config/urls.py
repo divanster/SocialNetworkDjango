@@ -7,9 +7,12 @@ from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, \
     TokenBlacklistView
 from django.views.generic import RedirectView
+from users.views import CustomUserSignupView
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/auth/signup/', CustomUserSignupView.as_view(), name='user-signup'),
     path('api/comments/', include('comments.urls')),
     path('api/follows/', include('follows.urls')),
     path('api/reactions/', include('reactions.urls')),

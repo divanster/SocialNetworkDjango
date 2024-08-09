@@ -6,14 +6,13 @@ from users.models import UserProfile
 class UserModelTests(TestCase):
 
     def test_create_user_with_email_successful(self):
-        email = 'testuser@example.com'
-        password = 'testpass123'
         user = get_user_model().objects.create_user(
-            email=email,
-            password=password,
+            username='testuser',
+            email='testuser@example.com',
+            password='testpassword'
         )
-        self.assertEqual(user.email, email)
-        self.assertTrue(user.check_password(password))
+        self.assertEqual(user.email, 'testuser@example.com')
+        self.assertTrue(user.check_password('testpassword'))
 
     def test_new_user_email_normalized(self):
         email = 'testuser@EXAMPLE.COM'
@@ -36,6 +35,7 @@ class UserModelTests(TestCase):
         user = get_user_model().objects.create_user(
             email='testuser@example.com',
             password='testpass123',
+            username='testuser'
         )
         profile = UserProfile.objects.get(user=user)
         self.assertEqual(profile.user, user)

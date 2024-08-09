@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signup } from '../../services/auth';
+import { signup } from '../../services/auth';  // Ensure you have the correct path here
 import { Form, Button, Card } from 'react-bootstrap';
 
-const Signup: React.FC = () => {
+const Signup = () => {
     const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -16,6 +16,7 @@ const Signup: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [town, setTown] = useState('');
     const [country, setCountry] = useState('');
+    const [relationshipStatus, setRelationshipStatus] = useState('');
     const [profilePicture, setProfilePicture] = useState<File | null>(null);
     const [error, setError] = useState('');
     const navigate = useNavigate();
@@ -46,12 +47,13 @@ const Signup: React.FC = () => {
         formData.append('phone', phone);
         formData.append('town', town);
         formData.append('country', country);
+        formData.append('relationship_status', relationshipStatus);
         if (profilePicture) {
-            formData.append('profile_picture', profilePicture);
+            formData.append('image_file', profilePicture); // Ensure this matches the key expected by the backend
         }
 
         try {
-            await signup(formData);
+            await signup(formData);  // Ensure this function handles FormData appropriately
             navigate('/login');
         } catch (err) {
             setError('Error creating account');
@@ -147,6 +149,22 @@ const Signup: React.FC = () => {
                             <option value="N">Not specified</option>
                             <option value="M">Male</option>
                             <option value="F">Female</option>
+                        </Form.Control>
+                    </Form.Group>
+
+                    <Form.Group controlId="formRelationshipStatus">
+                        <Form.Label>Relationship Status</Form.Label>
+                        <Form.Control
+                            as="select"
+                            value={relationshipStatus}
+                            onChange={(e) => setRelationshipStatus(e.target.value)}
+                        >
+                            <option value="S">Single</option>
+                            <option value="M">Married</option>
+                            <option value="D">Divorced</option>
+                            <option value="W">Widowed</option>
+                            <option value="P">In a relationship</option>
+                            <option value="C">Complicated</option>
                         </Form.Control>
                     </Form.Group>
 
