@@ -6,6 +6,16 @@ from rest_framework.exceptions import ValidationError
 from django.db import transaction
 
 
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = [
+            'first_name', 'last_name', 'gender', 'date_of_birth',
+            'profile_picture', 'bio', 'phone', 'town', 'country',
+            'relationship_status'
+        ]
+
+
 class CustomUserSerializer(serializers.ModelSerializer):
     # Flattened profile fields
     first_name = serializers.CharField(source='profile.first_name', required=False)
