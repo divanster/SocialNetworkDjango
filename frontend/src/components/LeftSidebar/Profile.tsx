@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Form, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import './Profile.css';
+import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
@@ -13,8 +11,8 @@ const getHeaders = () => ({
 });
 
 const Profile: React.FC = () => {
-  const navigate = useNavigate();
   const [profileData, setProfileData] = useState<any>({});
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -26,13 +24,13 @@ const Profile: React.FC = () => {
     country: '',
     relationshipStatus: 'S',
   });
-  const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch user profile data
     const fetchProfileData = async () => {
       try {
-        const response = await axios.get(`${API_URL}/users/profile/me/`, getHeaders());
+        const response = await axios.get(`${API_URL}/users/users/me/`, getHeaders());
         setProfileData(response.data);
         setFormData({
           firstName: response.data.first_name || '',
@@ -45,9 +43,14 @@ const Profile: React.FC = () => {
           country: response.data.country || '',
           relationshipStatus: response.data.relationship_status || 'S',
         });
-      } catch (error) {
-        console.error('Failed to fetch profile data:', error);
-        setError('Failed to fetch profile data');
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          console.error('Axios error:', err.response || err.message);
+          setError(`Failed to fetch profile data: ${err.message}`);
+        } else {
+          console.error('Unexpected error:', err);
+          setError('An unexpected error occurred.');
+        }
       }
     };
 
@@ -69,13 +72,6 @@ const Profile: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      setError('You must be logged in to update your profile.');
-      navigate('/login');
-      return;
-    }
 
     const updateData = new FormData();
     updateData.append('first_name', formData.firstName);
@@ -93,26 +89,38 @@ const Profile: React.FC = () => {
     }
 
     try {
-      const response = await axios.patch(`${API_URL}/users/profile/${profileData.id}/`, updateData, {
+      const response = await axios.patch(`${API_URL}/users/users/me/`, updateData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
           'Content-Type': 'multipart/form-data',
         },
       });
       setProfileData(response.data);
       alert('Profile updated successfully!');
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      setError('Failed to update profile.');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error('Failed to update profile:', err.response || err.message);
+        setError(`Failed to update profile: ${err.message}`);
+      } else {
+        console.error('Unexpected error:', err);
+        setError('An unexpected error occurred.');
+      }
     }
   };
 
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   return (
-    <div className="profile-container">
-      <img src={profileData.profile_picture || '/path/to/default-pic.jpg'} alt="Profile" className="img-fluid rounded-circle profile-picture" />
+    <div className="profile">
+      <img
+        src={profileData.profile_picture || '/path/to/default-pic.jpg'}
+        alt="Profile"
+        className="img-fluid rounded-circle"
+      />
       <h3>{profileData.username || 'Your Name'}</h3>
-      <Form onSubmit={handleSubmit} encType="multipart/form-data" className="profile-form">
-        {error && <div className="alert alert-danger">{error}</div>}
+      <Form onSubmit={handleSubmit} encType="multipart/form-data">
         <Form.Group controlId="formFirstName">
           <Form.Label>First Name</Form.Label>
           <Form.Control

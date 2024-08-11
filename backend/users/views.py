@@ -12,6 +12,7 @@ from .serializers import CustomUserSerializer, UserProfileSerializer
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -22,6 +23,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
 
+
 class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
@@ -29,12 +31,14 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return CustomUser.objects.filter(id=self.request.user.id)
 
-    @action(detail=False, methods=['get', 'put', 'patch'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get', 'put', 'patch'],
+            permission_classes=[IsAuthenticated])
     def me(self, request):
         """Handles the `me` endpoint for the authenticated user."""
         if request.method in ['PUT', 'PATCH']:
             # For updating the user profile
-            serializer = self.get_serializer(request.user, data=request.data, partial=True)
+            serializer = self.get_serializer(request.user, data=request.data,
+                                             partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
@@ -42,6 +46,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             # For getting the user profile
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
+
 
 class CustomUserSignupView(APIView):
     permission_classes = [AllowAny]
