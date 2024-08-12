@@ -5,6 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework.exceptions import ValidationError
 from django.db import transaction
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
@@ -14,19 +15,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'relationship_status'
         ]
 
+
 class CustomUserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='profile.first_name', required=False)
     last_name = serializers.CharField(source='profile.last_name', required=False)
     gender = serializers.CharField(source='profile.gender', required=False)
-    date_of_birth = serializers.DateField(source='profile.date_of_birth', required=False)
+    date_of_birth = serializers.DateField(source='profile.date_of_birth',
+                                          required=False)
     bio = serializers.CharField(source='profile.bio', required=False)
     phone = serializers.CharField(source='profile.phone', required=False)
     town = serializers.CharField(source='profile.town', required=False)
     country = serializers.CharField(source='profile.country', required=False)
-    relationship_status = serializers.CharField(source='profile.relationship_status', required=False)
+    relationship_status = serializers.CharField(source='profile.relationship_status',
+                                                required=False)
 
-    profile_picture = serializers.ImageField(source='profile.profile_picture', required=False, allow_null=True)
-    password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
+    profile_picture = serializers.ImageField(source='profile.profile_picture',
+                                             required=False, allow_null=True)
+    password = serializers.CharField(write_only=True, required=False,
+                                     validators=[validate_password])
     confirm_password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
@@ -37,8 +43,10 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'town', 'country', 'relationship_status', 'profile_picture'
         ]
         extra_kwargs = {
-            'email': {'validators': [UniqueValidator(queryset=CustomUser.objects.all())]},
-            'username': {'validators': [UniqueValidator(queryset=CustomUser.objects.all())]},
+            'email': {
+                'validators': [UniqueValidator(queryset=CustomUser.objects.all())]},
+            'username': {
+                'validators': [UniqueValidator(queryset=CustomUser.objects.all())]},
         }
 
     def validate(self, data):
@@ -62,7 +70,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 user.set_password(validated_data['password'])
             user.save()
 
-            UserProfile.objects.create(user=user, profile_picture=profile_picture, **profile_data)
+            UserProfile.objects.create(user=user, profile_picture=profile_picture,
+                                       **profile_data)
 
         return user
 
@@ -81,6 +90,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 instance.profile.profile_picture = profile_picture
             instance.profile.save()
         else:
-            UserProfile.objects.create(user=instance, profile_picture=profile_picture, **profile_data)
+            UserProfile.objects.create(user=instance, profile_picture=profile_picture,
+                                       **profile_data)
 
         return instance
