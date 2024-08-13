@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface WebSocketContextType {
   getSocket: (url: string) => WebSocket | null;
@@ -10,17 +10,19 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [sockets, setSockets] = useState<{ [url: string]: WebSocket }>({});
 
   const getSocket = (url: string): WebSocket | null => {
-    if (sockets[url]) {
+    if (sockets[url] && sockets[url].readyState !== WebSocket.CLOSED) {
       return sockets[url];
     }
 
     const ws = new WebSocket(url);
+
     ws.onopen = () => {
       console.log(`WebSocket connection opened for ${url}`);
     };
 
     ws.onmessage = (event) => {
       console.log(`Message from ${url}:`, event.data);
+      // You can handle messages here, e.g., dispatching actions or updating state
     };
 
     ws.onerror = (error) => {
@@ -34,6 +36,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
         const { [url]: _, ...rest } = prev;
         return rest;
       });
+      // Optionally, you could implement reconnection logic here
     };
 
     setSockets((prev) => ({ ...prev, [url]: ws }));
