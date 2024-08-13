@@ -17,7 +17,8 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Album
-        fields = ['id', 'user', 'title', 'description', 'created_at', 'updated_at', 'photos', 'photos_upload']
+        fields = ['id', 'user', 'title', 'description', 'created_at', 'updated_at',
+                  'photos', 'photos_upload']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
     def create(self, validated_data):

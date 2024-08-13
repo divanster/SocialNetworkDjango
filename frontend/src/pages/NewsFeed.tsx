@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useWebSocket } from '../contexts/WebSocketContext';
+import { useWebSocket } from '../contexts/WebSocketManager';
 import Posts from '../components/CentralNewsFeed/Posts';
 import Album from '../components/FeedItem/Album';
 import Profile from '../components/LeftSidebar/Profile';
@@ -22,32 +22,50 @@ const getHeaders = () => ({
 });
 
 const NewsFeed: React.FC = () => {
-  const { socket } = useWebSocket();
+  const { getSocket } = useWebSocket();
   const [posts, setPosts] = useState<Post[]>([]);
   const [albums, setAlbums] = useState<AlbumType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const connectWebSocket = (url: string, onMessage: (event: MessageEvent) => void) => {
+    const socket = getSocket(url);
+    if (!socket) return;
+
+    socket.onmessage = onMessage;
+
+    socket.onerror = (error) => {
+      console.error(`WebSocket error for ${url}:`, error);
+    };
+
+    socket.onclose = (event) => {
+      console.log(`WebSocket connection closed for ${url}:`, event);
+      if (!event.wasClean) {
+        console.log(`Reconnecting to ${url}...`);
+        setTimeout(() => connectWebSocket(url, onMessage), 5000); // Retry after 5 seconds
+      }
+    };
+  };
+
   useEffect(() => {
-    if (socket) {
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.message) {
-          setPosts((prevPosts) => [data.message, ...prevPosts]);
-        } else {
-          console.error('WebSocket error: No message field in response');
-        }
-      };
+    connectWebSocket('ws://localhost:8000/ws/posts/', (event) => {
+      const data = JSON.parse(event.data);
+      if (data.message) {
+        setPosts((prevPosts) => [data.message, ...prevPosts]);
+      } else {
+        console.error('WebSocket error: No message field in response');
+      }
+    });
 
-      socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      socket.onclose = (event) => {
-        console.log('WebSocket connection closed:', event);
-      };
-    }
-  }, [socket]);
+    connectWebSocket('ws://localhost:8000/ws/albums/', (event) => {
+      const data = JSON.parse(event.data);
+      if (data.message) {
+        setAlbums((prevAlbums) => [data.message, ...prevAlbums]);
+      } else {
+        console.error('WebSocket error: No message field in response');
+      }
+    });
+  }, [getSocket]);
 
   useEffect(() => {
     const fetchNewsFeedData = async () => {

@@ -7,7 +7,7 @@ import reportWebVitals from './reportWebVitals';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-import { WebSocketProvider } from './contexts/WebSocketContext'; // Import WebSocketProvider
+import { WebSocketProvider } from './contexts/WebSocketManager'; // Import WebSocketProvider
 
 const container = document.getElementById('root');
 

@@ -18,18 +18,11 @@ class AlbumConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'album_message',
-                'message': data['message']
-            }
-        )
-
     async def album_message(self, event):
-        message = event['message']
+        # This handles messages from the group
         await self.send(text_data=json.dumps({
-            'message': message
+            'event': event['event'],
+            'album': event['album'],
+            'title': event['title'],
+            'description': event['description'],
         }))
