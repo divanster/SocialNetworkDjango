@@ -11,12 +11,16 @@ const Album: React.FC<AlbumProps> = ({ album }) => {
             <h2>{album.title}</h2>
             <p>{album.description}</p>
             <div className="photos">
-                {album.photos.map(photo => (
-                    <div key={photo.id} className="photo">
-                        <img src={photo.image} alt={photo.description} />
-                        <p>{photo.description}</p>
-                    </div>
-                ))}
+                {album.photos && album.photos.length > 0 ? (
+                    album.photos.map(photo => (
+                        <div key={photo.id} className="photo">
+                            <img src={photo.image} alt={photo.description} />
+                            <p>{photo.description}</p>
+                        </div>
+                    ))
+                ) : (
+                    <p>No photos available</p>
+                )}
             </div>
         </div>
     );

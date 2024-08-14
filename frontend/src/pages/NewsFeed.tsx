@@ -47,6 +47,7 @@ const NewsFeed: React.FC = () => {
     };
   };
 
+  // Connect to the WebSocket for posts
   useEffect(() => {
     connectWebSocket('ws://localhost:8000/ws/posts/', (event) => {
       const data = JSON.parse(event.data);
@@ -57,7 +58,9 @@ const NewsFeed: React.FC = () => {
       }
     });
 
+    // Connect to the WebSocket for albums
     connectWebSocket('ws://localhost:8000/ws/albums/', (event) => {
+      console.log('WebSocket message received:', event.data); // Logging the message received
       const data = JSON.parse(event.data);
       if (data.message) {
         setAlbums((prevAlbums) => [data.message, ...prevAlbums]);

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 interface WebSocketContextType {
   getSocket: (url: string) => WebSocket | null;
@@ -22,7 +22,6 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     ws.onmessage = (event) => {
       console.log(`Message from ${url}:`, event.data);
-      // You can handle messages here, e.g., dispatching actions or updating state
     };
 
     ws.onerror = (error) => {
@@ -36,12 +35,21 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
         const { [url]: _, ...rest } = prev;
         return rest;
       });
-      // Optionally, you could implement reconnection logic here
+
+      // Optional: Implement reconnection logic
+      // setTimeout(() => getSocket(url), 5000); // Retry connection after 5 seconds
     };
 
     setSockets((prev) => ({ ...prev, [url]: ws }));
     return ws;
   };
+
+  useEffect(() => {
+    return () => {
+      // Clean up WebSocket connections when the component unmounts
+      Object.values(sockets).forEach((socket) => socket.close());
+    };
+  }, [sockets]);
 
   return (
     <WebSocketContext.Provider value={{ getSocket }}>

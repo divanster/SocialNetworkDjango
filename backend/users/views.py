@@ -8,6 +8,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
+from rest_framework.generics import CreateAPIView
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -48,15 +49,16 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
 
-class CustomUserSignupView(APIView):
+class CustomUserSignupView(CreateAPIView):
+    serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request):
+    def create(self, request, *args, **kwargs):
         # Log the incoming request data for debugging
         logger.debug(f"Received signup request data: {request.data}")
 
-        serializer = CustomUserSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             # Log success

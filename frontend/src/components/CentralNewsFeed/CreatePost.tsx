@@ -50,7 +50,7 @@ const CreatePost: React.FC = () => {
       if (axios.isAxiosError(error)) {
         setError(error.response?.data?.detail || 'An error occurred');
       } else {
-        setError('An unexpected error occurred');
+        setError('An unexpected error occurred.');
       }
     }
   };
