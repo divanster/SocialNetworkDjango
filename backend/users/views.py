@@ -6,13 +6,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db import transaction  # <-- Add this import
 from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
-
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
@@ -23,7 +23,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
-
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
@@ -48,23 +47,24 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
 
-
 class CustomUserSignupView(CreateAPIView):
     serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
 
     def create(self, request, *args, **kwargs):
-        # Log the incoming request data for debugging
         logger.debug(f"Received signup request data: {request.data}")
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
-            # Log success
-            logger.debug(f"User created successfully: {user}")
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                with transaction.atomic():
+                    user = serializer.save()
+                    logger.debug(f"User created successfully: {user}")
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                logger.error(f"Error during signup: {str(e)}")
+                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            # Log the errors for debugging
-            logger.error(f"Signup failed due to validation errors: {serializer.errors}")
+            logger.error(f"Signup validation failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

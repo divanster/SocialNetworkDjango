@@ -70,8 +70,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 user.set_password(validated_data['password'])
             user.save()
 
-            UserProfile.objects.create(user=user, profile_picture=profile_picture,
-                                       **profile_data)
+            # Create the user profile if it does not exist
+            UserProfile.objects.get_or_create(
+                user=user,
+                defaults={**profile_data, 'profile_picture': profile_picture}
+            )
 
         return user
 
