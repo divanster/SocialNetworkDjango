@@ -10,7 +10,7 @@ import Contacts from '../components/RightSidebar/Contacts';
 import CreatePost from '../components/CentralNewsFeed/CreatePost';
 import CreateAlbum from '../components/CentralNewsFeed/CreateAlbum';
 import './NewsFeed.css';
-import { Post } from '../types/post';
+import { Post as PostType } from '../types/post';
 import { Album as AlbumType } from '../types/album';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
@@ -23,7 +23,7 @@ const getHeaders = () => ({
 
 const NewsFeed: React.FC = () => {
   const { getSocket } = useWebSocket();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostType[]>([]);
   const [albums, setAlbums] = useState<AlbumType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +52,8 @@ const NewsFeed: React.FC = () => {
       const data = JSON.parse(event.data);
       if (data.message) {
         setPosts((prevPosts) => {
-          // Ensure no duplicates
-          if (!prevPosts.some(post => post.id === data.message.id)) {
+          const postExists = prevPosts.some((post) => post.id === data.message.id);
+          if (!postExists) {
             return [data.message, ...prevPosts];
           }
           return prevPosts;
@@ -67,8 +67,8 @@ const NewsFeed: React.FC = () => {
       const data = JSON.parse(event.data);
       if (data.message) {
         setAlbums((prevAlbums) => {
-          // Ensure no duplicates
-          if (!prevAlbums.some(album => album.id === data.message.id)) {
+          const albumExists = prevAlbums.some((album) => album.id === data.message.id);
+          if (!albumExists) {
             return [data.message, ...prevAlbums];
           }
           return prevAlbums;
@@ -95,6 +95,22 @@ const NewsFeed: React.FC = () => {
     fetchNewsFeedData();
   }, []);
 
+  const handleDeletePost = (id: number) => {
+    setPosts((prevPosts) => prevPosts.filter((post) => post.id !== id));
+  };
+
+  const handleUpdatePost = (updatedPost: PostType) => {
+    setPosts((prevPosts) => prevPosts.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
+  };
+
+  const handleDeleteAlbum = (id: number) => {
+    setAlbums((prevAlbums) => prevAlbums.filter((album) => album.id !== id));
+  };
+
+  const handleUpdateAlbum = (updatedAlbum: AlbumType) => {
+    setAlbums((prevAlbums) => prevAlbums.map((album) => (album.id === updatedAlbum.id ? updatedAlbum : album)));
+  };
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
 
@@ -111,10 +127,18 @@ const NewsFeed: React.FC = () => {
       <div className="central-news-feed">
         <CreatePost />
         <CreateAlbum />
-        {posts.length > 0 ? <Posts posts={posts} /> : <p>No posts available</p>}
-        {albums.length > 0 ? albums.map((album) => (
-          <Album key={album.id} album={album} />
-        )) : <p>No albums available</p>}
+        {posts.length > 0 ? (
+          <Posts posts={posts} onDelete={handleDeletePost} onUpdate={handleUpdatePost} />
+        ) : (
+          <p>No posts available</p>
+        )}
+        {albums.length > 0 ? (
+          albums.map((album) => (
+            <Album key={album.id} album={album} onDelete={handleDeleteAlbum} />
+          ))
+        ) : (
+          <p>No albums available</p>
+        )}
       </div>
     </div>
   );
