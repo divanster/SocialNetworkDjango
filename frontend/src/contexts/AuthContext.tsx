@@ -1,9 +1,9 @@
-// AuthContext.tsx
+// frontend/src/contexts/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
+  login: (token: string) => void;
   logout: () => void;
 }
 
@@ -18,8 +18,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(!!token);
   }, []);
 
-  const login = () => {
+  const login = (token: string) => {
     console.log('User logging in');
+    localStorage.setItem('token', token);
     setIsAuthenticated(true);
   };
 
