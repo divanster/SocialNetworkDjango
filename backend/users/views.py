@@ -14,6 +14,7 @@ from rest_framework.generics import CreateAPIView
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -23,6 +24,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
+
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
@@ -46,6 +48,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             # For getting the user profile
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
+
 
 class CustomUserSignupView(CreateAPIView):
     serializer_class = CustomUserSerializer

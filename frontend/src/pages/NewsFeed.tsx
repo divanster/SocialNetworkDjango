@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useWebSocket } from '../contexts/WebSocketManager';
 import Posts from '../components/CentralNewsFeed/Posts';
@@ -28,7 +28,7 @@ const NewsFeed: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const connectWebSocket = (url: string, onMessage: (event: MessageEvent) => void) => {
+  const connectWebSocket = useCallback((url: string, onMessage: (event: MessageEvent) => void) => {
     const socket = getSocket(url);
     if (!socket) return;
 
@@ -45,30 +45,39 @@ const NewsFeed: React.FC = () => {
         setTimeout(() => connectWebSocket(url, onMessage), 5000); // Retry after 5 seconds
       }
     };
-  };
+  }, [getSocket]);
 
-  // Connect to the WebSocket for posts
   useEffect(() => {
     connectWebSocket('ws://localhost:8000/ws/posts/', (event) => {
       const data = JSON.parse(event.data);
       if (data.message) {
-        setPosts((prevPosts) => [data.message, ...prevPosts]);
+        setPosts((prevPosts) => {
+          // Ensure no duplicates
+          if (!prevPosts.some(post => post.id === data.message.id)) {
+            return [data.message, ...prevPosts];
+          }
+          return prevPosts;
+        });
       } else {
         console.error('WebSocket error: No message field in response');
       }
     });
 
-    // Connect to the WebSocket for albums
     connectWebSocket('ws://localhost:8000/ws/albums/', (event) => {
-      console.log('WebSocket message received:', event.data); // Logging the message received
       const data = JSON.parse(event.data);
       if (data.message) {
-        setAlbums((prevAlbums) => [data.message, ...prevAlbums]);
+        setAlbums((prevAlbums) => {
+          // Ensure no duplicates
+          if (!prevAlbums.some(album => album.id === data.message.id)) {
+            return [data.message, ...prevAlbums];
+          }
+          return prevAlbums;
+        });
       } else {
         console.error('WebSocket error: No message field in response');
       }
     });
-  }, [getSocket]);
+  }, [connectWebSocket]);
 
   useEffect(() => {
     const fetchNewsFeedData = async () => {
