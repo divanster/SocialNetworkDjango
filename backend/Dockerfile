@@ -27,6 +27,7 @@ RUN python -m venv /py && \
         graphviz-dev \
         fontconfig \
         ttf-dejavu && \
+#        bash && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     /py/bin/pip install gunicorn whitenoise psycopg2-binary pygraphviz && \
     echo "DEV is $DEV" && \

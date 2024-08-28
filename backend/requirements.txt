@@ -1,51 +1,51 @@
-asgiref==3.8.1
-attrs==23.2.0
-certifi==2024.7.4
-cffi==1.16.0
-channels==4.1.0
-channels-redis==4.2.0
-charset-normalizer==3.3.2
-cryptography==42.0.8
-defusedxml==0.8.0rc2
-Django==4.2.14  # Updated to the latest LTS version
-django-cors-headers==4.4.0
-django-environ==0.11.2
-django-extensions==3.2.3
-django-gravatar==0.1.0
-django-templated-mail==1.1.1
-djangorestframework==3.14.0  # Updated to the latest version
-djangorestframework-simplejwt==5.3.1
-djoser==2.2.3
-drf-spectacular==0.24.1  # Updated to the latest version
-drf-yasg==1.21.7
-gunicorn==22.0.0
-idna==3.7
-inflection==0.5.1
-iniconfig==2.0.0
-jsonschema==4.23.0
-jsonschema-specifications==2023.12.1
-msgpack==1.0.8
-oauthlib==3.2.2
-packaging==24.1
-Pillow==9.5.0  # Updated to a newer version
-pluggy==1.5.0
-psycopg2==2.9.9
-pycparser==2.22
-PyJWT==2.8.0
-pytest==8.2.2
-pytest-django==4.8.0
-python3-openid==3.2.0
-pytz==2024.1
-PyYAML==6.0.1
-redis==5.0.7
-referencing==0.35.1
-requests==2.32.3
-requests-oauthlib==2.0.0
-rpds-py==0.19.0
-social-auth-app-django==5.4.2
-social-auth-core==4.5.4
-sqlparse==0.5.0
-uritemplate==4.1.1
-urllib3==2.2.2
-whitenoise==6.7.0
-daphne==4.0.0
+asgiref==3.8.1  # Required for Django async support
+attrs==23.2.0  # Dependency for DRF Spectacular
+certifi==2024.7.4  # SSL Certificates
+cffi==1.16.0  # C Foreign Function Interface, required by cryptography
+channels==4.1.0  # Channels for Django, enables WebSockets
+channels-redis==4.2.0  # Redis backend for Django Channels
+charset-normalizer==3.3.2  # Charset detection, often a dependency of requests
+cryptography==42.0.8  # Encryption library, required by Django and others
+defusedxml==0.8.0rc2  # XML security library
+Django==4.2.14  # Django web framework (LTS)
+django-cors-headers==4.4.0  # CORS handling for Django
+django-environ==0.11.2  # Environment variable management for Django
+django-extensions==3.2.3  # Extra management commands for Django
+django-gravatar==0.1.0  # Gravatar integration for Django
+django-templated-mail==1.1.1  # Templated email support for Django
+djangorestframework==3.14.0  # REST API framework for Django
+djangorestframework-simplejwt==5.3.1  # JWT authentication for DRF
+djoser==2.2.3  # RESTful authentication for Django
+drf-spectacular==0.24.1  # OpenAPI schema generation for DRF
+drf-yasg==1.21.7  # Alternative API schema generation tool
+gunicorn==22.0.0  # WSGI HTTP Server for deployment
+idna==3.7  # Internationalized domain names support
+inflection==0.5.1  # Used for string inflections (DRF or other apps)
+iniconfig==2.0.0  # Configuration file support (testing or tools)
+jsonschema==4.23.0  # JSON schema validation, used by DRF Spectacular
+jsonschema-specifications==2023.12.1  # JSON Schema specifications
+msgpack==1.0.8  # MessagePack serialization support, often used with Redis
+oauthlib==3.2.2  # OAuth support, needed for social authentication
+packaging==24.1  # Dependency for version handling
+Pillow==9.5.0  # Imaging library used for processing images
+pluggy==1.5.0  # Plugin management, used by testing frameworks
+psycopg2==2.9.9  # PostgreSQL database adapter for Python
+pycparser==2.22  # C parser needed by cffi
+PyJWT==2.8.0  # JSON Web Token implementation
+pytest==8.2.2  # Testing framework
+pytest-django==4.8.0  # Django integration for pytest
+python3-openid==3.2.0  # OpenID authentication support
+pytz==2024.1  # Timezone support for Django
+PyYAML==6.0.1  # YAML parsing, often needed for configuration
+redis==5.0.7  # Redis support, used with channels-redis
+referencing==0.35.1  # Used by jsonschema for references
+requests==2.32.3  # HTTP requests library
+requests-oauthlib==2.0.0  # OAuth support for requests
+rpds-py==0.19.0  # Used by jsonschema for data structures
+social-auth-app-django==5.4.2  # Social authentication for Django
+social-auth-core==4.5.4  # Core backend for social authentication
+sqlparse==0.5.0  # SQL parsing, used by Django
+uritemplate==4.1.1  # URI template support
+urllib3==2.2.2  # HTTP library used by requests
+whitenoise==6.7.0  # Static file serving in production
+daphne==4.0.0  # HTTP, HTTP2, and WebSocket protocol server for ASGI and ASGI-HTTP
