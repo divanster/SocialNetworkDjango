@@ -1,10 +1,8 @@
 import logging
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import transaction  # <-- Add this import
 from .models import CustomUser, UserProfile
@@ -16,46 +14,70 @@ logger = logging.getLogger(__name__)
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user profiles.
+    """
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Returns the profile of the authenticated user.
+        """
         return UserProfile.objects.filter(user=self.request.user)
 
     def perform_update(self, serializer):
+        """
+        Ensures the user is associated with the profile during update.
+        """
         serializer.save(user=self.request.user)
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing custom user data.
+    """
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Returns the authenticated user's data.
+        """
         return CustomUser.objects.filter(id=self.request.user.id)
 
     @action(detail=False, methods=['get', 'put', 'patch'],
             permission_classes=[IsAuthenticated])
     def me(self, request):
-        """Handles the `me` endpoint for the authenticated user."""
+        """
+        Handles the `me` endpoint for the authenticated user.
+        Supports `GET`, `PUT`, and `PATCH` methods.
+        """
         if request.method in ['PUT', 'PATCH']:
-            # For updating the user profile
+            # Update the user's profile
             serializer = self.get_serializer(request.user, data=request.data,
                                              partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
         else:
-            # For getting the user profile
+            # Retrieve the user's profile
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
 
 
 class CustomUserSignupView(CreateAPIView):
+    """
+    API view for signing up new users.
+    """
     serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
 
     def create(self, request, *args, **kwargs):
+        """
+        Handles user creation. Logs the request data and handles errors.
+        """
         logger.debug(f"Received signup request data: {request.data}")
 
         serializer = self.get_serializer(data=request.data)
@@ -67,7 +89,8 @@ class CustomUserSignupView(CreateAPIView):
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Exception as e:
                 logger.error(f"Error during signup: {str(e)}")
-                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": str(e)},
+                                status=status.HTTP_400_BAD_REQUEST)
         else:
             logger.error(f"Signup validation failed: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

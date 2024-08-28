@@ -106,11 +106,6 @@ const NewsFeed: React.FC = () => {
   const handleDeleteAlbum = (id: number) => {
     setAlbums((prevAlbums) => prevAlbums.filter((album) => album.id !== id));
   };
-
-  const handleUpdateAlbum = (updatedAlbum: AlbumType) => {
-    setAlbums((prevAlbums) => prevAlbums.map((album) => (album.id === updatedAlbum.id ? updatedAlbum : album)));
-  };
-
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
 

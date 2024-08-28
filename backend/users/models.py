@@ -1,9 +1,9 @@
 # backend/users/models.py
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
+from django.contrib.auth.models import (AbstractBaseUser,
+                                        BaseUserManager,
+                                        PermissionsMixin)
 from django.db import models
-from django.utils import timezone
-from django.db import models
-from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
@@ -11,7 +11,14 @@ from django.contrib.auth import get_user_model
 
 
 class CustomUserManager(BaseUserManager):
+    """
+    Custom manager for handling the creation of User and Superuser.
+    """
+
     def create_user(self, email, username, password=None, **extra_fields):
+        """
+        Creates and returns a regular user with an email, username, and password.
+        """
         if not email:
             raise ValueError('The Email field must be set')
         email = self.normalize_email(email)
@@ -21,6 +28,10 @@ class CustomUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, username, password=None, **extra_fields):
+        """
+        Creates and returns a superuser with the specified email,
+         username, and password.
+        """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
@@ -33,6 +44,10 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+    """
+    Custom user model that uses email instead of username for authentication.
+    """
+
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=True)
@@ -49,7 +64,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 
 def user_profile_picture_file_path(instance, filename):
-    """Generate file path for new user profile picture"""
+    """
+    Generates a file path for a new user profile picture.
+    """
     import uuid
     import os
     ext = filename.split('.')[-1]
@@ -58,6 +75,10 @@ def user_profile_picture_file_path(instance, filename):
 
 
 class UserProfile(models.Model):
+    """
+    UserProfile model that stores additional information about the user.
+    """
+
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
@@ -80,24 +101,34 @@ class UserProfile(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
     date_of_birth = models.DateField(null=True, blank=True)
     profile_picture = models.ImageField(upload_to=user_profile_picture_file_path,
-                                        null=True, blank=True,
-                                        default='static/default_images/profile_picture.png')
+                                        null=True,
+                                        blank=True,
+                                        default='static/default_images'
+                                                '/profile_picture.png')
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     town = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
-    relationship_status = models.CharField(max_length=1, choices=RELATIONSHIP_STATUS_CHOICES, default='S')
+    relationship_status = models.CharField(max_length=1,
+                                           choices=RELATIONSHIP_STATUS_CHOICES,
+                                           default='S')
 
     def __str__(self):
         return f'{self.user.username} Profile'
 
     @property
     def profile_picture_url(self):
+        """
+        Returns the URL of the user's profile picture.
+        """
         if self.profile_picture:
             return self.profile_picture.url
         return '/static/default_images/default_profile.jpg'
 
     def clean(self):
+        """
+        Custom validation to ensure the date of birth is not set to a future date.
+        """
         if self.date_of_birth and self.date_of_birth > timezone.now().date():
             raise ValidationError(_('Date of birth cannot be in the future.'))
         super().clean()
