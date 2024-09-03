@@ -17,20 +17,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    first_name = serializers.CharField(source='profile.first_name', required=False)
-    last_name = serializers.CharField(source='profile.last_name', required=False)
-    gender = serializers.CharField(source='profile.gender', required=False)
-    date_of_birth = serializers.DateField(source='profile.date_of_birth',
-                                          required=False)
-    bio = serializers.CharField(source='profile.bio', required=False)
-    phone = serializers.CharField(source='profile.phone', required=False)
-    town = serializers.CharField(source='profile.town', required=False)
-    country = serializers.CharField(source='profile.country', required=False)
-    relationship_status = serializers.CharField(source='profile.relationship_status',
-                                                required=False)
-
-    profile_picture = serializers.ImageField(source='profile.profile_picture',
-                                             required=False, allow_null=True)
+    # Directly use fields without 'source' mapping
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    gender = serializers.CharField(required=False)
+    date_of_birth = serializers.DateField(required=False)
+    bio = serializers.CharField(required=False)
+    phone = serializers.CharField(required=False)
+    town = serializers.CharField(required=False)
+    country = serializers.CharField(required=False)
+    relationship_status = serializers.CharField(required=False)
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
     password = serializers.CharField(write_only=True, required=False,
                                      validators=[validate_password])
     confirm_password = serializers.CharField(write_only=True, required=False)
@@ -44,24 +41,43 @@ class CustomUserSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             'email': {
-                'validators': [UniqueValidator(queryset=CustomUser.objects.all())]},
+                'validators': [UniqueValidator(queryset=CustomUser.objects.all())]
+            },
             'username': {
-                'validators': [UniqueValidator(queryset=CustomUser.objects.all())]},
+                'validators': [UniqueValidator(queryset=CustomUser.objects.all())]
+            },
         }
 
     def validate(self, data):
+        # Collect profile data into a dictionary
+        profile_fields = ['first_name', 'last_name', 'gender', 'date_of_birth',
+                          'bio', 'phone', 'town', 'country', 'relationship_status',
+                          'profile_picture']
+
+        profile_data = {}
+        for field in profile_fields:
+            if field in data:
+                profile_data[field] = data.pop(field)
+
+        data['profile'] = profile_data  # Ensure profile key exists in validated_data
+
+        # Validate passwords
         password = data.get('password')
         confirm_password = data.pop('confirm_password', None)
         if password or confirm_password:
             if password != confirm_password:
                 raise ValidationError("Passwords do not match.")
+
         return data
 
     def create(self, validated_data):
         profile_data = validated_data.pop('profile', {})
         profile_picture = profile_data.pop('profile_picture', None)
 
+        print(f"Debug: Profile data received: {profile_data}")  # Debug output
+
         with transaction.atomic():
+            # Create the user
             user = CustomUser.objects.create(
                 email=validated_data['email'],
                 username=validated_data['username']
@@ -70,11 +86,20 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 user.set_password(validated_data['password'])
             user.save()
 
-            # Create the user profile if it does not exist
-            UserProfile.objects.get_or_create(
-                user=user,
-                defaults={**profile_data, 'profile_picture': profile_picture}
-            )
+            # Create or update the UserProfile instance explicitly
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            print(f"Debug: Created = {created}, Profile = {profile}")  # Debug output
+
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
+                print(f"Debug: Setting {key} to {value}")  # Debug output
+
+            if profile_picture:
+                profile.profile_picture = profile_picture
+                print("Debug: Setting profile picture")  # Debug output
+
+            profile.save()
+            print(f"Debug: Profile saved with data: {profile.__dict__}")  # Debug output
 
         return user
 

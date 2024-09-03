@@ -22,27 +22,39 @@ class UserSerializerTests(TestCase):
 
     def test_user_serializer(self):
         user_data = {
-            'email': 'uniqueuser2@example.com',  # Ensure unique email for each test
-            'username': 'uniqueuser2',  # Ensure unique username for each test
+            'email': 'uniqueuser2@example.com',
+            'username': 'uniqueuser2',
             'password': 'testpass123',
             'confirm_password': 'testpass123',
-            'profile': {
-                'first_name': 'Test',
-                'last_name': 'User',
-                'bio': 'Just a test user.'
-            }
+            'first_name': 'Test',
+            'last_name': 'User',
+            'bio': 'Just a test user.',
+            'phone': '1234567890',
+            'town': 'Test Town',
+            'country': 'Test Country',
+            'relationship_status': 'S'
         }
         serializer = CustomUserSerializer(data=user_data)
+        print(f"Debug: Initial data for serializer: {user_data}")  # Debug output
         self.assertTrue(serializer.is_valid(), serializer.errors)
+        print(f"Debug: Validated data: {serializer.validated_data}")  # Debug output
         try:
             user = serializer.save()
+            print(f"Debug: Created user: {user}")  # Debug output
             self.assertEqual(user.email, user_data['email'])
             self.assertEqual(user.username, user_data['username'])
+
             # Check if user profile is correctly created
             profile = UserProfile.objects.get(user=user)
-            self.assertEqual(profile.first_name, 'Test')
-            self.assertEqual(profile.last_name, 'User')
-            self.assertEqual(profile.bio, 'Just a test user.')
+            print(f"Debug: Created user profile: {profile.__dict__}")  # Debug output
+            self.assertEqual(profile.first_name, user_data['first_name'])
+            self.assertEqual(profile.last_name, user_data['last_name'])
+            self.assertEqual(profile.bio, user_data['bio'])
+            self.assertEqual(profile.phone, user_data['phone'])
+            self.assertEqual(profile.town, user_data['town'])
+            self.assertEqual(profile.country, user_data['country'])
+            self.assertEqual(profile.relationship_status,
+                             user_data['relationship_status'])
         except ValidationError as e:
             self.fail(f'User creation failed with error: {e}')
         except Exception as e:
