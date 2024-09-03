@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (accessToken: string, refreshToken: string) => void;
   logout: () => void;
 }
 
@@ -14,19 +14,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log('AuthProvider mounted');
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     setIsAuthenticated(!!token);
   }, []);
 
-  const login = (token: string) => {
+  const login = (accessToken: string, refreshToken: string) => {
     console.log('User logging in');
-    localStorage.setItem('token', token);
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
     console.log('User logging out');
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     setIsAuthenticated(false);
   };
 

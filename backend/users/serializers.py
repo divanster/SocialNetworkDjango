@@ -7,6 +7,10 @@ from django.db import transaction
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for UserProfile, including basic information and profile picture.
+    """
+
     class Meta:
         model = UserProfile
         fields = [
@@ -17,7 +21,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    # Directly use fields without 'source' mapping
+    """
+    Serializer for CustomUser, incorporating nested UserProfile data and validation.
+    """
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
     gender = serializers.CharField(required=False)
@@ -49,17 +55,18 @@ class CustomUserSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        # Collect profile data into a dictionary
-        profile_fields = ['first_name', 'last_name', 'gender', 'date_of_birth',
-                          'bio', 'phone', 'town', 'country', 'relationship_status',
-                          'profile_picture']
+        """
+        Validate password confirmation and organize profile data.
+        """
+        profile_fields = [
+            'first_name', 'last_name', 'gender', 'date_of_birth',
+            'bio', 'phone', 'town', 'country', 'relationship_status',
+            'profile_picture'
+        ]
 
-        profile_data = {}
-        for field in profile_fields:
-            if field in data:
-                profile_data[field] = data.pop(field)
-
-        data['profile'] = profile_data  # Ensure profile key exists in validated_data
+        profile_data = {field: data.pop(field) for field in profile_fields if
+                        field in data}
+        data['profile'] = profile_data
 
         # Validate passwords
         password = data.get('password')
@@ -71,13 +78,13 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        """
+        Create a new user and associated UserProfile.
+        """
         profile_data = validated_data.pop('profile', {})
         profile_picture = profile_data.pop('profile_picture', None)
 
-        print(f"Debug: Profile data received: {profile_data}")  # Debug output
-
         with transaction.atomic():
-            # Create the user
             user = CustomUser.objects.create(
                 email=validated_data['email'],
                 username=validated_data['username']
@@ -86,39 +93,38 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 user.set_password(validated_data['password'])
             user.save()
 
-            # Create or update the UserProfile instance explicitly
             profile, created = UserProfile.objects.get_or_create(user=user)
-            print(f"Debug: Created = {created}, Profile = {profile}")  # Debug output
-
             for key, value in profile_data.items():
                 setattr(profile, key, value)
-                print(f"Debug: Setting {key} to {value}")  # Debug output
 
             if profile_picture:
                 profile.profile_picture = profile_picture
-                print("Debug: Setting profile picture")  # Debug output
 
             profile.save()
-            print(f"Debug: Profile saved with data: {profile.__dict__}")  # Debug output
 
         return user
 
     def update(self, instance, validated_data):
+        """
+        Update the user and associated UserProfile.
+        """
         profile_data = validated_data.pop('profile', {})
         profile_picture = profile_data.pop('profile_picture', None)
 
         instance.email = validated_data.get('email', instance.email)
         instance.username = validated_data.get('username', instance.username)
+        if 'password' in validated_data:
+            instance.set_password(validated_data['password'])
         instance.save()
 
-        if hasattr(instance, 'profile'):
-            for key, value in profile_data.items():
-                setattr(instance.profile, key, value)
-            if profile_picture:
-                instance.profile.profile_picture = profile_picture
-            instance.profile.save()
-        else:
-            UserProfile.objects.create(user=instance, profile_picture=profile_picture,
-                                       **profile_data)
+        # Update or create the user profile
+        profile, created = UserProfile.objects.get_or_create(user=instance)
+        for key, value in profile_data.items():
+            setattr(profile, key, value)
+
+        if profile_picture:
+            profile.profile_picture = profile_picture
+
+        profile.save()
 
         return instance

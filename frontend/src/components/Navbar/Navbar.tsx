@@ -1,16 +1,30 @@
-// frontend/src/components/Navbar/Navbar.tsx
-import React, { useEffect } from 'react';
-import { Navbar, Nav, NavDropdown } from 'react-bootstrap';
+import React, { useEffect, useState } from 'react';
+import { Navbar, Nav, NavDropdown, Badge } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { fetchMessagesCount } from 'services/api'; // Ensure this is correctly imported
 
 const CustomNavbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
-    console.log('Navbar re-rendered. IsAuthenticated:', isAuthenticated);
+    if (isAuthenticated) {
+      const fetchUnreadMessagesCount = async () => {
+        try {
+          const count = await fetchMessagesCount();
+          setUnreadCount(count);
+        } catch (error) {
+          console.error('Failed to fetch unread messages count:', error);
+        }
+      };
+
+      fetchUnreadMessagesCount();
+    } else {
+      setUnreadCount(0); // Reset unread count when not authenticated
+    }
   }, [isAuthenticated]);
 
   const handleLogout = () => {
@@ -26,7 +40,7 @@ const CustomNavbar: React.FC = () => {
       <Navbar.Toggle aria-controls="basic-navbar-nav" />
       <Navbar.Collapse id="basic-navbar-nav">
         <Nav className="me-auto">
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <>
               <LinkContainer to="/feed">
                 <Nav.Link>Feed</Nav.Link>
@@ -35,7 +49,7 @@ const CustomNavbar: React.FC = () => {
                 <Nav.Link>Profile</Nav.Link>
               </LinkContainer>
             </>
-          ) : null}
+          )}
         </Nav>
         <Nav>
           {isAuthenticated ? (
@@ -44,7 +58,9 @@ const CustomNavbar: React.FC = () => {
                 <Nav.Link>Notifications</Nav.Link>
               </LinkContainer>
               <LinkContainer to="/messages">
-                <Nav.Link>Messages</Nav.Link>
+                <Nav.Link>
+                  Messages {unreadCount > 0 && <Badge bg="danger">{unreadCount}</Badge>}
+                </Nav.Link>
               </LinkContainer>
               <NavDropdown title="More" id="basic-nav-dropdown">
                 <LinkContainer to="/settings">
