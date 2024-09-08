@@ -35,6 +35,7 @@ services:
       - ./backend/.env
     environment:
       - DEV=true
+      - DJANGO_SETTINGS_MODULE=config.settings
 
   worker:
     build:
@@ -51,6 +52,7 @@ services:
       - ./backend/.env
     environment:
       - DEV=true
+      - DJANGO_SETTINGS_MODULE=config.settings
 
   frontend:
     build:

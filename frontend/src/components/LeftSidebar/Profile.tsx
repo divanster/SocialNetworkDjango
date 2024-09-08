@@ -115,8 +115,8 @@ const Profile: React.FC = () => {
   return (
     <div className="profile">
       <img
-        src={profileData.profile_picture || '/path/to/default-pic.jpg'}
-        alt="Profile"
+        src={profileData.profile_picture ? `http://127.0.0.1:8000${profileData.profile_picture}` : '/static/default_images/default_profile.jpg'}
+        alt="Profileeeeeee"
         className="img-fluid rounded-circle"
       />
       <h3>{profileData.username || 'Your Name'}</h3>

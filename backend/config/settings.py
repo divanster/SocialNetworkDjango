@@ -247,7 +247,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 # CORS configuration to allow specific origins
-CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
 # Static files storage settings for production using WhiteNoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

@@ -48,6 +48,16 @@ const CustomNavbar: React.FC = () => {
               <LinkContainer to="/profile">
                 <Nav.Link>Profile</Nav.Link>
               </LinkContainer>
+              <li className="nav-item mx-2">
+                <a
+                  className="nav-link"
+                  href="http://127.0.0.1:8000/api/docs/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  API Docs
+                </a>
+              </li>
             </>
           )}
         </Nav>
