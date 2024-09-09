@@ -1,4 +1,4 @@
-#version: '3.8'
+version: '3.8'
 
 services:
   db:
@@ -18,11 +18,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db &&
-             PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
-             PYTHONPATH=/app:/app/backend python /app/manage.py migrate --noinput &&
-             PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput &&
-             daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+      sh -c "
+        PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db &&
+        PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
+        PYTHONPATH=/app:/app/backend python /app/manage.py migrate --noinput &&
+        PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput &&
+        daphne -b 0.0.0.0 -p 8000 config.asgi:application
+      "
     volumes:
       - ./backend:/app
       - /Users/apple/100DayPython/SocialNetworkDjango/vol/web:/vol/web

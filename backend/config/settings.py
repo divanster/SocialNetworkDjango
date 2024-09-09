@@ -4,8 +4,7 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 from django.conf import settings
-from migration_questioner import NonInteractiveMigrationQuestioner
-
+from core.management.commands.migration_questioner import NonInteractiveMigrationQuestioner
 # Initialize environment variables using django-environ
 env = environ.Env(
     # Define default types and default values for environment variables
@@ -68,6 +67,7 @@ INSTALLED_APPS = [
     'comments.apps.CommentsConfig',  # Commenting system app
     'notifications.apps.NotificationsConfig',  # Notifications app
     'albums.apps.AlbumsConfig',  # Albums feature app
+    'core.apps.CoreConfig',
 ]
 
 # Middleware configuration

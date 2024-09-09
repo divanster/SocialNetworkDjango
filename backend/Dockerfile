@@ -27,7 +27,6 @@ RUN python -m venv /py && \
         graphviz-dev \
         fontconfig \
         ttf-dejavu && \
-#        bash && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     /py/bin/pip install gunicorn whitenoise psycopg2-binary pygraphviz && \
     echo "DEV is $DEV" && \
@@ -35,16 +34,11 @@ RUN python -m venv /py && \
     /py/bin/pip list && \
     rm -rf /tmp && \
     adduser --disabled-password --no-create-home django-user && \
-    mkdir -p /vol/web/media && \
-    mkdir -p /vol/web/static && \
-    mkdir -p /app/static && \
-    mkdir -p /app/staticfiles && \
-    chown -R django-user:django-user /vol/web && \
-    chown -R django-user:django-user /app/static && \
-    chown -R django-user:django-user /app/staticfiles
+    mkdir -p /vol/web/media /vol/web/static /app/static /app/staticfiles /app/backend/core && \
+    chown -R django-user:django-user /vol/web /app/static /app/staticfiles /app/backend/core
 
 # Ensure migration_questioner.py is copied after all setup
-COPY ./migration_questioner.py /app/migration_questioner.py
+COPY ./core/management/commands/migration_questioner.py /app/backend/core/management/commands/migration_questioner.py
 
 # Update PATH environment variable
 ENV PATH="/py/bin:$PATH"
