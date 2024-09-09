@@ -1,14 +1,19 @@
-# backend/users/models.py
+# backend/users/base_models.py
 
-from django.contrib.auth.models import (AbstractBaseUser,
-                                        BaseUserManager,
-                                        PermissionsMixin)
+from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager, PermissionsMixin)
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.contrib.auth import get_user_model
 
+# Base model for reusable fields and methods
+class BaseModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
 
 class CustomUserManager(BaseUserManager):
     """
@@ -74,7 +79,7 @@ def user_profile_picture_file_path(instance, filename):
     return os.path.join('uploads/profile_pictures/', filename)
 
 
-class UserProfile(models.Model):
+class UserProfile(BaseModel):
     """
     UserProfile model that stores additional information about the user.
     """
@@ -103,8 +108,7 @@ class UserProfile(models.Model):
     profile_picture = models.ImageField(upload_to=user_profile_picture_file_path,
                                         null=True,
                                         blank=True,
-                                        default='static/default_images'
-                                                '/profile_picture.png')
+                                        default='static/default_images/profile_picture.png')
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     town = models.CharField(max_length=100, blank=True, null=True)

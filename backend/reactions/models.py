@@ -1,4 +1,4 @@
-# backend/reactions/models.py
+# backend/reactions/base_models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 from social.models import Post

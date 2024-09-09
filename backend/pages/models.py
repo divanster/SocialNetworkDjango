@@ -1,4 +1,4 @@
-# backend/pages/models.py
+# backend/pages/base_models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 
