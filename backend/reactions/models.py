@@ -26,3 +26,4 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.user.username} reacted with {self.emoji} to {self.post.title}"
+

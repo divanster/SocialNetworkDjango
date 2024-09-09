@@ -1,9 +1,9 @@
 import os
 import uuid
 from django.db import models
+from core.models.base_models import BaseModel
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-
 
 User = get_user_model()
 
@@ -14,18 +14,16 @@ def post_image_file_path(instance, filename):
     return os.path.join('uploads/post/', filename)
 
 
-class Tag(models.Model):
+class Tag(BaseModel):
     name = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
 
 
-class Post(models.Model):
+class Post(BaseModel):
     title = models.CharField(max_length=255)
     content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, related_name='posts', blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
 
@@ -43,7 +41,7 @@ class Post(models.Model):
         return 0
 
 
-class PostImage(models.Model):
+class PostImage(BaseModel):
     post = models.ForeignKey(Post, related_name='images', on_delete=models.CASCADE)
     image = models.ImageField(upload_to=post_image_file_path)
 
@@ -51,7 +49,7 @@ class PostImage(models.Model):
         return f"{self.post.title} Image"
 
 
-class Rating(models.Model):
+class Rating(BaseModel):
     post = models.ForeignKey(Post, related_name='ratings', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     value = models.PositiveSmallIntegerField()

@@ -1,11 +1,12 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from core.models.base_models import BaseModel
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
-class FriendRequest(models.Model):
+class FriendRequest(BaseModel):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         ACCEPTED = 'accepted', 'Accepted'
@@ -15,7 +16,6 @@ class FriendRequest(models.Model):
                                on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_friend_requests',
                                  on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=Status.choices,
                               default=Status.PENDING)
 
@@ -43,11 +43,10 @@ class FriendRequest(models.Model):
         return f"{self.sender.username} -> {self.receiver.username} ({self.status})"
 
 
-class Friendship(models.Model):
+class Friendship(BaseModel):
     user1 = models.ForeignKey(User, related_name='friendships',
                               on_delete=models.CASCADE)
     user2 = models.ForeignKey(User, related_name='friends', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
@@ -74,12 +73,11 @@ class Friendship(models.Model):
         return f"{self.user1.username} & {self.user2.username}"
 
 
-class Block(models.Model):
+class Block(BaseModel):
     blocker = models.ForeignKey(User, related_name='blocker_set',
                                 on_delete=models.CASCADE)
     blocked = models.ForeignKey(User, related_name='blocked_set',
                                 on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('blocker', 'blocked')
