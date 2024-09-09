@@ -5,6 +5,8 @@ from datetime import timedelta
 import environ
 from django.conf import settings
 from core.management.commands.migration_questioner import NonInteractiveMigrationQuestioner
+
+
 # Initialize environment variables using django-environ
 env = environ.Env(
     # Define default types and default values for environment variables

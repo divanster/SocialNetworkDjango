@@ -1,6 +1,6 @@
 # backend/users/management/commands/migrate_noninteractive.py
 from django.core.management.commands.migrate import Command as MigrateCommand
-from migration_questioner import NonInteractiveMigrationQuestioner
+from core.management.commands.migration_questioner import NonInteractiveMigrationQuestioner
 
 
 class Command(MigrateCommand):
