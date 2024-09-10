@@ -4,7 +4,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.db import transaction  # <-- Add this import
+from django.db import transaction
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
@@ -20,6 +21,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("id", type=str, description="UUID of the profile")],
+    )
     def get_queryset(self):
         """
         Returns the profile of the authenticated user.
@@ -40,6 +45,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[OpenApiParameter("id", type=str, description="UUID of the user")],
+    )
     def get_queryset(self):
         """
         Returns the authenticated user's data.

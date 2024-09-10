@@ -6,8 +6,7 @@ from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
-from django.contrib.auth import get_user_model
-from core.models.base_models import BaseModel, UUIDModel, FilePathModel
+from core.models.base_models import BaseModel, UUIDModel
 from django.conf import settings
 
 

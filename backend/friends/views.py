@@ -1,16 +1,19 @@
-# backend/friends/views.py
 from rest_framework import viewsets, permissions, serializers
 from .models import FriendRequest, Friendship
 from .serializers import FriendRequestSerializer, FriendshipSerializer
 from django.db.models import Q
 from django.core.exceptions import ValidationError
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
 class FriendRequestViewSet(viewsets.ModelViewSet):
     serializer_class = FriendRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        parameters=[OpenApiParameter("id", type=str, description="UUID of the friend request")],
+    )
     def get_queryset(self):
         # Only show friend requests where the user is either the sender or the receiver
         return FriendRequest.objects.filter(
@@ -52,6 +55,9 @@ class FriendshipViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = FriendshipSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        parameters=[OpenApiParameter("id", type=str, description="UUID of the friendship")],
+    )
     def get_queryset(self):
         # Only show friendships where the current user is either user1 or user2
         return Friendship.objects.filter(

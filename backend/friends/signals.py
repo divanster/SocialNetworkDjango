@@ -6,6 +6,7 @@ from channels.layers import get_channel_layer
 from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
 
+
 # Helper function to send real-time notifications
 def send_real_time_notification(user_id, message, notification_type):
     channel_layer = get_channel_layer()
