@@ -1,19 +1,15 @@
 # backend/users/base_models.py
 
-from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager, PermissionsMixin)
+from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
+                                        PermissionsMixin)
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.contrib.auth import get_user_model
+from core.models.base_models import BaseModel, UUIDModel, FilePathModel
+from django.conf import settings
 
-# Base model for reusable fields and methods
-class BaseModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
 
 class CustomUserManager(BaseUserManager):
     """
@@ -53,7 +49,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     Custom user model that uses email instead of username for authentication.
     """
 
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, db_index=True)
     username = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -79,11 +75,10 @@ def user_profile_picture_file_path(instance, filename):
     return os.path.join('uploads/profile_pictures/', filename)
 
 
-class UserProfile(BaseModel):
+class UserProfile(UUIDModel, BaseModel):  # Inherit UUIDModel and BaseModel
     """
     UserProfile model that stores additional information about the user.
     """
-
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
@@ -99,16 +94,21 @@ class UserProfile(BaseModel):
         ('C', 'Complicated'),
     ]
 
-    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE,
+    # One-to-one relationship with the custom user model
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                 related_name='profile')
+
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
     date_of_birth = models.DateField(null=True, blank=True)
+
+    # ImageField to store profile picture, using the file path function
     profile_picture = models.ImageField(upload_to=user_profile_picture_file_path,
-                                        null=True,
-                                        blank=True,
-                                        default='static/default_images/profile_picture.png')
+                                        null=True, blank=True,
+                                        default='static/default_images'
+                                                '/profile_picture.png')
+
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     town = models.CharField(max_length=100, blank=True, null=True)
@@ -123,7 +123,7 @@ class UserProfile(BaseModel):
     @property
     def profile_picture_url(self):
         """
-        Returns the URL of the user's profile picture.
+        Returns the URL of the user's profile picture, falling back to a default image if none exists.
         """
         if self.profile_picture:
             return self.profile_picture.url
@@ -131,7 +131,7 @@ class UserProfile(BaseModel):
 
     def clean(self):
         """
-        Custom validation to ensure the date of birth is not set to a future date.
+        Custom validation to ensure the date of birth is not set in the future.
         """
         if self.date_of_birth and self.date_of_birth > timezone.now().date():
             raise ValidationError(_('Date of birth cannot be in the future.'))

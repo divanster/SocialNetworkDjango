@@ -1,9 +1,6 @@
 from django.db import models
-from django.contrib.auth import get_user_model
 import uuid
 import os
-
-User = get_user_model()
 
 
 class BaseModel(models.Model):
@@ -36,3 +33,5 @@ class FilePathModel(models.Model):
 
     class Meta:
         abstract = True
+
+
