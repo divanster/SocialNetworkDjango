@@ -4,8 +4,8 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 from django.conf import settings
-from core.management.commands.migration_questioner import NonInteractiveMigrationQuestioner
-
+from core.management.commands.migration_questioner import \
+    NonInteractiveMigrationQuestioner
 
 # Initialize environment variables using django-environ
 env = environ.Env(
@@ -22,7 +22,8 @@ env = environ.Env(
 )
 
 # Load environment variables from the .env file located in the project base directory
-environ.Env.read_env(env_file=os.path.join(Path(__file__).resolve().parent.parent, '.env'))
+environ.Env.read_env(
+    env_file=os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 # Set the base directory for the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -51,7 +52,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',  # Messaging framework
     'django.contrib.staticfiles',  # Static files management
     'rest_framework',  # Django REST Framework for building APIs
-    'rest_framework_simplejwt.token_blacklist',  # Token blacklist app for JWT authentication
+    'rest_framework_simplejwt.token_blacklist',
+    # Token blacklist app for JWT authentication
     'djoser',  # REST implementation of Django authentication
     'corsheaders',  # Cross-Origin Resource Sharing support
     'channels',  # Django Channels for WebSockets
@@ -77,12 +79,16 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Handles CORS headers for API
     'django.middleware.security.SecurityMiddleware',  # Security-related middleware
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
-    'django.contrib.sessions.middleware.SessionMiddleware',  # Session management middleware
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Session management middleware
     'django.middleware.common.CommonMiddleware',  # Common HTTP request processing
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection middleware
-    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Authentication middleware
-    'django.contrib.messages.middleware.MessageMiddleware',  # Messaging framework middleware
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # Clickjacking protection middleware
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Authentication middleware
+    'django.contrib.messages.middleware.MessageMiddleware',
+    # Messaging framework middleware
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Clickjacking protection middleware
 ]
 
 # Root URL configuration
@@ -91,15 +97,20 @@ ROOT_URLCONF = 'config.urls'
 # Template engine configuration
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',  # Django's template engine
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # Django's template engine
         'DIRS': [],  # List of directories to search for templates
         'APP_DIRS': True,  # Include app directories for template lookup
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',  # Adds debug context processor
-                'django.template.context_processors.request',  # Adds request context processor
-                'django.contrib.auth.context_processors.auth',  # Adds authentication context processor
-                'django.contrib.messages.context_processors.messages',  # Adds messages context processor
+                'django.template.context_processors.debug',
+                # Adds debug context processor
+                'django.template.context_processors.request',
+                # Adds request context processor
+                'django.contrib.auth.context_processors.auth',
+                # Adds authentication context processor
+                'django.contrib.messages.context_processors.messages',
+                # Adds messages context processor
             ],
         },
     },
@@ -109,7 +120,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Database configuration using PostgreSQL, with credentials loaded from environment variables
+# Database configuration using PostgreSQL, with credentials loaded from environment
+# variables
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',  # PostgreSQL database backend
@@ -118,6 +130,7 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),  # Database password
         'HOST': env('DB_HOST'),  # Database host
         'PORT': env('DB_PORT'),  # Database port
+        'CONN_MAX_AGE': 600,  # Optimizing database performance
         'TEST': {
             'NAME': 'test_' + env('DB_NAME'),  # Test database name
         },
@@ -135,17 +148,22 @@ DATABASES = {
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',  # Prevents using similar attributes
+        'NAME': 'django.contrib.auth.password_validation'
+                '.UserAttributeSimilarityValidator',
+        # Prevents using similar attributes
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',  # Minimum password length
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        # Minimum password length
         'OPTIONS': {'min_length': 3},  # Set minimum length to 3 characters
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',  # Prevents using common passwords
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        # Prevents using common passwords
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',  # Prevents using only numeric passwords
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        # Prevents using only numeric passwords
     },
 ]
 
@@ -171,14 +189,27 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Use JWT authentication
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # Use JWT authentication
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',  # Allow any user by default
     ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Default pagination
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # OpenAPI schema generation
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    # Default pagination
     'PAGE_SIZE': 10,  # Default page size
+
+    # Throttling settings
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',  # Throttle anonymous users
+        'rest_framework.throttling.UserRateThrottle',  # Throttle authenticated users
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',  # Allow 100 requests per day for anonymous users
+        'user': '1000/day',  # Allow 1000 requests per day for authenticated users
+    }
 }
 
 # JWT configuration using Simple JWT
@@ -193,31 +224,41 @@ SIMPLE_JWT = {
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Name of the authorization header
     'USER_ID_FIELD': 'id',  # Field to use for user identification
     'USER_ID_CLAIM': 'user_id',  # Claim to use for user identification
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),  # Type of token to use
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    # Type of token to use
     'TOKEN_TYPE_CLAIM': 'token_type',  # Claim to indicate token type
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',  # Claim for sliding token expiration
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    # Claim for sliding token expiration
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),  # Sliding token lifetime
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),  # Sliding token refresh lifetime
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    # Sliding token refresh lifetime
 }
 
 # Djoser configuration for handling authentication views
 DJOSER = {
     'LOGIN_FIELD': 'email',  # Use email as the login field
     'USER_CREATE_PASSWORD_RETYPE': True,  # Require password retype on user creation
-    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,  # Send email confirmation on username change
-    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,  # Send email confirmation on password change
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
+    # Send email confirmation on username change
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
+    # Send email confirmation on password change
     'SEND_CONFIRMATION_EMAIL': True,  # Send confirmation emails
     'SET_USERNAME_RETYPE': True,  # Require username retype
     'SET_PASSWORD_RETYPE': True,  # Require password retype
-    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',  # URL for password reset confirmation
-    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',  # URL for username reset confirmation
+    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
+    # URL for password reset confirmation
+    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',
+    # URL for username reset confirmation
     'ACTIVATION_URL': 'activate/{uid}/{token}',  # URL for user activation
     'SEND_ACTIVATION_EMAIL': True,  # Send activation email
     'SERIALIZERS': {
-        'user_create': 'djoser.serializers.UserCreateSerializer',  # Serializer for user creation
+        'user_create': 'djoser.serializers.UserCreateSerializer',
+        # Serializer for user creation
         'user': 'djoser.serializers.UserSerializer',  # Serializer for user data
-        'current_user': 'djoser.serializers.UserSerializer',  # Serializer for current user
-        'user_delete': 'djoser.serializers.UserDeleteSerializer',  # Serializer for user deletion
+        'current_user': 'djoser.serializers.UserSerializer',
+        # Serializer for current user
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',
+        # Serializer for user deletion
     },
 }
 
@@ -274,7 +315,8 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Include subdomains in HSTS
     SECURE_HSTS_PRELOAD = True  # Preload HSTS
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'  # Referrer policy
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
+    SECURE_PROXY_SSL_HEADER = (
+        'HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
 
 # Configuration for Django Channels using Redis as the backend
 CHANNEL_LAYERS = {
@@ -301,7 +343,8 @@ INTERNAL_IPS = [
 
 # Django Debug Toolbar configuration
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),  # Show toolbar in debug mode only
+    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
+    # Show toolbar in debug mode only
     'INTERCEPT_REDIRECTS': False,  # Don't intercept redirects
 }
 #

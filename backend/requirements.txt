@@ -49,3 +49,5 @@ uritemplate==4.1.1  # URI template support
 urllib3==2.2.2  # HTTP library used by requests
 whitenoise==6.7.0  # Static file serving in production
 daphne==4.0.0  # HTTP, HTTP2, and WebSocket protocol server for ASGI and ASGI-HTTP
+django-redis==5.4.0
+sentry-sdk==2.14.0
