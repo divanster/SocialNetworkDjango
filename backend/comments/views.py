@@ -1,7 +1,7 @@
-# backend/comments/views.py
 from rest_framework import viewsets, permissions
 from .models import Comment
 from .serializers import CommentSerializer
+from .tasks import process_new_comment  # Import the Celery task
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -10,4 +10,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        comment = serializer.save(user=self.request.user)
+        # Trigger the Celery task after the comment is created
+        process_new_comment.delay(comment.id)  # Execute the task asynchronously

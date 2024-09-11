@@ -1,4 +1,4 @@
-FROM python:3.9-alpine3.13
+FROM python:3.10-alpine3.13
 
 # Set environment variables
 ENV PYTHONUNBUFFERED 1
@@ -26,12 +26,14 @@ RUN python -m venv /py && \
         graphviz \
         graphviz-dev \
         fontconfig \
+        redis \
         ttf-dejavu && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     /py/bin/pip install gunicorn whitenoise psycopg2-binary pygraphviz && \
-    echo "DEV is $DEV" && \
-    if [ "$DEV" = "true" ]; then echo "Installing dev requirements"; /py/bin/pip install -r /tmp/requirements.dev.txt; fi && \
-    /py/bin/pip list && \
+    if [ "$DEV" = "true" ]; then \
+        echo "Installing dev requirements"; \
+        /py/bin/pip install -r /tmp/requirements.dev.txt; \
+    fi && \
     rm -rf /tmp && \
     adduser --disabled-password --no-create-home django-user && \
     mkdir -p /vol/web/media /vol/web/static /app/static /app/staticfiles /app/backend/core && \

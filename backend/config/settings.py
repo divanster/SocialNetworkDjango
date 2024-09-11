@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'notifications.apps.NotificationsConfig',  # Notifications app
     'albums.apps.AlbumsConfig',  # Albums feature app
     'core.apps.CoreConfig',
+    'django_celery_beat',  # Schedule Periodic Tasks
 ]
 
 # Middleware configuration
@@ -404,3 +405,11 @@ LOGGING = {
         },
     },
 }
+
+# Celery Configuration Options
+CELERY_BROKER_URL = 'redis://redis:6379/0'  # Using Redis as the message broker
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_TIMEZONE = 'UTC'

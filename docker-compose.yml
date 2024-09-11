@@ -39,6 +39,38 @@ services:
       - DEV=true
       - DJANGO_SETTINGS_MODULE=config.settings
 
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - ./backend/.env
+    environment:
+      - DEV=true
+      - DJANGO_SETTINGS_MODULE=config.settings
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A config beat --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - ./backend/.env
+    environment:
+      - DEV=true
+      - DJANGO_SETTINGS_MODULE=config.settings
+
   worker:
     build:
       context: ./backend

@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Post
 from .serializers import PostSerializer
+from .tasks import process_new_post  # Import the Celery task
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -11,4 +12,6 @@ class PostViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser)
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        post = serializer.save(author=self.request.user)
+        # Trigger the Celery task after the post is created
+        process_new_post.delay(post.id)  # Execute the task asynchronously

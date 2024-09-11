@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Album, Photo
 from .serializers import AlbumSerializer, PhotoSerializer
+from .tasks import process_new_album  # Import the Celery task
 
 
 class AlbumViewSet(viewsets.ModelViewSet):
@@ -11,7 +12,9 @@ class AlbumViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        album = serializer.save(user=self.request.user)
+        # Trigger the Celery task after the album is created
+        process_new_album.delay(album.id)  # Execute the task asynchronously
 
 
 class PhotoViewSet(viewsets.ModelViewSet):
