@@ -10,11 +10,6 @@ from django.views.generic import RedirectView
 from users.views import CustomUserSignupView
 
 
-# Define the trigger_error view function
-def trigger_error(request):
-    division_by_zero = 1 / 0
-
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/signup/', CustomUserSignupView.as_view(), name='user-signup'),
@@ -40,14 +35,12 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
-    path('sentry-debug/', trigger_error),
 ]
 
 if settings.DEBUG:
     import debug_toolbar
-
     urlpatterns = [
-                      path('__debug__/', include(debug_toolbar.urls)),
-                  ] + urlpatterns
+        path('__debug__/', include(debug_toolbar.urls)),
+    ] + urlpatterns
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
