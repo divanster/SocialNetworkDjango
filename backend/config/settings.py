@@ -7,6 +7,10 @@ from django.conf import settings
 from core.management.commands.migration_questioner import \
     NonInteractiveMigrationQuestioner
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+
 # Initialize environment variables using django-environ
 env = environ.Env(
     # Define default types and default values for environment variables
@@ -174,6 +178,15 @@ TIME_ZONE = 'UTC'  # Default time zone
 USE_I18N = True  # Enable internationalization
 USE_L10N = True  # Enable localization
 USE_TZ = True  # Enable timezone support
+
+# LANGUAGES = [
+#     ('en', 'English'),
+#     ('es', 'Spanish'),  # Add more languages as needed
+# ]
+#
+# LOCALE_PATHS = [
+#     os.path.join(BASE_DIR, 'locale')
+# ]
 
 # Static and media file settings
 STATIC_URL = '/static/'  # URL to access static files
@@ -413,3 +426,24 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_TIMEZONE = 'UTC'
+
+
+# Caching Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://redis:6379/1',  # redis service name and port from
+        # docker-compose
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+# Sentry - tracking errors and performance issues
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_DSN'),
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=1.0,  # Adjust based on your need
+    send_default_pii=True
+)
