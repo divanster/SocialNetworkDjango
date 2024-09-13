@@ -40,6 +40,7 @@ DEBUG = env('DEBUG')
 
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Utility function to check if tests are currently running

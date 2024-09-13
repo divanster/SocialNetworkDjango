@@ -4,15 +4,17 @@ from .serializers import FriendRequestSerializer, FriendshipSerializer
 from django.db.models import Q
 from django.core.exceptions import ValidationError
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 
 class FriendRequestViewSet(viewsets.ModelViewSet):
+    queryset = FriendRequest.objects.all()
     serializer_class = FriendRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
 
     @extend_schema(
-        parameters=[OpenApiParameter("id", type=str, description="UUID of the friend request")],
+        parameters=[OpenApiParameter("id", type=OpenApiTypes.UUID, description="UUID of the friend request")],
     )
     def get_queryset(self):
         # Only show friend requests where the user is either the sender or the receiver
@@ -32,8 +34,7 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
 
         if instance.receiver != request.user:
-            raise serializers.ValidationError("You do not have permission to accept"
-                                              " this request.")
+            raise serializers.ValidationError("You do not have permission to accept this request.")
 
         # Only the receiver can accept a friend request
         if request.data.get("status") == "accepted":
@@ -52,11 +53,13 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
 
 
 class FriendshipViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Friendship.objects.all()
     serializer_class = FriendshipSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
 
     @extend_schema(
-        parameters=[OpenApiParameter("id", type=str, description="UUID of the friendship")],
+        parameters=[OpenApiParameter("id", type=OpenApiTypes.UUID, description="UUID of the friendship")],
     )
     def get_queryset(self):
         # Only show friendships where the current user is either user1 or user2
@@ -70,8 +73,7 @@ class FriendshipViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Ensure that only the users involved in the friendship can unfriend each other
         if instance.user1 != request.user and instance.user2 != request.user:
-            raise serializers.ValidationError("You do not have permission"
-                                              " to unfriend this user.")
+            raise serializers.ValidationError("You do not have permission to unfriend this user.")
 
         # If user is involved in the friendship, allow deletion (unfriending)
         self.perform_destroy(instance)
