@@ -57,7 +57,8 @@ def friend_request_saved(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=FriendRequest)
 def friend_request_deleted(sender, instance, **kwargs):
-    # Notify both the sender and receiver in real-time that the friend request was deleted
+    # Notify both the sender and receiver in real-time that the friend request was
+    # deleted
     send_real_time_notification(
         instance.receiver.id,
         f"Friend request from {instance.sender.username} has been deleted.",
