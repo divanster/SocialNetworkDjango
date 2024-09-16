@@ -445,6 +445,6 @@ CACHES = {
 sentry_sdk.init(
     dsn=os.getenv('SENTRY_DSN'),
     integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,  # Adjust based on your need
+    traces_sample_rate=1.0,  # Adjust based on need
     send_default_pii=True
 )
