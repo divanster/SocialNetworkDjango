@@ -1,5 +1,9 @@
+# backend/social/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.contrib.auth import get_user_model
+
 
 class PostConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -16,35 +20,25 @@ class PostConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-    async def receive(self, text_data):
-        try:
-            data = json.loads(text_data)
-            message = data.get('message', None)
-            if message is None:
-                raise ValueError("No 'message' key in data")
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'post_message',
-                    'message': message
-                }
-            )
-        except json.JSONDecodeError as e:
-            await self.send(text_data=json.dumps({
-                'error': 'Invalid JSON',
-                'details': str(e)
-            }))
-            await self.close(code=4000)
-        except Exception as e:
-            await self.send(text_data=json.dumps({
-                'error': 'Internal Server Error',
-                'details': str(e)
-            }))
-            await self.close(code=1011)
-
     async def post_message(self, event):
-        message = event['message']
+        tagged_user_ids = event.get('tagged_user_ids', [])
+        tagged_users = []
+        for user_id in tagged_user_ids:
+            try:
+                user = await self.get_user(user_id)
+                tagged_users.append({'id': str(user.id), 'username': user.username})
+            except get_user_model().DoesNotExist:
+                continue
+
         await self.send(text_data=json.dumps({
-            'message': message
+            'event': event['event'],
+            'post': str(event['post']),
+            'title': event['title'],
+            'content': event['content'],
+            'tagged_users': tagged_users,
         }))
+
+    @database_sync_to_async
+    def get_user(self, user_id):
+        User = get_user_model()
+        return User.objects.get(id=user_id)

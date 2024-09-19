@@ -1,6 +1,16 @@
 # Use an official Node.js runtime as a parent image
 FROM node:20
 
+# Declare build arguments
+ARG CHOKIDAR_USEPOLLING
+ARG NODE_OPTIONS
+ARG REACT_APP_API_URL
+
+# Set environment variables from build arguments
+ENV CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
+ENV NODE_OPTIONS=${NODE_OPTIONS}
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+
 # Set the working directory
 WORKDIR /app
 
@@ -12,9 +22,6 @@ RUN npm install
 
 # Copy the rest of the application code
 COPY . .
-
-# Set the Node.js option for legacy OpenSSL support
-ENV NODE_OPTIONS=--openssl-legacy-provider
 
 # Build the application
 RUN npm run build

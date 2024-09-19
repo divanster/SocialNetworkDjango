@@ -1,7 +1,14 @@
 import os
+import django
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+
+# Ensure that Django is set up before importing routing modules
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+
+# Import routing modules from all apps after Django setup
 import messenger.routing
 import notifications.routing
 import comments.routing
@@ -14,10 +21,9 @@ import friends.routing
 import newsfeed.routing
 import pages.routing
 import stories.routing
+import tagging.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
-# Combine all websocket routing patterns
+# Combine all WebSocket routing patterns
 websocket_urlpatterns = (
     messenger.routing.websocket_urlpatterns +
     notifications.routing.websocket_urlpatterns +
@@ -30,7 +36,8 @@ websocket_urlpatterns = (
     friends.routing.websocket_urlpatterns +
     newsfeed.routing.websocket_urlpatterns +
     pages.routing.websocket_urlpatterns +
-    stories.routing.websocket_urlpatterns
+    stories.routing.websocket_urlpatterns +
+    tagging.routing.websocket_urlpatterns
 )
 
 application = ProtocolTypeRouter({

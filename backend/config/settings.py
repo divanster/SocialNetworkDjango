@@ -4,12 +4,10 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 from django.conf import settings
-from core.management.commands.migration_questioner import \
-    NonInteractiveMigrationQuestioner
+from core.management.commands.migration_questioner import NonInteractiveMigrationQuestioner
 
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
-
 
 # Initialize environment variables using django-environ
 env = environ.Env(
@@ -17,9 +15,9 @@ env = environ.Env(
     DEBUG=(bool, False),
     DJANGO_SECRET_KEY=(str, 'your-default-secret-key'),
     ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
-    DB_NAME=(str, 'app_db'),
-    DB_USER=(str, 'app_user'),
-    DB_PASSWORD=(str, 'app_password'),
+    POSTGRES_DB=(str, 'app_db'),
+    POSTGRES_USER=(str, 'app_user'),
+    POSTGRES_PASSWORD=(str, 'app_password'),
     DB_HOST=(str, 'db'),
     DB_PORT=(str, '5432'),
     CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000', 'http://127.0.0.1:3000']),
@@ -27,7 +25,8 @@ env = environ.Env(
 
 # Load environment variables from the .env file located in the project base directory
 environ.Env.read_env(
-    env_file=os.path.join(Path(__file__).resolve().parent.parent, '.env'))
+    env_file=os.path.join(Path(__file__).resolve().parent.parent, '.env')
+)
 
 # Set the base directory for the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,13 +39,10 @@ DEBUG = env('DEBUG')
 
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
-# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-
 
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
-
 
 # Installed applications, including Django apps, third-party apps, and custom apps
 INSTALLED_APPS = [
@@ -57,8 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',  # Messaging framework
     'django.contrib.staticfiles',  # Static files management
     'rest_framework',  # Django REST Framework for building APIs
-    'rest_framework_simplejwt.token_blacklist',
-    # Token blacklist app for JWT authentication
+    'rest_framework_simplejwt.token_blacklist',  # Token blacklist app for JWT authentication
     'djoser',  # REST implementation of Django authentication
     'corsheaders',  # Cross-Origin Resource Sharing support
     'channels',  # Django Channels for WebSockets
@@ -72,6 +67,7 @@ INSTALLED_APPS = [
     'messenger.apps.MessengerConfig',  # Messaging app
     'newsfeed.apps.NewsfeedConfig',  # Newsfeed app
     'pages.apps.PagesConfig',  # Pages app
+    'tagging.apps.TaggingConfig',  # Tagging app
     'friends.apps.FriendsConfig',  # Friends system app
     'comments.apps.CommentsConfig',  # Commenting system app
     'notifications.apps.NotificationsConfig',  # Notifications app
@@ -85,16 +81,12 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Handles CORS headers for API
     'django.middleware.security.SecurityMiddleware',  # Security-related middleware
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    # Session management middleware
+    'django.contrib.sessions.middleware.SessionMiddleware',  # Session management middleware
     'django.middleware.common.CommonMiddleware',  # Common HTTP request processing
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection middleware
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # Authentication middleware
-    'django.contrib.messages.middleware.MessageMiddleware',
-    # Messaging framework middleware
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Clickjacking protection middleware
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Authentication middleware
+    'django.contrib.messages.middleware.MessageMiddleware',  # Messaging framework middleware
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # Clickjacking protection middleware
 ]
 
 # Root URL configuration
@@ -103,20 +95,15 @@ ROOT_URLCONF = 'config.urls'
 # Template engine configuration
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # Django's template engine
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',  # Django's template engine
         'DIRS': [],  # List of directories to search for templates
         'APP_DIRS': True,  # Include app directories for template lookup
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',
-                # Adds debug context processor
-                'django.template.context_processors.request',
-                # Adds request context processor
-                'django.contrib.auth.context_processors.auth',
-                # Adds authentication context processor
-                'django.contrib.messages.context_processors.messages',
-                # Adds messages context processor
+                'django.template.context_processors.debug',  # Adds debug context processor
+                'django.template.context_processors.request',  # Adds request context processor
+                'django.contrib.auth.context_processors.auth',  # Adds authentication context processor
+                'django.contrib.messages.context_processors.messages',  # Adds messages context processor
             ],
         },
     },
@@ -126,50 +113,37 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Database configuration using PostgreSQL, with credentials loaded from environment
-# variables
+# Database configuration using PostgreSQL, with credentials loaded from environment variables
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',  # PostgreSQL database backend
-        'NAME': env('DB_NAME'),  # Database name
-        'USER': env('DB_USER'),  # Database user
-        'PASSWORD': env('DB_PASSWORD'),  # Database password
+        'NAME': env('POSTGRES_DB'),  # Database name
+        'USER': env('POSTGRES_USER'),  # Database user
+        'PASSWORD': env('POSTGRES_PASSWORD'),  # Database password
         'HOST': env('DB_HOST'),  # Database host
         'PORT': env('DB_PORT'),  # Database port
         'CONN_MAX_AGE': 600,  # Optimizing database performance
         'TEST': {
-            'NAME': 'test_' + env('DB_NAME'),  # Test database name
+            'NAME': 'test_' + env('POSTGRES_DB'),  # Test database name
         },
     },
-    'test_db': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'test_app_db',  # Secondary test database name
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
-    }
+    # Remove 'test_db' if not necessary
 }
 
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation'
-                '.UserAttributeSimilarityValidator',
-        # Prevents using similar attributes
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',  # Prevents using similar attributes
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        # Minimum password length
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',  # Minimum password length
         'OPTIONS': {'min_length': 3},  # Set minimum length to 3 characters
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-        # Prevents using common passwords
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',  # Prevents using common passwords
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-        # Prevents using only numeric passwords
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',  # Prevents using only numeric passwords
     },
 ]
 
@@ -179,15 +153,6 @@ TIME_ZONE = 'UTC'  # Default time zone
 USE_I18N = True  # Enable internationalization
 USE_L10N = True  # Enable localization
 USE_TZ = True  # Enable timezone support
-
-# LANGUAGES = [
-#     ('en', 'English'),
-#     ('es', 'Spanish'),  # Add more languages as needed
-# ]
-#
-# LOCALE_PATHS = [
-#     os.path.join(BASE_DIR, 'locale')
-# ]
 
 # Static and media file settings
 STATIC_URL = '/static/'  # URL to access static files
@@ -204,16 +169,13 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # Use JWT authentication
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Use JWT authentication
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',  # Allow any user by default
     ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    # OpenAPI schema generation
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    # Default pagination
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Default pagination
     'PAGE_SIZE': 10,  # Default page size
 
     # Throttling settings
@@ -239,41 +201,31 @@ SIMPLE_JWT = {
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Name of the authorization header
     'USER_ID_FIELD': 'id',  # Field to use for user identification
     'USER_ID_CLAIM': 'user_id',  # Claim to use for user identification
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    # Type of token to use
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),  # Type of token to use
     'TOKEN_TYPE_CLAIM': 'token_type',  # Claim to indicate token type
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    # Claim for sliding token expiration
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',  # Claim for sliding token expiration
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),  # Sliding token lifetime
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-    # Sliding token refresh lifetime
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),  # Sliding token refresh lifetime
 }
 
 # Djoser configuration for handling authentication views
 DJOSER = {
     'LOGIN_FIELD': 'email',  # Use email as the login field
     'USER_CREATE_PASSWORD_RETYPE': True,  # Require password retype on user creation
-    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
-    # Send email confirmation on username change
-    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
-    # Send email confirmation on password change
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,  # Send email confirmation on username change
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,  # Send email confirmation on password change
     'SEND_CONFIRMATION_EMAIL': True,  # Send confirmation emails
     'SET_USERNAME_RETYPE': True,  # Require username retype
     'SET_PASSWORD_RETYPE': True,  # Require password retype
-    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
-    # URL for password reset confirmation
-    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',
-    # URL for username reset confirmation
+    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',  # URL for password reset confirmation
+    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',  # URL for username reset confirmation
     'ACTIVATION_URL': 'activate/{uid}/{token}',  # URL for user activation
     'SEND_ACTIVATION_EMAIL': True,  # Send activation email
     'SERIALIZERS': {
-        'user_create': 'djoser.serializers.UserCreateSerializer',
-        # Serializer for user creation
+        'user_create': 'djoser.serializers.UserCreateSerializer',  # Serializer for user creation
         'user': 'djoser.serializers.UserSerializer',  # Serializer for user data
-        'current_user': 'djoser.serializers.UserSerializer',
-        # Serializer for current user
-        'user_delete': 'djoser.serializers.UserDeleteSerializer',
-        # Serializer for user deletion
+        'current_user': 'djoser.serializers.UserSerializer',  # Serializer for current user
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',  # Serializer for user deletion
     },
 }
 
@@ -330,8 +282,7 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Include subdomains in HSTS
     SECURE_HSTS_PRELOAD = True  # Preload HSTS
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'  # Referrer policy
-    SECURE_PROXY_SSL_HEADER = (
-        'HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
 
 # Configuration for Django Channels using Redis as the backend
 CHANNEL_LAYERS = {
@@ -358,40 +309,11 @@ INTERNAL_IPS = [
 
 # Django Debug Toolbar configuration
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
-    # Show toolbar in debug mode only
+    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),  # Show toolbar in debug mode only
     'INTERCEPT_REDIRECTS': False,  # Don't intercept redirects
 }
-#
-# # Logging configuration to log to both console and file
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'handlers': {
-#         'console': {
-#             'level': 'DEBUG',
-#             'class': 'logging.StreamHandler',
-#         },
-#         'file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(BASE_DIR, 'debug.log'),  # Log file location
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console', 'file'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#         },
-#         'channels': {
-#             'handlers': ['console', 'file'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#         },
-#     },
-# }
 
+# Logging configuration to log to both console and file
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -403,7 +325,7 @@ LOGGING = {
         'file': {
             'level': 'WARNING',  # Change from DEBUG to WARNING
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'filename': os.path.join(BASE_DIR, 'debug.log'),  # Log file location
         },
     },
     'loggers': {
@@ -422,19 +344,17 @@ LOGGING = {
 
 # Celery Configuration Options
 CELERY_BROKER_URL = 'redis://redis:6379/0'  # Using Redis as the message broker
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_TIMEZONE = 'UTC'
-
 
 # Caching Configuration
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://redis:6379/1',  # redis service name and port from
-        # docker-compose
+        'LOCATION': 'redis://redis:6379/1',  # redis service name and port from docker-compose
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -443,7 +363,7 @@ CACHES = {
 
 # Sentry - tracking errors and performance issues
 sentry_sdk.init(
-    dsn=os.getenv('SENTRY_DSN'),
+    dsn=env('SENTRY_DSN'),
     integrations=[DjangoIntegration()],
     traces_sample_rate=1.0,  # Adjust based on need
     send_default_pii=True

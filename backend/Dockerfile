@@ -1,4 +1,32 @@
-FROM python:3.10-alpine3.13
+# First stage: Build librdkafka
+FROM alpine:3.18 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache --virtual .build-deps \
+    curl \
+    gcc \
+    g++ \
+    make \
+    libc-dev \
+    linux-headers \
+    build-base \
+    bash && \
+    # Set librdkafka version
+    export RDKAFKA_VERSION=1.9.0 && \
+    # Build librdkafka
+    curl -L "https://github.com/edenhill/librdkafka/archive/refs/tags/v${RDKAFKA_VERSION}.tar.gz" -o librdkafka.tar.gz && \
+    tar -xzf librdkafka.tar.gz && \
+    cd librdkafka-${RDKAFKA_VERSION} && \
+    ./configure && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf librdkafka-${RDKAFKA_VERSION} librdkafka.tar.gz && \
+    # Remove build dependencies
+    apk del .build-deps
+
+# Second stage: Build the final image
+FROM python:3.10-alpine3.18
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -8,48 +36,39 @@ ENV PYTHONUNBUFFERED=1 \
 # Set the working directory
 WORKDIR /app
 
-# Install dependencies and build tools
-RUN apk add --no-cache --virtual .build-deps \
-        curl gcc g++ make libc-dev linux-headers build-base bash && \
-    apk add --no-cache \
-        postgresql-client \
-        postgresql-dev \
-        jpeg-dev \
-        zlib-dev \
-        libffi-dev \
-        musl-dev \
-        graphviz \
-        graphviz-dev \
-        fontconfig \
-        redis \
-        ttf-dejavu \
-        openssl-dev
+# Install runtime dependencies and build tools needed for compiling Python packages
+RUN apk add --no-cache \
+    postgresql-client \
+    postgresql-dev \
+    jpeg-dev \
+    zlib-dev \
+    libffi-dev \
+    graphviz \
+    graphviz-dev \
+    fontconfig \
+    redis \
+    ttf-dejavu \
+    openssl-dev \
+    bash \
+    musl-dev \
+    gcc
 
-# Download and compile librdkafka from the source to ensure the latest version
-RUN curl -L "https://github.com/edenhill/librdkafka/archive/refs/tags/v1.9.0.tar.gz" -o librdkafka.tar.gz && \
-    tar -xzf librdkafka.tar.gz && \
-    cd librdkafka-1.9.0 && \
-    ./configure && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf librdkafka-1.9.0 librdkafka.tar.gz
+# Copy librdkafka from the builder stage
+COPY --from=builder /usr/local/lib/librdkafka* /usr/local/lib/
+COPY --from=builder /usr/local/include/librdkafka /usr/local/include/librdkafka
 
-# Create a virtual environment and install Python dependencies
-RUN python -m venv /py && \
-    /py/bin/pip install --upgrade pip
+# Upgrade pip
+RUN pip install --upgrade pip
 
 # Copy requirements files
-COPY ./requirements.txt /tmp/requirements.txt
-COPY ./requirements.dev.txt /tmp/requirements.dev.txt
+COPY ./requirements.txt ./requirements.dev.txt /tmp/
 
 # Install Python dependencies
-RUN /py/bin/pip install --no-cache-dir -r /tmp/requirements.txt && \
-    /py/bin/pip install --no-cache-dir confluent-kafka && \
-    /py/bin/pip install gunicorn whitenoise psycopg2-binary pygraphviz && \
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    pip install --no-cache-dir confluent-kafka gunicorn whitenoise psycopg2-binary pygraphviz && \
     if [ "$DEV" = "true" ]; then \
         echo "Installing dev requirements"; \
-        /py/bin/pip install -r /tmp/requirements.dev.txt; \
+        pip install --no-cache-dir -r /tmp/requirements.dev.txt; \
     fi && \
     rm -rf /tmp
 
@@ -58,17 +77,18 @@ RUN adduser --disabled-password --no-create-home django-user && \
     mkdir -p /vol/web/media /vol/web/static /app/static /app/staticfiles /app/backend/core && \
     chown -R django-user:django-user /vol/web /app/static /app/staticfiles /app/backend/core
 
-# Copy the migration script (if needed)
-COPY ./core/management/commands/migration_questioner.py /app/backend/core/management/commands/migration_questioner.py
+# Copy application code
+COPY . /app
 
-# Update the PATH environment variable to include the virtual environment
-ENV PATH="/py/bin:$PATH"
+# Expose the application port
+EXPOSE 8000
 
 # Switch to non-root user
 USER django-user
 
-# Expose the application port
-EXPOSE 8000
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health/ || exit 1
 
 # Command to run the application
 CMD ["gunicorn", "--workers=2", "--bind", "0.0.0.0:8000", "config.wsgi:application"]

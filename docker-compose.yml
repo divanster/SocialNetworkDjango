@@ -1,17 +1,21 @@
-version: '3.8'
 
 services:
   db:
-    image: postgres:13
+    image: postgres:13-alpine
     environment:
-      POSTGRES_DB: app_db
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: app_password
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+      POSTGRES_USER: ${POSTGRES_USER:-app_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   redis:
-    image: "redis:alpine"
+    image: redis:6-alpine
 
   web:
     build:
@@ -19,25 +23,29 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "
-        PYTHONPATH=/app:/app/backend python /app/manage.py wait_for_db &&
-        PYTHONPATH=/app:/app/backend python /app/manage.py makemigrations --noinput &&
-        PYTHONPATH=/app:/app/backend python /app/manage.py migrate --noinput &&
-        PYTHONPATH=/app:/app/backend python /app/manage.py collectstatic --noinput &&
+        python /app/manage.py wait_for_db &&
+        python /app/manage.py makemigrations --noinput &&
+        python /app/manage.py migrate --noinput &&
+        python /app/manage.py collectstatic --noinput &&
         daphne -b 0.0.0.0 -p 8000 config.asgi:application
       "
     volumes:
       - ./backend:/app
-      - /Users/apple/100DayPython/SocialNetworkDjango/vol/web:/vol/web
+      - ./vol/web:/vol/web
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
       - ./backend/.env
-    environment:
-      - DEV=true
-      - DJANGO_SETTINGS_MODULE=config.settings
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   celery-worker:
     build:
@@ -47,13 +55,10 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - redis
       - db
+      - redis
     env_file:
       - ./backend/.env
-    environment:
-      - DEV=true
-      - DJANGO_SETTINGS_MODULE=config.settings
 
   celery-beat:
     build:
@@ -63,13 +68,10 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - redis
       - db
+      - redis
     env_file:
       - ./backend/.env
-    environment:
-      - DEV=true
-      - DJANGO_SETTINGS_MODULE=config.settings
 
   worker:
     build:
@@ -78,31 +80,30 @@ services:
     command: python /app/manage.py runworker default --verbosity 2
     volumes:
       - ./backend:/app
-      - /Users/apple/100DayPython/SocialNetworkDjango/vol/web:/vol/web
+      - ./vol/web:/vol/web
     depends_on:
       - db
       - redis
     env_file:
       - ./backend/.env
-    environment:
-      - DEV=true
-      - DJANGO_SETTINGS_MODULE=config.settings
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
+        NODE_OPTIONS: ${NODE_OPTIONS:-"--openssl-legacy-provider"}
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-"http://localhost:8000"}
     volumes:
       - ./frontend:/app
     ports:
       - "3000:3000"
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-      - NODE_OPTIONS=--openssl-legacy-provider
-      - REACT_APP_API_URL=http://localhost:8000/api
+    env_file:
+      - ./frontend/.env
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.4.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -110,7 +111,7 @@ services:
       - "2181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.0
     depends_on:
       - zookeeper
     environment:
@@ -124,7 +125,5 @@ services:
       - "9092:9092"
       - "9093:9093"
 
-
 volumes:
   postgres_data:
-

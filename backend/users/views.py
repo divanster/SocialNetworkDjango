@@ -23,8 +23,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("id", type=str, description="UUID of the profile")],
+            OpenApiParameter("id", type="UUID", description="UUID of the profile")
+        ]
     )
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieves a specific user profile by UUID.
+        """
+        return super().retrieve(request, *args, **kwargs)
+
     def get_queryset(self):
         """
         Returns the profile of the authenticated user.
@@ -46,8 +53,14 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        parameters=[OpenApiParameter("id", type=str, description="UUID of the user")],
+        parameters=[OpenApiParameter("id", type="UUID", description="UUID of the user")]
     )
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieves a specific user by UUID.
+        """
+        return super().retrieve(request, *args, **kwargs)
+
     def get_queryset(self):
         """
         Returns the authenticated user's data.
