@@ -32,6 +32,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
         profile = super().update(instance, validated_data)
         if tagged_user_ids is not None:
+            # Remove existing tags and add new ones
             instance.tags.all().delete()
             self.create_tagged_items(profile, tagged_user_ids)
         return profile
@@ -50,7 +51,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         context.update({'request': self.context['request']})
         return context
 
-    @extend_schema_field(TaggedItemSerializer(many=True))  # Annotate return type
+    @extend_schema_field(TaggedItemSerializer(
+        many=True))  # Annotate return type as a list of TaggedItemSerializer
     def get_tags(self, instance) -> list:
         return TaggedItemSerializer(instance.tags.all(), many=True).data
 
