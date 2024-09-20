@@ -21,7 +21,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/albums/', include('albums.urls')),
-    path('api/', include('tagging.urls')),
+    path('api/tagging/', include('tagging.urls')),
     path('api/friends/', include('friends.urls')),
     path('api/newsfeed/', include('newsfeed.urls')),
     path('api/pages/', include('pages.urls')),
