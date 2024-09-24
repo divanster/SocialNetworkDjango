@@ -7,6 +7,8 @@ from rest_framework.exceptions import ValidationError
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema_field
+from tagging.models import TaggedItem
+
 
 User = get_user_model()
 
@@ -32,13 +34,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
         profile = super().update(instance, validated_data)
         if tagged_user_ids is not None:
-            # Remove existing tags and add new ones
             instance.tags.all().delete()
             self.create_tagged_items(profile, tagged_user_ids)
         return profile
 
     def create_tagged_items(self, profile, tagged_user_ids):
-        from tagging.models import TaggedItem
         for user_id in tagged_user_ids:
             TaggedItem.objects.create(
                 content_object=profile,
@@ -46,13 +46,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
                 tagged_by=self.context['request'].user
             )
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context.update({'request': self.context['request']})
-        return context
-
-    @extend_schema_field(TaggedItemSerializer(
-        many=True))  # Annotate return type as a list of TaggedItemSerializer
+    @extend_schema_field(TaggedItemSerializer(many=True))
     def get_tags(self, instance) -> list:
         return TaggedItemSerializer(instance.tags.all(), many=True).data
 
@@ -97,11 +91,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             user.save()
 
             if profile_data:
-                profile_serializer = UserProfileSerializer(
-                    data=profile_data, context={'request': self.context['request']}
-                )
-                profile_serializer.is_valid(raise_exception=True)
-                profile_serializer.save(user=user)
+                UserProfileSerializer(data=profile_data).save(user=user)
 
         return user
 

@@ -4,7 +4,8 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 from django.conf import settings
-from core.management.commands.migration_questioner import NonInteractiveMigrationQuestioner
+from core.management.commands.migration_questioner import \
+    NonInteractiveMigrationQuestioner
 
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -40,9 +41,11 @@ DEBUG = env('DEBUG')
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
+
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
+
 
 # Installed applications, including Django apps, third-party apps, and custom apps
 INSTALLED_APPS = [
@@ -53,7 +56,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',  # Messaging framework
     'django.contrib.staticfiles',  # Static files management
     'rest_framework',  # Django REST Framework for building APIs
-    'rest_framework_simplejwt.token_blacklist',  # Token blacklist app for JWT authentication
+    'rest_framework_simplejwt.token_blacklist',
+    # Token blacklist app for JWT authentication
     'djoser',  # REST implementation of Django authentication
     'corsheaders',  # Cross-Origin Resource Sharing support
     'channels',  # Django Channels for WebSockets
@@ -74,19 +78,25 @@ INSTALLED_APPS = [
     'albums.apps.AlbumsConfig',  # Albums feature app
     'core.apps.CoreConfig',
     'django_celery_beat',  # Schedule Periodic Tasks
+    'csp',
 ]
 
 # Middleware configuration
 MIDDLEWARE = [
+    'csp.middleware.CSPMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Handles CORS headers for API
     'django.middleware.security.SecurityMiddleware',  # Security-related middleware
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
-    'django.contrib.sessions.middleware.SessionMiddleware',  # Session management middleware
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Session management middleware
     'django.middleware.common.CommonMiddleware',  # Common HTTP request processing
     'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection middleware
-    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Authentication middleware
-    'django.contrib.messages.middleware.MessageMiddleware',  # Messaging framework middleware
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # Clickjacking protection middleware
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Authentication middleware
+    'django.contrib.messages.middleware.MessageMiddleware',
+    # Messaging framework middleware
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Clickjacking protection middleware
 ]
 
 # Root URL configuration
@@ -95,15 +105,20 @@ ROOT_URLCONF = 'config.urls'
 # Template engine configuration
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',  # Django's template engine
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # Django's template engine
         'DIRS': [],  # List of directories to search for templates
         'APP_DIRS': True,  # Include app directories for template lookup
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',  # Adds debug context processor
-                'django.template.context_processors.request',  # Adds request context processor
-                'django.contrib.auth.context_processors.auth',  # Adds authentication context processor
-                'django.contrib.messages.context_processors.messages',  # Adds messages context processor
+                'django.template.context_processors.debug',
+                # Adds debug context processor
+                'django.template.context_processors.request',
+                # Adds request context processor
+                'django.contrib.auth.context_processors.auth',
+                # Adds authentication context processor
+                'django.contrib.messages.context_processors.messages',
+                # Adds messages context processor
             ],
         },
     },
@@ -133,17 +148,21 @@ DATABASES = {
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',  # Prevents using similar attributes
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        # Prevents using similar attributes
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',  # Minimum password length
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        # Minimum password length
         'OPTIONS': {'min_length': 3},  # Set minimum length to 3 characters
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',  # Prevents using common passwords
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        # Prevents using common passwords
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',  # Prevents using only numeric passwords
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        # Prevents using only numeric passwords
     },
 ]
 
@@ -169,13 +188,16 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Use JWT authentication
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    # Use JWT authentication
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',  # Allow any user by default
     ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # OpenAPI schema generation
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Default pagination
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # OpenAPI schema generation
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    # Default pagination
     'PAGE_SIZE': 10,  # Default page size
 
     # Throttling settings
@@ -202,31 +224,41 @@ SIMPLE_JWT = {
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Name of the authorization header
     'USER_ID_FIELD': 'id',  # Field to use for user identification
     'USER_ID_CLAIM': 'user_id',  # Claim to use for user identification
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),  # Type of token to use
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    # Type of token to use
     'TOKEN_TYPE_CLAIM': 'token_type',  # Claim to indicate token type
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',  # Claim for sliding token expiration
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    # Claim for sliding token expiration
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),  # Sliding token lifetime
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),  # Sliding token refresh lifetime
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    # Sliding token refresh lifetime
 }
 
 # Djoser configuration for handling authentication views
 DJOSER = {
     'LOGIN_FIELD': 'email',  # Use email as the login field
     'USER_CREATE_PASSWORD_RETYPE': True,  # Require password retype on user creation
-    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,  # Send email confirmation on username change
-    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,  # Send email confirmation on password change
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
+    # Send email confirmation on username change
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
+    # Send email confirmation on password change
     'SEND_CONFIRMATION_EMAIL': True,  # Send confirmation emails
     'SET_USERNAME_RETYPE': True,  # Require username retype
     'SET_PASSWORD_RETYPE': True,  # Require password retype
-    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',  # URL for password reset confirmation
-    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',  # URL for username reset confirmation
+    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
+    # URL for password reset confirmation
+    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',
+    # URL for username reset confirmation
     'ACTIVATION_URL': 'activate/{uid}/{token}',  # URL for user activation
     'SEND_ACTIVATION_EMAIL': True,  # Send activation email
     'SERIALIZERS': {
-        'user_create': 'djoser.serializers.UserCreateSerializer',  # Serializer for user creation
+        'user_create': 'djoser.serializers.CustomUserSerializer',
+        # Serializer for user creation
         'user': 'djoser.serializers.UserSerializer',  # Serializer for user data
-        'current_user': 'djoser.serializers.UserSerializer',  # Serializer for current user
-        'user_delete': 'djoser.serializers.UserDeleteSerializer',  # Serializer for user deletion
+        'current_user': 'djoser.serializers.UserSerializer',
+        # Serializer for current user
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',
+        # Serializer for user deletion
     },
 }
 
@@ -283,7 +315,8 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Include subdomains in HSTS
     SECURE_HSTS_PRELOAD = True  # Preload HSTS
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'  # Referrer policy
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
+    SECURE_PROXY_SSL_HEADER = (
+    'HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
 
 # Configuration for Django Channels using Redis as the backend
 CHANNEL_LAYERS = {
@@ -310,7 +343,8 @@ INTERNAL_IPS = [
 
 # Django Debug Toolbar configuration
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),  # Show toolbar in debug mode only
+    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
+    # Show toolbar in debug mode only
     'INTERCEPT_REDIRECTS': False,  # Don't intercept redirects
 }
 
@@ -318,27 +352,51 @@ DEBUG_TOOLBAR_CONFIG = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'sanitize': {
+            '()': 'core.logging_filters.SensitiveDataFilter',
+        },
+    },
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
-            'level': 'WARNING',  # Change from DEBUG to WARNING
+            'level': 'INFO',
+            'filters': ['sanitize'],
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
         'file': {
-            'level': 'WARNING',  # Change from DEBUG to WARNING
+            'level': 'WARNING',
+            'filters': ['sanitize'],
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),  # Log file location
+            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'WARNING',  # Change from DEBUG to WARNING
+            'level': 'WARNING',
             'propagate': True,
         },
         'channels': {
             'handlers': ['console', 'file'],
-            'level': 'WARNING',  # Change from DEBUG to WARNING
+            'level': 'WARNING',
             'propagate': True,
+        },
+        'core': {  # Add your app logger
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }
@@ -355,7 +413,8 @@ CELERY_TIMEZONE = 'UTC'
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://redis:6379/1',  # redis service name and port from docker-compose
+        'LOCATION': 'redis://redis:6379/1',
+        # redis service name and port from docker-compose
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -369,3 +428,14 @@ sentry_sdk.init(
     traces_sample_rate=1.0,  # Adjust based on need
     send_default_pii=True
 )
+
+# CSP settings
+CSP_DEFAULT_SRC = ("'none'",)
+CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
+CSP_CONNECT_SRC = ("'self'",)
+CSP_BASE_URI = ("'self'",)
+CSP_FORM_ACTION = ("'self'",)
+CSP_REPORT_URI = '/csp-violation-report/'

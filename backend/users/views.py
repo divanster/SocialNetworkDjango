@@ -12,7 +12,7 @@ from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
 
 # Initialize logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('users')
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):

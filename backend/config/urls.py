@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
     TokenBlacklistView
 from django.views.generic import RedirectView
 from users.views import CustomUserSignupView
-
+from core.views import csp_report
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -36,12 +36,14 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
+    path('csp-violation-report/', csp_report, name='csp_report')
 ]
 
 if settings.DEBUG:
     import debug_toolbar
+
     urlpatterns = [
-        path('__debug__/', include(debug_toolbar.urls)),
-    ] + urlpatterns
+                      path('__debug__/', include(debug_toolbar.urls)),
+                  ] + urlpatterns
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
