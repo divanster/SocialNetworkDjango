@@ -186,6 +186,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',  # Allow 100 requests per day for anonymous users
         'user': '1000/day',  # Allow 1000 requests per day for authenticated users
+        'signup': '10/hour',  # Custom throttle for signup
     }
 }
 
@@ -231,7 +232,7 @@ DJOSER = {
 
 # Configuration for drf-spectacular (OpenAPI/Swagger generation)
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Your API Title',  # Title of the API documentation
+    'TITLE': 'Social NEtwork APIs',  # Title of the API documentation
     'DESCRIPTION': 'Your API description',  # Description of the API
     'VERSION': '1.0.0',  # API version
     'SERVE_INCLUDE_SCHEMA': False,  # Include schema in the documentation
