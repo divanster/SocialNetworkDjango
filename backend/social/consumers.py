@@ -1,24 +1,33 @@
-# backend/social/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PostConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        if not self.scope["user"].is_authenticated:
+            await self.close()
+            return
+
+        self.user = self.scope["user"]
         self.room_group_name = 'posts'
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
         await self.accept()
+        logger.info(f'User {self.user.id} connected to posts.')
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
+        logger.info(f'User {self.user.id} disconnected from posts.')
 
     async def post_message(self, event):
         tagged_user_ids = event.get('tagged_user_ids', [])
@@ -37,6 +46,7 @@ class PostConsumer(AsyncWebsocketConsumer):
             'content': event['content'],
             'tagged_users': tagged_users,
         }))
+        logger.info(f"Post event '{event['event']}' sent to user {self.user.id}")
 
     @database_sync_to_async
     def get_user(self, user_id):

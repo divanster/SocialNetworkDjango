@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 from django.utils.html import format_html
-from .models import Post, PostImage, Tag, Rating
+from .models import Post, PostImage, Rating
 from django.contrib.auth import get_user_model
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
@@ -44,7 +44,7 @@ class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
     list_display = ['id', 'title', 'author', 'created_at', 'view_images']
     inlines = [PostImageInline]
-    list_filter = ['author', 'tags', 'created_at']
+    list_filter = ['author', 'created_at']
     search_fields = ['title', 'author__username']
 
     def view_images(self, obj):
@@ -77,9 +77,3 @@ class PostImageAdmin(admin.ModelAdmin):
         return "No Image"
 
     thumbnail.short_description = 'Preview'
-
-
-@admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name']
-    search_fields = ['name']

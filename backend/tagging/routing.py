@@ -1,6 +1,6 @@
 from django.urls import re_path
-from . import consumers
+from .consumers import TaggingConsumer
 
 websocket_urlpatterns = [
-    re_path(r'ws/app_name/(?P<param_name>\w+)/$', consumers.TaggingConsumer.as_asgi()),
+    re_path(r'^ws/tagging/(?P<item_id>[0-9a-f-]+)/$', TaggingConsumer.as_asgi()),
 ]

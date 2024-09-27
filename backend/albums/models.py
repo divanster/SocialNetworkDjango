@@ -1,6 +1,9 @@
 from django.db import models
 from core.models.base_models import BaseModel, FilePathModel
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericRelation
+
+from tagging.models import TaggedItem
 
 User = get_user_model()
 
@@ -14,6 +17,9 @@ class Album(BaseModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
+    tags = GenericRelation(TaggedItem, related_query_name='photos')
+
+
     class Meta:
         ordering = ['-created_at']
 
@@ -25,6 +31,9 @@ class Photo(FilePathModel, BaseModel):
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name='photos')
     image = models.ImageField(upload_to=album_image_file_path)
     description = models.TextField(blank=True)
+
+    tags = GenericRelation(TaggedItem, related_query_name='photos')
+
 
     def __str__(self):
         return f"Photo in {self.album.title}"

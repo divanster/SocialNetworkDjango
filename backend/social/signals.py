@@ -1,5 +1,3 @@
-# backend/social/signals.py
-
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from asgiref.sync import async_to_sync
@@ -7,7 +5,6 @@ from channels.layers import get_channel_layer
 from .models import Post
 from tagging.models import TaggedItem
 from django.contrib.contenttypes.models import ContentType
-
 
 @receiver(post_save, sender=Post)
 def post_saved(sender, instance, created, **kwargs):

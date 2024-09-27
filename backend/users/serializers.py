@@ -1,3 +1,5 @@
+# users/serializers.py
+
 from rest_framework import serializers
 from tagging.serializers import TaggedItemSerializer
 from .models import CustomUser, UserProfile
@@ -8,7 +10,6 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema_field
 from tagging.models import TaggedItem
-
 
 User = get_user_model()
 
@@ -53,14 +54,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class CustomUserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=False)
-    password = serializers.CharField(write_only=True, required=False,
-                                     validators=[validate_password])
-    confirm_password = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        validators=[validate_password],
+        style={'input_type': 'password'}
+    )
+    password2 = serializers.CharField(
+        write_only=True,
+        required=False,
+        style={'input_type': 'password'},
+        label="Confirm Password"
+    )
 
     class Meta:
         model = CustomUser
         fields = [
-            'id', 'email', 'username', 'password', 'confirm_password', 'profile'
+            'id', 'email', 'username', 'password', 'password2', 'profile'
         ]
         extra_kwargs = {
             'email': {
@@ -72,14 +82,21 @@ class CustomUserSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
+        """
+        Ensure that both passwords match.
+        """
         password = data.get('password')
-        confirm_password = data.pop('confirm_password', None)
-        if password or confirm_password:
-            if password != confirm_password:
-                raise ValidationError("Passwords do not match.")
+        password2 = data.get('password2')
+
+        if password or password2:
+            if password != password2:
+                raise ValidationError({"non_field_errors": ["Passwords do not match."]})
         return data
 
     def create(self, validated_data):
+        """
+        Create a new user instance after removing password2.
+        """
         profile_data = validated_data.pop('profile', {})
         with transaction.atomic():
             user = CustomUser.objects.create(
@@ -91,11 +108,23 @@ class CustomUserSerializer(serializers.ModelSerializer):
             user.save()
 
             if profile_data:
-                UserProfileSerializer(data=profile_data).save(user=user)
+                # Retrieve the existing profile created by signals
+                profile = user.profile
+                profile_serializer = UserProfileSerializer(
+                    profile,
+                    data=profile_data,
+                    partial=True,
+                    context={'request': self.context.get('request')}
+                )
+                profile_serializer.is_valid(raise_exception=True)
+                profile_serializer.save()
 
         return user
 
     def update(self, instance, validated_data):
+        """
+        Update user instance and associated profile.
+        """
         profile_data = validated_data.pop('profile', {})
         instance.email = validated_data.get('email', instance.email)
         instance.username = validated_data.get('username', instance.username)
@@ -105,8 +134,10 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
         if profile_data:
             profile_serializer = UserProfileSerializer(
-                instance.profile, data=profile_data, partial=True,
-                context={'request': self.context['request']}
+                instance.profile,
+                data=profile_data,
+                partial=True,
+                context={'request': self.context.get('request')}
             )
             profile_serializer.is_valid(raise_exception=True)
             profile_serializer.save()
@@ -114,6 +145,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return instance
 
     def get_serializer_context(self):
+        """
+        Ensure the request is passed in the context for nested serializers.
+        """
         context = super().get_serializer_context()
-        context.update({'request': self.context['request']})
+        context.update({'request': self.context.get('request')})
         return context

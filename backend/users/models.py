@@ -6,10 +6,13 @@ from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
-from core.models.base_models import BaseModel, UUIDModel
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericRelation
 
+# Assuming 'core.models.base_models' provides BaseModel and UUIDModel
+from core.models.base_models import BaseModel, UUIDModel
 
+# Define CustomUserManager
 class CustomUserManager(BaseUserManager):
     """
     Custom manager for handling the creation of User and Superuser.
@@ -30,7 +33,7 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, username, password=None, **extra_fields):
         """
         Creates and returns a superuser with the specified email,
-         username, and password.
+        username, and password.
         """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
@@ -43,6 +46,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, username, password, **extra_fields)
 
 
+# Define CustomUser
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """
     Custom user model that uses email instead of username for authentication.
@@ -63,6 +67,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
+# After defining CustomUser, import TaggedItem to prevent circular imports
+from tagging.models import TaggedItem
+
+
 def user_profile_picture_file_path(instance, filename):
     """
     Generates a file path for a new user profile picture.
@@ -74,6 +82,7 @@ def user_profile_picture_file_path(instance, filename):
     return os.path.join('uploads/profile_pictures/', filename)
 
 
+# Define UserProfile
 class UserProfile(UUIDModel, BaseModel):  # Inherit UUIDModel and BaseModel
     """
     UserProfile model that stores additional information about the user.
@@ -105,8 +114,7 @@ class UserProfile(UUIDModel, BaseModel):  # Inherit UUIDModel and BaseModel
     # ImageField to store profile picture, using the file path function
     profile_picture = models.ImageField(upload_to=user_profile_picture_file_path,
                                         null=True, blank=True,
-                                        default='static/default_images'
-                                                '/profile_picture.png')
+                                        default='static/default_images/profile_picture.png')
 
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
@@ -115,6 +123,7 @@ class UserProfile(UUIDModel, BaseModel):  # Inherit UUIDModel and BaseModel
     relationship_status = models.CharField(max_length=1,
                                            choices=RELATIONSHIP_STATUS_CHOICES,
                                            default='S')
+    tags = GenericRelation(TaggedItem, related_query_name='userprofiles')
 
     def __str__(self):
         return f'{self.user.username} Profile'

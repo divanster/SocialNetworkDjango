@@ -1,17 +1,18 @@
+# users/views.py
+
 import logging
-from uuid import UUID
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
 
-# Initialize logger
+# Initialize logger once at the top
 logger = logging.getLogger('users')
 
 
@@ -22,14 +23,18 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = 'id'
-    lookup_url_kwarg = 'id'
+    lookup_field = 'pk'  # Changed from 'id' to 'pk'
+    lookup_url_kwarg = 'pk'  # Changed from 'id' to 'pk'
 
     @extend_schema(
         parameters=[
-            OpenApiParameter(name='id', description='UUID of the user profile',
-                             required=True,
-                             type=OpenApiTypes.UUID, location=OpenApiParameter.PATH)
+            OpenApiParameter(
+                name='pk',
+                description='UUID of the user profile',
+                required=True,
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH
+            )
         ]
     )
     def retrieve(self, request, *args, **kwargs):
@@ -52,13 +57,18 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = 'id'
-    lookup_url_kwarg = 'id'
+    lookup_field = 'pk'  # Changed from 'id' to 'pk'
+    lookup_url_kwarg = 'pk'  # Changed from 'id' to 'pk'
 
     @extend_schema(
         parameters=[
-            OpenApiParameter(name='id', description='UUID of the user', required=True,
-                             type=OpenApiTypes.UUID, location=OpenApiParameter.PATH)
+            OpenApiParameter(
+                name='pk',
+                description='UUID of the user',
+                required=True,
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.PATH
+            )
         ]
     )
     def retrieve(self, request, *args, **kwargs):
@@ -67,18 +77,24 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         """
         return super().retrieve(request, *args, **kwargs)
 
-    @action(detail=False, methods=['get', 'put', 'patch'],
-            permission_classes=[IsAuthenticated])
+    @action(
+        detail=False,
+        methods=['get', 'put', 'patch'],
+        permission_classes=[IsAuthenticated]
+    )
     def me(self, request):
         """
         Handles the `me` endpoint for the authenticated user.
         Supports `GET`, `PUT`, and `PATCH` methods.
         """
         if request.method in ['PUT', 'PATCH']:
-            # Check if it's a partial update
+            # Determine if the update is partial
             partial = request.method == 'PATCH'
-            serializer = self.get_serializer(request.user, data=request.data,
-                                             partial=partial)
+            serializer = self.get_serializer(
+                request.user,
+                data=request.data,
+                partial=partial
+            )
             serializer.is_valid(raise_exception=True)
             serializer.save()
         else:
@@ -86,13 +102,14 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
+
 class CustomUserSignupView(CreateAPIView):
     """
     API view for signing up new users.
     """
     serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def create(self, request, *args, **kwargs):
         """
@@ -108,7 +125,13 @@ class CustomUserSignupView(CreateAPIView):
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Exception as e:
                 logger.error(f"Error during signup: {str(e)}")
-                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"detail": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         else:
             logger.error(f"Signup validation failed: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )

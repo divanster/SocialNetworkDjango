@@ -4,6 +4,8 @@ from django.db import models
 from core.models.base_models import BaseModel
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.fields import GenericRelation
+from tagging.models import TaggedItem  # Import TaggedItem for generic relations
 
 User = get_user_model()
 
@@ -14,18 +16,11 @@ def post_image_file_path(instance, filename):
     return os.path.join('uploads/post/', filename)
 
 
-class Tag(BaseModel):
-    name = models.CharField(max_length=255)
-
-    def __str__(self):
-        return self.name
-
-
 class Post(BaseModel):
     title = models.CharField(max_length=255)
     content = models.TextField()
-    tags = models.ManyToManyField(Tag, related_name='posts', blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
+    tags = GenericRelation(TaggedItem, related_query_name='posts')  # Add generic relation for tags
 
     class Meta:
         ordering = ['-created_at']

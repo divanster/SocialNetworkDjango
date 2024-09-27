@@ -4,8 +4,11 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
                                    SpectacularSwaggerView)
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, \
-    TokenBlacklistView
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenBlacklistView,
+)
 from django.views.generic import RedirectView
 from users.views import CustomUserSignupView
 from core.views import health_check, csp_report  # Import health_check
@@ -17,7 +20,9 @@ urlpatterns = [
     path('csp-violation-report/', csp_report, name='csp_report'),
 
     # API URLs
-    path('api/auth/signup/', CustomUserSignupView.as_view(), name='user-signup'),
+    # Remove the redundant 'api/auth/signup/' path to avoid conflicts
+    # path('api/auth/signup/', CustomUserSignupView.as_view(), name='user-signup'),
+
     path('api/comments/', include(('comments.urls', 'comments'), namespace='comments')),
     path('api/follows/', include(('follows.urls', 'follows'), namespace='follows')),
     path('api/reactions/', include(('reactions.urls', 'reactions'), namespace='reactions')),
