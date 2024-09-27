@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:13-alpine
@@ -12,9 +14,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - backend_network
 
   redis:
     image: redis:6-alpine
+    networks:
+      - backend_network
 
   web:
     build:
@@ -45,6 +51,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - backend_network
 
   celery-worker:
     build:
@@ -58,6 +66,8 @@ services:
       - redis
     env_file:
       - ./backend/.env
+    networks:
+      - backend_network
 
   celery-beat:
     build:
@@ -71,6 +81,8 @@ services:
       - redis
     env_file:
       - ./backend/.env
+    networks:
+      - backend_network
 
   worker:
     build:
@@ -85,6 +97,8 @@ services:
       - redis
     env_file:
       - ./backend/.env
+    networks:
+      - backend_network
 
   frontend:
     build:
@@ -100,6 +114,8 @@ services:
       - "3000:3000"
     env_file:
       - ./frontend/.env
+    networks:
+      - frontend_network
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -108,6 +124,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    networks:
+      - kafka_network
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -123,6 +141,13 @@ services:
     ports:
       - "9092:9092"
       - "9093:9093"
+    networks:
+      - kafka_network
 
 volumes:
   postgres_data:
+
+networks:
+  backend_network:
+  frontend_network:
+  kafka_network:

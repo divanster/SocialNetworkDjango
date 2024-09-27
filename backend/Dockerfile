@@ -1,6 +1,5 @@
 # Use a Debian-based image for better compatibility with confluent-kafka
 FROM python:3.10-slim AS base
-
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH="/app:/app/backend" \
@@ -34,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxmlsec1-openssl \
     postgresql-client \
     redis-server && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*  # Cleans up to reduce image size
 
 # Upgrade pip
 RUN pip install --upgrade pip
