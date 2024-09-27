@@ -8,6 +8,7 @@ from tagging.models import TaggedItem
 
 User = get_user_model()
 
+
 class UserProfileSerializerTest(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
@@ -74,6 +75,7 @@ class UserProfileSerializerTest(TestCase):
             object_id=self.profile.id
         )
         self.assertTrue(tagged_items.exists())
+
 
 class CustomUserSerializerTest(TestCase):
     def setUp(self):

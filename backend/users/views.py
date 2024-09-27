@@ -75,15 +75,16 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         Supports `GET`, `PUT`, and `PATCH` methods.
         """
         if request.method in ['PUT', 'PATCH']:
+            # Check if it's a partial update
+            partial = request.method == 'PATCH'
             serializer = self.get_serializer(request.user, data=request.data,
-                                             partial=True)
+                                             partial=partial)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data)
         else:
             serializer = self.get_serializer(request.user)
-            return Response(serializer.data)
 
+        return Response(serializer.data)
 
 class CustomUserSignupView(CreateAPIView):
     """

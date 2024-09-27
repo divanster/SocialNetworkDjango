@@ -16,13 +16,15 @@ class CustomUserViewSetTest(APITestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_get_current_user(self):
-        url = reverse('customuser-me')
+        # Use the correct name and namespace 'users:customuser-me'
+        url = reverse('users:customuser-me')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['email'], 'user@example.com')
 
     def test_update_current_user(self):
-        url = reverse('customuser-me')
+        # Use the correct name and namespace 'users:customuser-me'
+        url = reverse('users:customuser-me')
         data = {'email': 'newemail@example.com'}
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, 200)
@@ -30,7 +32,8 @@ class CustomUserViewSetTest(APITestCase):
         self.assertEqual(self.user.email, 'newemail@example.com')
 
     def test_retrieve_user(self):
-        url = reverse('customuser-detail', kwargs={'id': self.user.id})
+        # Use the correct name and namespace 'users:customuser-detail'
+        url = reverse('users:customuser-detail', kwargs={'pk': self.user.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['email'], 'user@example.com')
@@ -47,13 +50,15 @@ class UserProfileViewSetTest(APITestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_retrieve_profile(self):
-        url = reverse('userprofile-detail', kwargs={'id': self.profile.id})
+        # Use the correct name and namespace 'users:userprofile-detail'
+        url = reverse('users:userprofile-detail', kwargs={'pk': self.profile.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['first_name'], '')
 
     def test_update_profile(self):
-        url = reverse('userprofile-detail', kwargs={'id': self.profile.id})
+        # Use the correct name and namespace 'users:userprofile-detail'
+        url = reverse('users:userprofile-detail', kwargs={'pk': self.profile.id})
         data = {'first_name': 'UpdatedName'}
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, 200)
@@ -65,7 +70,8 @@ class CustomUserSignupViewTest(APITestCase):
         self.client = APIClient()
 
     def test_signup(self):
-        url = reverse('customuser-signup')
+        # Use the correct name and namespace 'users:user-signup'
+        url = reverse('users:user-signup')
         data = {
             'email': 'signupuser@example.com',
             'username': 'signupuser',
@@ -82,7 +88,8 @@ class CustomUserSignupViewTest(APITestCase):
         self.assertTrue(User.objects.filter(email='signupuser@example.com').exists())
 
     def test_signup_password_mismatch(self):
-        url = reverse('customuser-signup')
+        # Use the correct name and namespace 'users:user-signup'
+        url = reverse('users:user-signup')
         data = {
             'email': 'user@example.com',
             'username': 'user',

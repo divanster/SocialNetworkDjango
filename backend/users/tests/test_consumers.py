@@ -87,7 +87,7 @@ class UserConsumerTests(TransactionTestCase):
         response = await communicator.receive_json_from()
         self.assertEqual(response['error'], 'Invalid JSON format')
 
-        await communicator.disconnect()
+        await communicator.send_to('Invalid JSON')
 
     async def test_handle_unknown_event(self):
         communicator = WebsocketCommunicator(application, "/ws/users/")

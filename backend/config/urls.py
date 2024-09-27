@@ -18,19 +18,19 @@ urlpatterns = [
 
     # API URLs
     path('api/auth/signup/', CustomUserSignupView.as_view(), name='user-signup'),
-    path('api/comments/', include('comments.urls')),
-    path('api/follows/', include('follows.urls')),
-    path('api/reactions/', include('reactions.urls')),
-    path('api/messenger/', include('messenger.urls')),
-    path('api/social/', include('social.urls')),
-    path('api/users/', include('users.urls')),
-    path('api/notifications/', include('notifications.urls')),
-    path('api/albums/', include('albums.urls')),
-    path('api/tagging/', include('tagging.urls')),
-    path('api/friends/', include('friends.urls')),
-    path('api/newsfeed/', include('newsfeed.urls')),
-    path('api/pages/', include('pages.urls')),
-    path('api/stories/', include('stories.urls')),
+    path('api/comments/', include(('comments.urls', 'comments'), namespace='comments')),
+    path('api/follows/', include(('follows.urls', 'follows'), namespace='follows')),
+    path('api/reactions/', include(('reactions.urls', 'reactions'), namespace='reactions')),
+    path('api/messenger/', include(('messenger.urls', 'messenger'), namespace='messenger')),
+    path('api/social/', include(('social.urls', 'social'), namespace='social')),
+    path('api/users/', include(('users.urls', 'users'), namespace='users')),
+    path('api/notifications/', include(('notifications.urls', 'notifications'), namespace='notifications')),
+    path('api/albums/', include(('albums.urls', 'albums'), namespace='albums')),
+    path('api/tagging/', include(('tagging.urls', 'tagging'), namespace='tagging')),
+    path('api/friends/', include(('friends.urls', 'friends'), namespace='friends')),
+    path('api/newsfeed/', include(('newsfeed.urls', 'newsfeed'), namespace='newsfeed')),
+    path('api/pages/', include(('pages.urls', 'pages'), namespace='pages')),
+    path('api/stories/', include(('stories.urls', 'stories'), namespace='stories')),
 
     # Swagger and API schema documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -47,6 +47,7 @@ urlpatterns = [
     path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
 ]
 
+# Add debug toolbar and static/media URLs for development
 if settings.DEBUG:
     import debug_toolbar
     urlpatterns += [
