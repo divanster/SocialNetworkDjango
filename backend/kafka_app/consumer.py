@@ -1,5 +1,6 @@
-# backend/kafka/consumer.py
-from kafka import KafkaConsumer
+# backend/kafka_app/consumer.py
+
+from kafka import KafkaConsumer  # Importing from external 'kafka' package
 import json
 
 class KafkaConsumerClient:

@@ -1,12 +1,13 @@
-# backend/kafka/producer.py
-from kafka import KafkaProducer
+# backend/kafka_app/producer.py
+
+from kafka import KafkaProducer  # Importing from external 'kafka' package
 import json
 
 
 class KafkaProducerClient:
     def __init__(self):
         self.producer = KafkaProducer(
-            bootstrap_servers=['localhost:9092'],  # Adjust to your Kafka server config
+            bootstrap_servers=['localhost:9092'],
             value_serializer=lambda v: json.dumps(v).encode('utf-8')
         )
 

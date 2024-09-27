@@ -58,6 +58,6 @@ celery==5.2.7  # Downgraded from 5.4.0
 kombu==5.4.0
 vine==5.1.0
 sentry-sdk==2.14.0
-confluent-kafka==1.9.0
+confluent-kafka
 kafka-python==2.0.2
 django-csp==3.8

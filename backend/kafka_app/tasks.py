@@ -1,6 +1,7 @@
-# backend/kafka/tasks.py
+# backend/kafka_app/tasks.py
+
 from celery import shared_task
-from .producer import KafkaProducerClient
+from kafka_app.producer import KafkaProducerClient  # Updated import path
 
 
 @shared_task

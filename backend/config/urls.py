@@ -8,10 +8,15 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
     TokenBlacklistView
 from django.views.generic import RedirectView
 from users.views import CustomUserSignupView
-from core.views import csp_report
+from core.views import health_check, csp_report  # Import health_check
 
 urlpatterns = [
+    # Non-API URLs
     path('admin/', admin.site.urls),
+    path('health/', health_check, name='health_check'),  # Health check endpoint
+    path('csp-violation-report/', csp_report, name='csp_report'),
+
+    # API URLs
     path('api/auth/signup/', CustomUserSignupView.as_view(), name='user-signup'),
     path('api/comments/', include('comments.urls')),
     path('api/follows/', include('follows.urls')),
@@ -26,6 +31,8 @@ urlpatterns = [
     path('api/newsfeed/', include('newsfeed.urls')),
     path('api/pages/', include('pages.urls')),
     path('api/stories/', include('stories.urls')),
+
+    # Swagger and API schema documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'),
          name='swagger-ui'),
@@ -33,17 +40,16 @@ urlpatterns = [
          name='redoc'),
     path('api/docs/', RedirectView.as_view(url='/api/schema/swagger-ui/',
                                            permanent=True)),
+
+    # JWT Token endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
-    path('csp-violation-report/', csp_report, name='csp_report')
 ]
 
 if settings.DEBUG:
     import debug_toolbar
-
-    urlpatterns = [
-                      path('__debug__/', include(debug_toolbar.urls)),
-                  ] + urlpatterns
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += [
+        path('__debug__/', include(debug_toolbar.urls)),
+    ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
+      + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

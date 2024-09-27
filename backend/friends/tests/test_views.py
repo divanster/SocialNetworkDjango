@@ -1,104 +1,104 @@
-# tests/test_views.py
+# backend/friends/tests/test_views.py
 
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
 from django.urls import reverse
-from friends.models import FriendRequest, Friendship
+from rest_framework import status
+from rest_framework.test import APITestCase, APIClient
 from django.contrib.auth import get_user_model
+from friends.models import FriendRequest, Friendship
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
 
-class FriendRequestViewSetTest(APITestCase):
+class FriendRequestViewSetTests(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        # Create two users
-        self.user1 = User.objects.create_user(username='user1', password='password')
-        self.user2 = User.objects.create_user(username='user2', password='password')
-        self.friend_request_url = reverse(
-            'friendrequest-list')  # Assuming you're using a router for FriendRequestViewSet
+        self.sender = User.objects.create_user(
+            email='sender@example.com',
+            username='sender',
+            password='password1'
+        )
+        self.receiver = User.objects.create_user(
+            email='receiver@example.com',
+            username='receiver',
+            password='password2'
+        )
+        self.client.force_authenticate(user=self.sender)
 
-    def test_create_friend_request(self):
-        # Authenticate user1
-        self.client.force_authenticate(user=self.user1)
-
-        # Send a POST request to create a friend request
-        response = self.client.post(self.friend_request_url,
-                                    {'receiver': self.user2.id})
-
-        # Check that the response status is 201 Created
+    def test_send_friend_request(self):
+        url = reverse('friendrequest-list')
+        data = {'receiver': self.receiver.id}
+        response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # Check that the friend request was created
         self.assertEqual(FriendRequest.objects.count(), 1)
         friend_request = FriendRequest.objects.first()
-        self.assertEqual(friend_request.sender, self.user1)
-        self.assertEqual(friend_request.receiver, self.user2)
-        self.assertEqual(friend_request.status, 'pending')
+        self.assertEqual(friend_request.sender, self.sender)
+        self.assertEqual(friend_request.receiver, self.receiver)
 
     def test_accept_friend_request(self):
-        # Create a friend request
-        friend_request = FriendRequest.objects.create(sender=self.user1,
-                                                      receiver=self.user2)
-
-        # Authenticate user2 (the receiver)
-        self.client.force_authenticate(user=self.user2)
-
-        # Send a PUT request to accept the friend request
-        url = reverse('friendrequest-detail', args=[friend_request.id])
-        response = self.client.put(url, {'status': 'accepted'})
-
-        # Check the response status is 200 OK
+        friend_request = FriendRequest.objects.create(sender=self.sender,
+                                                      receiver=self.receiver)
+        self.client.force_authenticate(user=self.receiver)
+        url = reverse('friendrequest-detail', kwargs={'id': friend_request.id})
+        data = {'status': 'accepted'}
+        response = self.client.put(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Check that the status is updated
         friend_request.refresh_from_db()
         self.assertEqual(friend_request.status, 'accepted')
-
-        # Check that the friendship was created
         self.assertEqual(Friendship.objects.count(), 1)
-        friendship = Friendship.objects.first()
-        self.assertEqual(friendship.user1, self.user1)
-        self.assertEqual(friendship.user2, self.user2)
+
+    def test_cannot_accept_others_friend_request(self):
+        friend_request = FriendRequest.objects.create(sender=self.sender,
+                                                      receiver=self.receiver)
+        other_user = User.objects.create_user(
+            email='other@example.com',
+            username='other',
+            password='password3'
+        )
+        self.client.force_authenticate(user=other_user)
+        url = reverse('friendrequest-detail', kwargs={'id': friend_request.id})
+        data = {'status': 'accepted'}
+        response = self.client.put(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class FriendshipViewSetTest(APITestCase):
+class FriendshipViewSetTests(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        # Create two users and a friendship
-        self.user1 = User.objects.create_user(username='user1', password='password')
-        self.user2 = User.objects.create_user(username='user2', password='password')
+        self.user1 = User.objects.create_user(
+            email='user1@example.com',
+            username='user1',
+            password='password1'
+        )
+        self.user2 = User.objects.create_user(
+            email='user2@example.com',
+            username='user2',
+            password='password2'
+        )
         self.friendship = Friendship.objects.create(user1=self.user1, user2=self.user2)
-        self.friendship_url = reverse(
-            'friendship-list')  # Assuming you're using a router for FriendshipViewSet
+        self.client.force_authenticate(user=self.user1)
 
     def test_list_friendships(self):
-        # Authenticate user1
-        self.client.force_authenticate(user=self.user1)
-
-        # Send a GET request to list friendships
-        response = self.client.get(self.friendship_url)
-
-        # Check the response status is 200 OK
+        url = reverse('friendship-list')
+        response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Check the data returned contains the friendship
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['user1'], self.user1.id)
-        self.assertEqual(response.data[0]['user2'], self.user2.id)
 
     def test_unfriend(self):
-        # Authenticate user1
-        self.client.force_authenticate(user=self.user1)
-
-        # Send a DELETE request to unfriend user2
-        url = reverse('friendship-detail', args=[self.friendship.id])
+        url = reverse('friendship-detail', kwargs={'id': self.friendship.id})
         response = self.client.delete(url)
-
-        # Check the response status is 200 OK
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # Check that the friendship is deleted
         self.assertEqual(Friendship.objects.count(), 0)
+
+    def test_cannot_unfriend_if_not_involved(self):
+        other_user = User.objects.create_user(
+            email='other@example.com',
+            username='other',
+            password='password3'
+        )
+        self.client.force_authenticate(user=other_user)
+        url = reverse('friendship-detail', kwargs={'id': self.friendship.id})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

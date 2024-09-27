@@ -1,32 +1,5 @@
-# First stage: Build librdkafka
-FROM alpine:3.18 AS builder
-
-# Install build dependencies
-RUN apk add --no-cache --virtual .build-deps \
-    curl \
-    gcc \
-    g++ \
-    make \
-    libc-dev \
-    linux-headers \
-    build-base \
-    bash && \
-    # Set librdkafka version
-    export RDKAFKA_VERSION=1.9.0 && \
-    # Build librdkafka
-    curl -L "https://github.com/edenhill/librdkafka/archive/refs/tags/v${RDKAFKA_VERSION}.tar.gz" -o librdkafka.tar.gz && \
-    tar -xzf librdkafka.tar.gz && \
-    cd librdkafka-${RDKAFKA_VERSION} && \
-    ./configure && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf librdkafka-${RDKAFKA_VERSION} librdkafka.tar.gz && \
-    # Remove build dependencies
-    apk del .build-deps
-
-# Second stage: Build the final image
-FROM python:3.10-alpine3.18
+# Use a Debian-based image for better compatibility with confluent-kafka
+FROM python:3.10-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -36,26 +9,32 @@ ENV PYTHONUNBUFFERED=1 \
 # Set the working directory
 WORKDIR /app
 
-# Install runtime dependencies and build tools needed for compiling Python packages
-RUN apk add --no-cache \
-    postgresql-client \
-    postgresql-dev \
-    jpeg-dev \
-    zlib-dev \
-    libffi-dev \
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libc-dev \
+    make \
+    libssl-dev \
+    libsasl2-dev \
+    libpq-dev \
+    libjpeg-dev \
+    zlib1g-dev \
     graphviz \
-    graphviz-dev \
-    fontconfig \
-    redis \
-    ttf-dejavu \
-    openssl-dev \
+    libgraphviz-dev \
+    curl \
     bash \
-    musl-dev \
-    gcc
-
-# Copy librdkafka from the builder stage
-COPY --from=builder /usr/local/lib/librdkafka* /usr/local/lib/
-COPY --from=builder /usr/local/include/librdkafka /usr/local/include/librdkafka
+    libffi-dev \
+    libfreetype6-dev \
+    libfontconfig1 \
+    libxrender1 \
+    libxml2 \
+    libxslt-dev \
+    libxmlsec1-dev \
+    libxmlsec1-openssl \
+    postgresql-client \
+    redis-server && \
+    rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
 RUN pip install --upgrade pip
@@ -73,7 +52,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
     rm -rf /tmp
 
 # Create non-root user and set permissions
-RUN adduser --disabled-password --no-create-home django-user && \
+RUN useradd -m django-user && \
     mkdir -p /vol/web/media /vol/web/static /app/static /app/staticfiles /app/backend/core && \
     chown -R django-user:django-user /vol/web /app/static /app/staticfiles /app/backend/core
 

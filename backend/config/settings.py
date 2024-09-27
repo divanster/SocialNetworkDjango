@@ -128,7 +128,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Database configuration using PostgreSQL, with credentials loaded from environment variables
+# Database configuration using PostgreSQL, with credentials loaded from environment
+# variables
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',  # PostgreSQL database backend
@@ -148,7 +149,8 @@ DATABASES = {
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+                '.UserAttributeSimilarityValidator',
         # Prevents using similar attributes
     },
     {
@@ -189,10 +191,10 @@ AUTH_USER_MODEL = 'users.CustomUser'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    # Use JWT authentication
+        # Use JWT authentication
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',  # Allow any user by default
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     # OpenAPI schema generation
@@ -316,7 +318,7 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True  # Preload HSTS
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'  # Referrer policy
     SECURE_PROXY_SSL_HEADER = (
-    'HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
+        'HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
 
 # Configuration for Django Channels using Redis as the backend
 CHANNEL_LAYERS = {
@@ -431,9 +433,12 @@ sentry_sdk.init(
 
 # CSP settings
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_SCRIPT_SRC = (
+"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = (
+"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = (
+"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)

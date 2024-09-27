@@ -1,4 +1,4 @@
-# backend/users/base_models.py
+# backend/users/models.py
 
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
@@ -61,20 +61,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
-
-    def get_friends(self):
-        return User.objects.filter(
-            models.Q(friendships__user2=self) | models.Q(friends__user1=self)
-        ).distinct()
-
-    def get_friends_of_friends(self):
-        friends = self.get_friends()
-        friends_ids = friends.values_list('id', flat=True)
-        friends_of_friends = User.objects.filter(
-            models.Q(friendships__user2__in=friends_ids) | models.Q(
-                friends__user1__in=friends_ids)
-        ).distinct().exclude(id=self.id)  # Exclude self to prevent circular tagging
-        return friends_of_friends
 
 
 def user_profile_picture_file_path(instance, filename):
