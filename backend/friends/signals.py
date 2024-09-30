@@ -4,12 +4,8 @@ from django.dispatch import receiver
 from .models import FriendRequest, Friendship
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from django.core.mail import send_mail
-from django.core.exceptions import ValidationError
+from kafka_app.producer import KafkaProducerClient  # Import Kafka producer client
 import logging
-
-from .tasks import send_email_friend_request
-
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -30,7 +26,10 @@ def send_real_time_notification(user_id, message, notification_type):
         logger.error(f"Error sending real-time notification: {e}")
 
 
-# Signal handler for FriendRequest creation and updates
+# Initialize Kafka Producer Client
+producer = KafkaProducerClient()
+
+
 @receiver(post_save, sender=FriendRequest)
 def friend_request_saved(sender, instance, created, **kwargs):
     try:
@@ -43,9 +42,16 @@ def friend_request_saved(sender, instance, created, **kwargs):
             )
             logger.info(f'FriendRequest created: {instance}')
 
-            # Send email notification to the receiver asynchronously using Celery
-            send_email_friend_request.delay(instance.sender.username,
-                                            instance.receiver.email)
+            # Send Kafka event for a new friend request
+            message = {
+                "friend_request_id": instance.id,
+                "sender_id": instance.sender.id,
+                "receiver_id": instance.receiver.id,
+                "status": instance.status,
+                "created_at": str(instance.created_at),
+            }
+            producer.send_message('FRIEND_EVENTS', message)
+            logger.info(f"Sent Kafka message for new friend request: {message}")
 
         # Automatically create a friendship if the friend request is accepted
         if instance.status == 'accepted':
@@ -56,17 +62,23 @@ def friend_request_saved(sender, instance, created, **kwargs):
             if created:
                 logger.info(
                     f'Friendship created automatically after friend request acceptance: {friendship}')
-    except ValidationError as e:
-        logger.error(f'Error creating friendship: {e}')
+
+                # Send Kafka event for the accepted friendship
+                message = {
+                    "friendship_id": friendship.id,
+                    "user1_id": friendship.user1.id,
+                    "user2_id": friendship.user2.id,
+                    "created_at": str(friendship.created_at),
+                }
+                producer.send_message('FRIEND_EVENTS', message)
+                logger.info(f"Sent Kafka message for new friendship: {message}")
     except Exception as ex:
         logger.error(f"Unexpected error in friend_request_saved: {ex}")
 
 
-# Signal handler for FriendRequest deletion
 @receiver(post_delete, sender=FriendRequest)
 def friend_request_deleted(sender, instance, **kwargs):
     try:
-        # Notify both the sender and receiver in real-time that the friend request was deleted
         send_real_time_notification(
             instance.receiver.id,
             f"Friend request from {instance.sender.username} has been deleted.",
@@ -77,17 +89,22 @@ def friend_request_deleted(sender, instance, **kwargs):
             f"Your friend request to {instance.receiver.username} has been deleted.",
             'friend_request_notification'
         )
-        logger.info(f'FriendRequest deleted: {instance}')
+
+        # Send Kafka event for the deleted friend request
+        message = {
+            "friend_request_id": instance.id,
+            "action": "deleted"
+        }
+        producer.send_message('FRIEND_EVENTS', message)
+        logger.info(f"Sent Kafka message for deleted friend request: {message}")
     except Exception as e:
         logger.error(f"Error deleting FriendRequest: {e}")
 
 
-# Signal handler for Friendship creation
 @receiver(post_save, sender=Friendship)
 def friendship_saved(sender, instance, created, **kwargs):
     if created:
         try:
-            # Notify both users in real-time that the friendship was created
             send_real_time_notification(
                 instance.user1.id,
                 f"You are now friends with {instance.user2.username}.",
@@ -98,16 +115,23 @@ def friendship_saved(sender, instance, created, **kwargs):
                 f"You are now friends with {instance.user1.username}.",
                 'friendship_notification'
             )
-            logger.info(f'Friendship created: {instance}')
+
+            # Send Kafka event for the new friendship
+            message = {
+                "friendship_id": instance.id,
+                "user1_id": instance.user1.id,
+                "user2_id": instance.user2.id,
+                "created_at": str(instance.created_at),
+            }
+            producer.send_message('FRIEND_EVENTS', message)
+            logger.info(f"Sent Kafka message for new friendship: {message}")
         except Exception as e:
             logger.error(f"Error creating Friendship: {e}")
 
 
-# Signal handler for Friendship deletion
 @receiver(post_delete, sender=Friendship)
 def friendship_deleted(sender, instance, **kwargs):
     try:
-        # Notify both users in real-time that the friendship was deleted
         send_real_time_notification(
             instance.user1.id,
             f"Your friendship with {instance.user2.username} has been removed.",
@@ -118,6 +142,13 @@ def friendship_deleted(sender, instance, **kwargs):
             f"Your friendship with {instance.user1.username} has been removed.",
             'friendship_notification'
         )
-        logger.info(f'Friendship deleted: {instance}')
+
+        # Send Kafka event for the deleted friendship
+        message = {
+            "friendship_id": instance.id,
+            "action": "deleted"
+        }
+        producer.send_message('FRIEND_EVENTS', message)
+        logger.info(f"Sent Kafka message for deleted friendship: {message}")
     except Exception as e:
         logger.error(f"Error deleting Friendship: {e}")

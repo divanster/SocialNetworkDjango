@@ -1,24 +1,31 @@
+# albums/tasks.py
 from celery import shared_task
+from kafka_app.consumer import KafkaConsumerClient  # Import Kafka Consumer
+import logging
 
-from config.celery import app
-from .models import Album
-from celery.schedules import crontab
-
+logger = logging.getLogger(__name__)
 
 @shared_task
 def process_new_album(album_id):
-    # Simulate post-creation processing, such as sending notifications
-    try:
-        album = Album.objects.get(id=album_id)
-        # Add background logic here, e.g., send notifications
-        print(f'Processing album: {album.title}')
-    except Album.DoesNotExist:
-        print(f'Album with id {album_id} does not exist')
+    # Simulate post-creation processing
+    print(f'Processing album with ID: {album_id}')
 
-    # scheduled update of the album statistics every night
-    app.conf.beat_schedule = {
-        'daily-album-update': {
-            'task': 'albums.tasks.daily_album_statistics_update',
-            'schedule': crontab(hour=0, minute=0),  # Runs every day at midnight
-        },
-    }
+@shared_task
+def consume_album_events():
+    consumer = KafkaConsumerClient('ALBUM_EVENTS')  # Adjust if ALBUM_EVENTS is the correct topic
+
+    for message in consumer.consume_messages():
+        try:
+            event_type = message.get('event')
+            album_id = message.get('album')
+            title = message.get('title')
+
+            if event_type == 'created':
+                logger.info(f"Processing 'created' event for Album ID: {album_id} with title: {title}")
+                # Add logic here to handle album creation if needed
+
+            elif event_type == 'deleted':
+                logger.info(f"Processing 'deleted' event for Album ID: {album_id}")
+                # Add logic here to handle album deletion if needed
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")

@@ -1,16 +1,25 @@
-# backend/friends/tasks.py
 from celery import shared_task
-from django.core.mail import send_mail
+from kafka_app.consumer import KafkaConsumerClient
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
-def send_email_friend_request(sender_username, receiver_email):
-    try:
-        send_mail(
-            'New Friend Request',
-            f'You have received a new friend request from {sender_username}.',
-            'from@example.com',
-            [receiver_email]
-        )
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+def consume_friend_events():
+    consumer = KafkaConsumerClient('FRIEND_EVENTS')
+    for message in consumer.consume_messages():
+        try:
+            event_type = message.get('event')
+            if event_type == 'created':
+                # Process creation logic
+                logger.info(
+                    f"Processed friend creation event for Friend ID: {message.get('friend_id')}")
+            elif event_type == 'deleted':
+                # Process deletion logic
+                logger.info(
+                    f"Processed friend deletion event for Friend ID: {message.get('friend_id')}")
+            else:
+                logger.info(f"Received unknown friend event: {message}")
+        except Exception as e:
+            logger.error(f"Error processing friend event: {e}")

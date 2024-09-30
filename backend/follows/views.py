@@ -2,6 +2,10 @@
 from rest_framework import viewsets, permissions
 from .models import Follow
 from .serializers import FollowSerializer
+from kafka_app.producer import KafkaProducerClient
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FollowViewSet(viewsets.ModelViewSet):
@@ -10,4 +14,35 @@ class FollowViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(follower=self.request.user)
+        instance = serializer.save(follower=self.request.user)
+
+        # Send Kafka event for a new follow
+        producer = KafkaProducerClient()
+        message = {
+            "follow_id": instance.id,
+            "follower_id": instance.follower.id,
+            "following_id": instance.following.id,
+            "created_at": str(instance.created_at),
+        }
+        try:
+            producer.send_message('FOLLOW_EVENTS', message)
+            logger.info(f"Sent Kafka message for new follow: {message}")
+        except Exception as e:
+            logger.error(f"Error sending Kafka message: {e}")
+
+    def perform_destroy(self, instance):
+        # Send Kafka event for a deleted follow
+        producer = KafkaProducerClient()
+        message = {
+            "follow_id": instance.id,
+            "follower_id": instance.follower.id,
+            "following_id": instance.following.id,
+            "action": "deleted"
+        }
+        try:
+            producer.send_message('FOLLOW_EVENTS', message)
+            logger.info(f"Sent Kafka message for deleted follow: {message}")
+        except Exception as e:
+            logger.error(f"Error sending Kafka message: {e}")
+
+        instance.delete()

@@ -1,6 +1,7 @@
-# backend/comments/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from asgiref.sync import async_to_sync
+from kafka_app.consumer import KafkaConsumerClient
 
 
 class CommentConsumer(AsyncWebsocketConsumer):
@@ -11,6 +12,11 @@ class CommentConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         await self.accept()
+
+        # Consume Kafka messages on WebSocket connection
+        consumer = KafkaConsumerClient('COMMENT_EVENTS')
+        for message in consumer.consume_messages():
+            await self.send(text_data=json.dumps(message))
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(

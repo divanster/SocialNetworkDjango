@@ -1,15 +1,33 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 from .models import Comment
 from .serializers import CommentSerializer
-from .tasks import process_new_comment  # Import the Celery task
+from kafka_app.producer import KafkaProducerClient
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        comment = serializer.save(user=self.request.user)
-        # Trigger the Celery task after the comment is created
-        process_new_comment.delay(comment.id)  # Execute the task asynchronously
+        instance = serializer.save()
+        # Send Kafka event
+        producer = KafkaProducerClient()
+        message = {
+            "comment_id": instance.id,
+            "content": instance.content,
+            "user_id": instance.user_id,
+            "post_id": instance.post_id,
+            "created_at": str(instance.created_at),
+        }
+        producer.send_message('COMMENT_EVENTS', message)
+
+    def perform_destroy(self, instance):
+        # Send Kafka event
+        producer = KafkaProducerClient()
+        message = {
+            "comment_id": instance.id,
+            "action": "deleted"
+        }
+        producer.send_message('COMMENT_EVENTS', message)
+        instance.delete()

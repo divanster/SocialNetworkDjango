@@ -1,17 +1,19 @@
-# backend/albums/signals.py
+# albums/signals.py
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from .models import Album
 from tagging.models import TaggedItem
 from django.contrib.contenttypes.models import ContentType
+from kafka_app.producer import KafkaProducerClient  # Import Kafka Producer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=Album)
 def album_saved(sender, instance, created, **kwargs):
-    channel_layer = get_channel_layer()
+    producer = KafkaProducerClient()
     event_type = 'created' if created else 'updated'
 
     # Fetch tagged user IDs
@@ -21,47 +23,34 @@ def album_saved(sender, instance, created, **kwargs):
     )
     tagged_user_ids = list(tagged_items.values_list('tagged_user_id', flat=True))
 
-    async_to_sync(channel_layer.group_send)(
-        'albums',
-        {
-            'type': 'album_message',
-            'event': event_type,
-            'album': str(instance.id),
-            'title': instance.title,
-            'description': instance.description,
-            'tagged_user_ids': [str(user_id) for user_id in tagged_user_ids],
-        }
-    )
+    message = {
+        'event': event_type,
+        'album': str(instance.id),
+        'title': instance.title,
+        'description': instance.description,
+        'tagged_user_ids': [str(user_id) for user_id in tagged_user_ids],
+    }
+
+    try:
+        producer.send_message('ALBUM_EVENTS', message)  # Send to Kafka
+        logger.info(f"Sent Kafka message for album {event_type}: {message}")
+    except Exception as e:
+        logger.error(f"Error sending Kafka message: {e}")
 
 
 @receiver(post_delete, sender=Album)
 def album_deleted(sender, instance, **kwargs):
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        'albums',
-        {
-            'type': 'album_message',
-            'event': 'deleted',
-            'album': str(instance.id),
-            'title': instance.title,
-            'description': instance.description,
-            'tagged_user_ids': [],
-        }
-    )
+    producer = KafkaProducerClient()
+    message = {
+        'event': 'deleted',
+        'album': str(instance.id),
+        'title': instance.title,
+        'description': instance.description,
+        'tagged_user_ids': [],
+    }
 
-
-@receiver(post_save, sender=TaggedItem)
-def tagged_item_saved(sender, instance, created, **kwargs):
-    if instance.content_type.model == 'album':
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            'albums',
-            {
-                'type': 'album_message',
-                'event': 'tagged' if created else 'untagged',
-                'album': str(instance.object_id),
-                'title': instance.content_object.title,
-                'description': instance.content_object.description,
-                'tagged_user_ids': [str(instance.tagged_user_id)],
-            }
-        )
+    try:
+        producer.send_message('ALBUM_EVENTS', message)  # Send to Kafka
+        logger.info(f"Sent Kafka message for deleted album: {message}")
+    except Exception as e:
+        logger.error(f"Error sending Kafka message: {e}")

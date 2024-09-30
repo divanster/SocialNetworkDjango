@@ -17,8 +17,56 @@ services:
 
   redis:
     image: redis:6-alpine
+    volumes:
+      - redis_data:/data  # Added volume for persistence
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     networks:
       - backend_network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_datalog:/var/lib/zookeeper/log
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - kafka_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - kafka_network
 
   web:
     build:
@@ -41,7 +89,9 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     env_file:
       - ./backend/.env
     healthcheck:
@@ -51,6 +101,7 @@ services:
       retries: 5
     networks:
       - backend_network
+      - kafka_network
 
   celery-worker:
     build:
@@ -62,10 +113,12 @@ services:
     depends_on:
       - db
       - redis
+      - kafka
     env_file:
       - ./backend/.env
     networks:
       - backend_network
+      - kafka_network
 
   celery-beat:
     build:
@@ -77,10 +130,12 @@ services:
     depends_on:
       - db
       - redis
+      - kafka
     env_file:
       - ./backend/.env
     networks:
       - backend_network
+      - kafka_network
 
   worker:
     build:
@@ -93,10 +148,12 @@ services:
     depends_on:
       - db
       - redis
+      - kafka
     env_file:
       - ./backend/.env
     networks:
       - backend_network
+      - kafka_network
 
   frontend:
     build:
@@ -115,35 +172,12 @@ services:
     networks:
       - frontend_network
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - kafka_network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
-      KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
-    ports:
-      - "9092:9092"
-      - "9093:9093"
-    networks:
-      - kafka_network
-
 volumes:
   postgres_data:
+  redis_data:
+  zookeeper_data:
+  zookeeper_datalog:
+  kafka_data:
 
 networks:
   backend_network:

@@ -1,12 +1,12 @@
+# backend/config/settings.py
+
 import os
 import sys
 from pathlib import Path
 from datetime import timedelta
 import environ
+from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
-from core.management.commands.migration_questioner import \
-    NonInteractiveMigrationQuestioner
-
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -14,7 +14,7 @@ from sentry_sdk.integrations.django import DjangoIntegration
 env = environ.Env(
     # Define default types and default values for environment variables
     DEBUG=(bool, False),
-    DJANGO_SECRET_KEY=(str, 'your-default-secret-key'),
+    DJANGO_SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
     POSTGRES_DB=(str, 'app_db'),
     POSTGRES_USER=(str, 'app_user'),
@@ -22,24 +22,33 @@ env = environ.Env(
     DB_HOST=(str, 'db'),
     DB_PORT=(str, '5432'),
     CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000', 'http://127.0.0.1:3000']),
+    REDIS_HOST=(str, 'redis'),  # Defaults for Redis
+    REDIS_PORT=(int, 6379),  # Defaults for Redis
+    EMAIL_HOST=(str, 'smtp.gmail.com'),  # Defaults for Email
+    EMAIL_PORT=(int, 587),  # Defaults for Email
+    EMAIL_USE_TLS=(bool, True),  # Defaults for Email
+    EMAIL_HOST_USER=(str, ''),  # Defaults for Email user
+    EMAIL_HOST_PASSWORD=(str, ''),  # Defaults for Email password
+    SENTRY_DSN=(str, ''),  # Default for Sentry DSN
+    CELERY_BROKER_URL=(str, ''),  # Default for Celery Broker URL
+    CELERY_RESULT_BACKEND=(str, ''),  # Default for Celery Result Backend
+    KAFKA_BROKER_URL=(str, 'localhost:9092'),  # Default for Kafka
 )
 
 # Load environment variables from the .env file located in the project base directory
-environ.Env.read_env(
-    env_file=os.path.join(Path(__file__).resolve().parent.parent, '.env')
-)
-
-# Set the base directory for the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
 
 # Secret key used for cryptographic signing
 SECRET_KEY = env('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured("The DJANGO_SECRET_KEY environment variable is not set.")
 
 # Debug mode, should be set to False in production
 DEBUG = env('DEBUG')
 
 # List of allowed hosts that can make requests to this Django instance
-ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 # Utility function to check if tests are currently running
@@ -49,55 +58,64 @@ def is_running_tests():
 
 # Installed applications, including Django apps, third-party apps, and custom apps
 INSTALLED_APPS = [
-    'django.contrib.admin',  # Django admin interface
-    'django.contrib.auth',  # Authentication framework
-    'django.contrib.contenttypes',  # Content types framework
-    'django.contrib.sessions',  # Session management
-    'django.contrib.messages',  # Messaging framework
-    'django.contrib.staticfiles',  # Static files management
-    'rest_framework',  # Django REST Framework for building APIs
+    # Django default apps
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    # Third-party apps
+    'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
-    # Token blacklist app for JWT authentication
-    'djoser',  # REST implementation of Django authentication
-    'corsheaders',  # Cross-Origin Resource Sharing support
-    'channels',  # Django Channels for WebSockets
-    'django_extensions',  # Additional Django management commands
-    'drf_spectacular',  # OpenAPI schema generation
-    'users.apps.UsersConfig',  # Custom user app
-    'follows.apps.FollowsConfig',  # Follow system app
-    'reactions.apps.ReactionsConfig',  # Reaction system app
-    'stories.apps.StoriesConfig',  # Stories feature app
-    'social.apps.SocialConfig',  # Social networking app
-    'messenger.apps.MessengerConfig',  # Messaging app
-    'newsfeed.apps.NewsfeedConfig',  # Newsfeed app
-    'pages.apps.PagesConfig',  # Pages app
-    'tagging.apps.TaggingConfig',  # Tagging app
-    'friends.apps.FriendsConfig',  # Friends system app
-    'comments.apps.CommentsConfig',  # Commenting system app
-    'notifications.apps.NotificationsConfig',  # Notifications app
-    'albums.apps.AlbumsConfig',  # Albums feature app
-    'core.apps.CoreConfig',
-    'django_celery_beat',  # Schedule Periodic Tasks
+    'djoser',
+    'corsheaders',
+    'channels',
+    'django_extensions',
+    'drf_spectacular',
+    'django_celery_beat',
     'csp',
+
+    # Custom apps
+    'users.apps.UsersConfig',
+    'follows.apps.FollowsConfig',
+    'reactions.apps.ReactionsConfig',
+    'stories.apps.StoriesConfig',
+    'social.apps.SocialConfig',
+    'messenger.apps.MessengerConfig',
+    'newsfeed.apps.NewsfeedConfig',
+    'pages.apps.PagesConfig',
+    'tagging.apps.TaggingConfig',
+    'friends.apps.FriendsConfig',
+    'comments.apps.CommentsConfig',
+    'notifications.apps.NotificationsConfig',
+    'albums.apps.AlbumsConfig',
+    'core.apps.CoreConfig',
+
+    # Kafka broker
+    'kafka_app.apps.KafkaAppConfig',
 ]
+
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
 
 # Middleware configuration
 MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
     'csp.middleware.CSPMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Handles CORS headers for API
-    'django.middleware.security.SecurityMiddleware',  # Security-related middleware
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    # Session management middleware
-    'django.middleware.common.CommonMiddleware',  # Common HTTP request processing
-    'django.middleware.csrf.CsrfViewMiddleware',  # CSRF protection middleware
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # Authentication middleware
     'django.contrib.messages.middleware.MessageMiddleware',
-    # Messaging framework middleware
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # Clickjacking protection middleware
 ]
+
+if DEBUG:
+    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 # Root URL configuration
 ROOT_URLCONF = 'config.urls'
@@ -106,7 +124,6 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # Django's template engine
         'DIRS': [],  # List of directories to search for templates
         'APP_DIRS': True,  # Include app directories for template lookup
         'OPTIONS': {
@@ -128,61 +145,52 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Database configuration using PostgreSQL, with credentials loaded from environment
-# variables
+# Database configuration using PostgreSQL, with credentials loaded from environment variables
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',  # PostgreSQL database backend
-        'NAME': env('POSTGRES_DB'),  # Database name
-        'USER': env('POSTGRES_USER'),  # Database user
-        'PASSWORD': env('POSTGRES_PASSWORD'),  # Database password
-        'HOST': env('DB_HOST'),  # Database host
-        'PORT': env('DB_PORT'),  # Database port
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('POSTGRES_DB'),
+        'USER': env('POSTGRES_USER'),
+        'PASSWORD': env('POSTGRES_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
         'CONN_MAX_AGE': 600,  # Optimizing database performance
         'TEST': {
-            'NAME': 'test_' + env('POSTGRES_DB'),  # Test database name
+            'NAME': 'test_' + env('POSTGRES_DB'),
         },
     },
-    # Remove 'test_db' if not necessary
 }
 
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation'
-                '.UserAttributeSimilarityValidator',
-        # Prevents using similar attributes
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        # Minimum password length
-        'OPTIONS': {'min_length': 3},  # Set minimum length to 3 characters
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-        # Prevents using common passwords
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-        # Prevents using only numeric passwords
     },
 ]
 
 # Internationalization settings
-LANGUAGE_CODE = 'en-us'  # Default language code
-TIME_ZONE = 'UTC'  # Default time zone
-USE_I18N = True  # Enable internationalization
-USE_L10N = True  # Enable localization
-USE_TZ = True  # Enable timezone support
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
 
 # Static and media file settings
-STATIC_URL = '/static/'  # URL to access static files
-MEDIA_URL = '/media/'  # URL to access media files
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Directory for media files
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Directory for static files
-
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Custom user model
 AUTH_USER_MODEL = 'users.CustomUser'
@@ -191,163 +199,242 @@ AUTH_USER_MODEL = 'users.CustomUser'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # Use JWT authentication
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    # OpenAPI schema generation
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    # Default pagination
-    'PAGE_SIZE': 10,  # Default page size
-
-    # Throttling settings
+    'PAGE_SIZE': 10,
     'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',  # Throttle anonymous users
-        'rest_framework.throttling.UserRateThrottle',  # Throttle authenticated users
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'users.throttling.SignupThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',  # Allow 100 requests per day for anonymous users
-        'user': '1000/day',  # Allow 1000 requests per day for authenticated users
-        'signup': '10/hour',  # Custom throttle for signup
-    }
+        'anon': '100/day',
+        'user': '1000/day',
+        'signup': '10/hour',
+    },
 }
 
-# JWT configuration using Simple JWT
+# Simple JWT configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Access token lifetime
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # Refresh token lifetime
-    'ROTATE_REFRESH_TOKENS': True,  # Rotate refresh tokens
-    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist tokens after rotation
-    'ALGORITHM': 'HS256',  # Algorithm used for token signing
-    'SIGNING_KEY': env('DJANGO_SECRET_KEY'),  # Key used to sign tokens
-    'AUTH_HEADER_TYPES': ('Bearer',),  # Type of authentication header
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Name of the authorization header
-    'USER_ID_FIELD': 'id',  # Field to use for user identification
-    'USER_ID_CLAIM': 'user_id',  # Claim to use for user identification
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    # Type of token to use
-    'TOKEN_TYPE_CLAIM': 'token_type',  # Claim to indicate token type
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    # Claim for sliding token expiration
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),  # Sliding token lifetime
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-    # Sliding token refresh lifetime
 }
 
-# Djoser configuration for handling authentication views
+# Djoser configuration
 DJOSER = {
-    'LOGIN_FIELD': 'email',  # Use email as the login field
-    'USER_CREATE_PASSWORD_RETYPE': True,  # Require password retype on user creation
+    'LOGIN_FIELD': 'email',
+    'USER_CREATE_PASSWORD_RETYPE': True,
     'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
-    # Send email confirmation on username change
     'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
-    # Send email confirmation on password change
-    'SEND_CONFIRMATION_EMAIL': True,  # Send confirmation emails
-    'SET_USERNAME_RETYPE': True,  # Require username retype
-    'SET_PASSWORD_RETYPE': True,  # Require password retype
-    'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
-    # URL for password reset confirmation
-    'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',
-    # URL for username reset confirmation
-    'ACTIVATION_URL': 'activate/{uid}/{token}',  # URL for user activation
-    'SEND_ACTIVATION_EMAIL': True,  # Send activation email
+    'SEND_CONFIRMATION_EMAIL': True,
+    'SET_USERNAME_RETYPE': True,
+    'SET_PASSWORD_RETYPE': True,
+    'ACTIVATION_URL': 'activate/{uid}/{token}',
+    'SEND_ACTIVATION_EMAIL': True,
     'SERIALIZERS': {
-        'user_create': 'djoser.serializers.CustomUserSerializer',
-        # Serializer for user creation
-        'user': 'djoser.serializers.UserSerializer',  # Serializer for user data
-        'current_user': 'djoser.serializers.UserSerializer',
-        # Serializer for current user
+        'user_create': 'users.serializers.CustomUserSerializer',
+        'user': 'users.serializers.CustomUserSerializer',
+        'current_user': 'users.serializers.CustomUserSerializer',
         'user_delete': 'djoser.serializers.UserDeleteSerializer',
-        # Serializer for user deletion
     },
 }
 
-# Configuration for drf-spectacular (OpenAPI/Swagger generation)
+# Spectacular configuration
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Social NEtwork APIs',  # Title of the API documentation
-    'DESCRIPTION': 'Your API description',  # Description of the API
-    'VERSION': '1.0.0',  # API version
-    'SERVE_INCLUDE_SCHEMA': False,  # Include schema in the documentation
-    'SWAGGER_UI_SETTINGS': {
-        'docExpansion': 'none',  # Swagger UI settings
-        'defaultModelsExpandDepth': -1,  # Depth to expand models
-    },
-    'COMPONENT_SPLIT_REQUEST': True,  # Split requests into components
-    'SECURITY': [
-        {
-            'BearerAuth': []  # Security scheme for bearer token authentication
-        }
-    ],
-    'SCHEMA_COERCE': {
+    'TITLE': 'Social Network APIs',
+    'VERSION': '1.0.0',
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SECURITY': [{'BearerAuth': []}],
+    'COMPONENTS': {
         'securitySchemes': {
             'BearerAuth': {
-                'type': 'http',  # Type of security scheme
-                'scheme': 'bearer',  # Scheme type
-                'bearerFormat': 'JWT'  # Format for the bearer token
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT'
             }
         }
     },
 }
 
-# CORS configuration to allow specific origins
+# CORS settings
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
-# Static files storage settings for production using WhiteNoise
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_PORT = env('EMAIL_PORT')
+EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
-# Email configuration settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Backend to use for sending emails
-EMAIL_HOST = 'smtp.gmail.com'  # SMTP host
-EMAIL_PORT = 587  # SMTP port
-EMAIL_USE_TLS = True  # Use TLS for email
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')  # Email host user
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')  # Email host password
-
-# Security settings for production
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True  # Redirect all HTTP requests to HTTPS
-    CSRF_COOKIE_SECURE = True  # Use secure cookies for CSRF
-    SESSION_COOKIE_SECURE = True  # Use secure cookies for sessions
-    SECURE_BROWSER_XSS_FILTER = True  # Enable browser XSS protection
-    SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent content type sniffing
-    X_FRAME_OPTIONS = 'DENY'  # Prevent clickjacking
-    SECURE_HSTS_SECONDS = 31536000  # HTTP Strict Transport Security (HSTS) duration
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Include subdomains in HSTS
-    SECURE_HSTS_PRELOAD = True  # Preload HSTS
-    SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'  # Referrer policy
-    SECURE_PROXY_SSL_HEADER = (
-        'HTTP_X_FORWARDED_PROTO', 'https')  # Header for SSL proxy
-
-# Configuration for Django Channels using Redis as the backend
+# Channels configuration
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',  # Redis channel layer
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('redis', 6379)],  # Redis server configuration
+            'hosts': [(env('REDIS_HOST'), env('REDIS_PORT'))],
         },
     },
 }
 
-# Migration modules configuration for non-interactive migration questioner
-MIGRATION_MODULES = {
-    "default": {
-        "QUESTIONER": NonInteractiveMigrationQuestioner
+# Celery configuration
+CELERY_BROKER_URL = env('CELERY_BROKER_URL',
+                        default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
+                            default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+
+CELERY_BEAT_SCHEDULE = {
+    'consume-user-events-every-5-seconds': {
+        'task': 'kafka_app.tasks.consume_user_events',
+        'schedule': 5.0,  # every 5 seconds
+    },
+    'consume-album-events-every-10-seconds': {
+        'task': 'albums.tasks.consume_album_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-comment-events-every-10-seconds': {
+        'task': 'comments.tasks.consume_comment_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-follow-events-every-10-seconds': {
+        'task': 'follows.tasks.consume_follow_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-friend-events-every-10-seconds': {
+        'task': 'friends.tasks.consume_friend_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-messenger-events-every-10-seconds': {
+        'task': 'messenger.tasks.consume_messenger_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-newsfeed-events-every-10-seconds': {
+        'task': 'newsfeed.tasks.consume_newsfeed_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-reaction-events-every-10-seconds': {
+        'task': 'reactions.tasks.consume_reaction_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-social-events-every-10-seconds': {
+        'task': 'social.tasks.consume_social_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-stories-events-every-10-seconds': {
+        'task': 'stories.tasks.consume_stories_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-tagging-events-every-10-seconds': {
+        'task': 'tagging.tasks.consume_tagging_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-notifications-events-every-10-seconds': {
+        'task': 'notifications.tasks.consume_notifications_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+}
+
+# Caching configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
     }
 }
 
+# Sentry integration
+SENTRY_DSN = env('SENTRY_DSN', default='')
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0,
+        send_default_pii=True
+    )
+
+# CSP settings
+CSP_DEFAULT_SRC = ("'none'",)
+CSP_SCRIPT_SRC = (
+"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = (
+"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = (
+"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
+CSP_CONNECT_SRC = ("'self'",)
+CSP_BASE_URI = ("'self'",)
+CSP_FORM_ACTION = ("'self'",)
+CSP_REPORT_URI = '/csp-violation-report/'
+
+# Kafka settings
+KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='localhost:9092')
+KAFKA_TOPICS = {
+    'USER_EVENTS': 'user-events',
+    'NOTIFICATIONS': 'user-notifications',
+    'ALBUM_EVENTS': 'album-events',
+    'COMMENT_EVENTS': 'comment-events',
+    'FOLLOW_EVENTS': 'follow-events',
+    'FRIEND_EVENTS': 'friend-events',
+    'MESSENGER_EVENTS': 'message-events',
+    'NEWSFEED_EVENTS': 'news-events',
+    'REACTION_EVENTS': 'reaction-events',
+    'SOCIAL_EVENTS': 'social-events',
+    'STORIES_EVENTS': 'stories-events',
+    'TAGGING_EVENTS': 'tagging-events',
+    # Add more topics as needed
+}
+
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Migration modules configuration for non-interactive migration questioner
+# MIGRATION_MODULES = {
+#     "default": {
+#         "QUESTIONER": NonInteractiveMigrationQuestioner
+#     }
+# }
+
 # Internal IPs for Django Debug Toolbar
 INTERNAL_IPS = [
-    '127.0.0.1',  # Localhost IP
-    'localhost',  # Localhost
+    '127.0.0.1',
+    'localhost',
 ]
 
 # Django Debug Toolbar configuration
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
-    # Show toolbar in debug mode only
-    'INTERCEPT_REDIRECTS': False,  # Don't intercept redirects
+    'INTERCEPT_REDIRECTS': False,
 }
 
 # Logging configuration to log to both console and file
@@ -400,47 +487,76 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+        'kafka_app': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
 }
 
-# Celery Configuration Options
-CELERY_BROKER_URL = 'redis://redis:6379/0'  # Using Redis as the message broker
-CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
 
-# Caching Configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://redis:6379/1',
-        # redis service name and port from docker-compose
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
+# from . import cron_jobs
+# CRONJOBS = cron_jobs.CRONJOBS
+#
+#
+#
+# # TWILIO SETTINGS
+# TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
+# TWILIO_AUTH_TOKEN = config('TWILIO_TOKEN')
+# TWILIO_FROM_NUMBER = config('TWILIO_FROM')
+#
+#
+# # FCM (push notifications) configuration
+# FCM_DJANGO_SETTINGS = {
+#         "FCM_SERVER_KEY": config("FCM_SERVER_KEY"),
+#          # true if you want to have only one active device per registered user at a time
+#          # default: False
+#         "ONE_DEVICE_PER_USER": True,
+#          # devices to which notifications cannot be sent,
+#          # are deleted upon receiving error response from FCM
+#          # default: False
+#         "DELETE_INACTIVE_DEVICES": False,
+#
+#
+# ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = 'django_elasticsearch_dsl.signals.RealTimeSignalProcessor'
+# Elasticsearch configuration
+# ELASTICSEARCH_DSL = {
+#     'default': {
+#         'hosts': 'localhost:9200'
+#     },
+# }
 
-# Sentry - tracking errors and performance issues
-sentry_sdk.init(
-    dsn=env('SENTRY_DSN'),
-    integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,  # Adjust based on need
-    send_default_pii=True
-)
+# HAYSTACK_CONNECTIONS = {
+#     'default': {
+#         'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
+#         'URL': 'http://localhost:9200/',
+#         'INDEX_NAME': 'products',
+#     },
+# }
+# from elasticsearch_dsl import connections
 
-# CSP settings
-CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = (
-"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = (
-"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = (
-"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
-CSP_CONNECT_SRC = ("'self'",)
-CSP_BASE_URI = ("'self'",)
-CSP_FORM_ACTION = ("'self'",)
-CSP_REPORT_URI = '/csp-violation-report/'
+# connections.configure(
+#     default={'hosts': 'localhost'},
+#     dev={
+#         'hosts': ['localhost:9200'],
+#         'sniff_on_start': True
+#     }
+# )
+# # Name of the Elasticsearch index
+# ELASTICSEARCH_INDEX_NAMES = {
+#     'products/documents/product': 'products',
+# }
+
+
+# # Haystack Settings
+# HAYSTACK_CONNECTIONS = {
+#     'default': {
+#         'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
+#         'URL': 'http://127.0.0.1:9200/',
+#         'INDEX_NAME': 'haystack_indexes',
+#     },
+# }
+#
+# HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
+#
