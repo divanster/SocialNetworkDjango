@@ -1,5 +1,7 @@
-# Use an official Node.js runtime as a parent image
-FROM node:20
+# frontend/Dockerfile
+
+# Stage 1: Build the React application
+FROM node:20 AS build
 
 # Declare build arguments
 ARG CHOKIDAR_USEPOLLING
@@ -26,8 +28,17 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Expose port 3000
-EXPOSE 3000
+# Stage 2: Serve the React application using Nginx
+FROM nginx:alpine
 
-# Start the application
-CMD ["npm", "start"]
+# Copy the build output to Nginx's HTML directory
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Optional: Remove the default Nginx configuration and use a custom one
+# COPY nginx.conf /etc/nginx/nginx.conf
+
+# Expose port 80 for Nginx
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

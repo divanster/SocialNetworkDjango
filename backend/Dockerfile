@@ -1,5 +1,8 @@
+# backend/Dockerfile
+
 # Use a Debian-based image for better compatibility with confluent-kafka
 FROM python:3.10-slim AS base
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH="/app:/app/backend" \
@@ -32,8 +35,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxmlsec1-dev \
     libxmlsec1-openssl \
     postgresql-client \
-    redis-server && \
-    rm -rf /var/lib/apt/lists/*  # Cleans up to reduce image size
+    netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
 
 # Upgrade pip
 RUN pip install --upgrade pip
@@ -58,15 +61,22 @@ RUN useradd -m django-user && \
 # Copy application code
 COPY . /app
 
+# Copy wait-for-it.sh to /app and make it executable
+COPY wait-for-it.sh /app/wait-for-it.sh
+RUN chmod +x /app/wait-for-it.sh  # Ensure the script is executable
+
+# Ensure all files are owned by django-user
+RUN chown -R django-user:django-user /app
+
 # Expose the application port
 EXPOSE 8000
 
 # Switch to non-root user
 USER django-user
 
-# Health check
+# Health check to ensure the application is running
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health/ || exit 1
 
-# Command to run the application
-CMD ["gunicorn", "--workers=2", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
+# Command to wait for Kafka to be ready and then start the application using Gunicorn
+CMD ["sh", "-c", "./wait-for-it.sh kafka:9093 -- gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"]

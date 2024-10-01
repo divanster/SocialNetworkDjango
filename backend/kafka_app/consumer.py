@@ -1,47 +1,52 @@
-# kafka_app/consumer.py
-from kafka import KafkaConsumer  # Importing the KafkaConsumer
-from kafka.errors import KafkaError  # Correct import for KafkaError
-import json
+import os
+import django
+import time
 import logging
+from kafka import KafkaConsumer
 from django.conf import settings
+
+# Set up Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
 
 logger = logging.getLogger(__name__)
 
 
 class KafkaConsumerClient:
-    def __init__(self, topic_key):
-        topic = settings.KAFKA_TOPICS.get(topic_key)
-        if not topic:
-            logger.error(f"Topic '{topic_key}' not found in KAFKA_TOPICS.")
-            raise ValueError(f"Topic '{topic_key}' not found in KAFKA_TOPICS.")
+    def __init__(self, topic):
+        self.topic = topic
+        self.consumer = self.get_kafka_consumer()
 
-        try:
-            self.consumer = KafkaConsumer(
-                topic,
-                bootstrap_servers=[settings.KAFKA_BROKER_URL],
-                auto_offset_reset='earliest',
-                enable_auto_commit=True,
-                group_id=settings.KAFKA_CONSUMER_GROUP_ID,
-                # Assuming you add this to settings.py
-                value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-            )
-            logger.info(
-                f"KafkaConsumer initialized for topic '{topic_key}' successfully.")
-        except KafkaError as e:
-            logger.error(
-                f"Failed to initialize KafkaConsumer for topic '{topic_key}': {e}")
-            raise e
+    def get_kafka_consumer(self):
+        while True:
+            try:
+                consumer = KafkaConsumer(
+                    self.topic,
+                    bootstrap_servers=settings.KAFKA_BROKER_URL,
+                    group_id=settings.KAFKA_CONSUMER_GROUP_ID,
+                    auto_offset_reset='earliest',
+                    enable_auto_commit=True,
+                    value_deserializer=lambda x: x.decode('utf-8')
+                )
+                logger.info(f"Connected to Kafka topic: {self.topic}")
+                return consumer
+            except Exception as e:
+                logger.error(
+                    f"Failed to connect to Kafka: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
 
     def consume_messages(self):
-        try:
-            for message in self.consumer:
-                logger.info(f"Received message: {message.value}")
-                # Implement message handling logic here
-        except KafkaError as e:
-            logger.error(f"Error consuming messages: {e}")
-            raise e
+        for message in self.consumer:
+            # Process the message
+            logger.info(f"Received message: {message.value}")
+            # Add your message processing logic here
 
-    def close(self):
-        if self.consumer:
-            self.consumer.close()
-            logger.info("KafkaConsumer connection closed.")
+
+def main():
+    topic = settings.KAFKA_TOPICS['ALBUM_EVENTS']
+    consumer_client = KafkaConsumerClient(topic)
+    consumer_client.consume_messages()
+
+
+if __name__ == "__main__":
+    main()

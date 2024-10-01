@@ -6,7 +6,6 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 from django.core.exceptions import ImproperlyConfigured
-from django.conf import settings
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -33,6 +32,7 @@ env = environ.Env(
     CELERY_BROKER_URL=(str, ''),  # Default for Celery Broker URL
     CELERY_RESULT_BACKEND=(str, ''),  # Default for Celery Result Backend
     KAFKA_BROKER_URL=(str, 'localhost:9092'),  # Default for Kafka
+    KAFKA_CONSUMER_GROUP_ID=(str, 'default_group'),  # Added consumer group ID
 )
 
 # Load environment variables from the .env file located in the project base directory
@@ -49,6 +49,16 @@ DEBUG = env('DEBUG')
 
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+
+# Kafka settings
+KAFKA_BROKER_URL = env('KAFKA_BROKER_URL')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID')
+KAFKA_TOPICS = {
+    'USER_EVENTS': 'user-events',
+    'NOTIFICATIONS': 'user-notifications',
+    'ALBUM_EVENTS': 'album-events',
+    'COMMENT_EVENTS': 'comment-events',
+}
 
 
 # Utility function to check if tests are currently running
@@ -386,24 +396,6 @@ CSP_BASE_URI = ("'self'",)
 CSP_FORM_ACTION = ("'self'",)
 CSP_REPORT_URI = '/csp-violation-report/'
 
-# Kafka settings
-KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='localhost:9092')
-KAFKA_TOPICS = {
-    'USER_EVENTS': 'user-events',
-    'NOTIFICATIONS': 'user-notifications',
-    'ALBUM_EVENTS': 'album-events',
-    'COMMENT_EVENTS': 'comment-events',
-    'FOLLOW_EVENTS': 'follow-events',
-    'FRIEND_EVENTS': 'friend-events',
-    'MESSENGER_EVENTS': 'message-events',
-    'NEWSFEED_EVENTS': 'news-events',
-    'REACTION_EVENTS': 'reaction-events',
-    'SOCIAL_EVENTS': 'social-events',
-    'STORIES_EVENTS': 'stories-events',
-    'TAGGING_EVENTS': 'tagging-events',
-    # Add more topics as needed
-}
-
 # Security settings for production
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -418,13 +410,6 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Migration modules configuration for non-interactive migration questioner
-# MIGRATION_MODULES = {
-#     "default": {
-#         "QUESTIONER": NonInteractiveMigrationQuestioner
-#     }
-# }
-
 # Internal IPs for Django Debug Toolbar
 INTERNAL_IPS = [
     '127.0.0.1',
@@ -433,7 +418,7 @@ INTERNAL_IPS = [
 
 # Django Debug Toolbar configuration
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda request: settings.DEBUG and not is_running_tests(),
+    'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG and not is_running_tests(),
     'INTERCEPT_REDIRECTS': False,
 }
 

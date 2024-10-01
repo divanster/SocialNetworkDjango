@@ -1,54 +1,54 @@
-import json
+# albums/consumers.py
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
-from django.contrib.auth import get_user_model
-import logging
-
-logger = logging.getLogger(__name__)
+import json
 
 
 class PostConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        if not self.scope["user"].is_authenticated:
-            await self.close()
-            return
+        self.post_id = self.scope['url_route']['kwargs'].get('post_id')
+        self.group_name = f'post_{self.post_id}'
 
-        self.user = self.scope["user"]
-        self.room_group_name = 'posts'
         await self.channel_layer.group_add(
-            self.room_group_name,
+            self.group_name,
             self.channel_name
         )
+
         await self.accept()
-        logger.info(f'User {self.user.id} connected to posts.')
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
-            self.room_group_name,
+            self.group_name,
             self.channel_name
         )
-        logger.info(f'User {self.user.id} disconnected from posts.')
 
-    async def post_message(self, event):
-        tagged_user_ids = event.get('tagged_user_ids', [])
-        tagged_users = []
-        for user_id in tagged_user_ids:
-            try:
-                user = await self.get_user(user_id)
-                tagged_users.append({'id': str(user.id), 'username': user.username})
-            except get_user_model().DoesNotExist:
-                continue
-
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        # Handle message for specific post
         await self.send(text_data=json.dumps({
-            'event': event['event'],
-            'post': str(event['post']),
-            'title': event['title'],
-            'content': event['content'],
-            'tagged_users': tagged_users,
+            'message': data.get('message')
         }))
-        logger.info(f"Post event '{event['event']}' sent to user {self.user.id}")
 
-    @database_sync_to_async
-    def get_user(self, user_id):
-        User = get_user_model()
-        return User.objects.get(id=user_id)
+
+class AllPostsConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'posts_all'
+
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        # Handle general posts message
+        await self.send(text_data=json.dumps({
+            'message': data.get('message')
+        }))

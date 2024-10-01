@@ -1,11 +1,9 @@
-# albums/signals.py
-
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Album
+from .models import Album, Photo
 from tagging.models import TaggedItem
 from django.contrib.contenttypes.models import ContentType
-from kafka_app.producer import KafkaProducerClient  # Import Kafka Producer
+from kafka_app.producer import KafkaProducerClient
 import logging
 
 logger = logging.getLogger(__name__)
@@ -52,5 +50,40 @@ def album_deleted(sender, instance, **kwargs):
     try:
         producer.send_message('ALBUM_EVENTS', message)  # Send to Kafka
         logger.info(f"Sent Kafka message for deleted album: {message}")
+    except Exception as e:
+        logger.error(f"Error sending Kafka message: {e}")
+
+
+@receiver(post_save, sender=Photo)
+def photo_saved(sender, instance, created, **kwargs):
+    producer = KafkaProducerClient()
+    event_type = 'created' if created else 'updated'
+    message = {
+        'event': event_type,
+        'photo_id': str(instance.id),
+        'album_id': str(instance.album.id),
+        'description': instance.description,
+        'image_path': instance.image.url,
+    }
+
+    try:
+        producer.send_message('PHOTO_EVENTS', message)  # Topic for photo events
+        logger.info(f"Sent Kafka message for photo {event_type}: {message}")
+    except Exception as e:
+        logger.error(f"Error sending Kafka message: {e}")
+
+
+@receiver(post_delete, sender=Photo)
+def photo_deleted(sender, instance, **kwargs):
+    producer = KafkaProducerClient()
+    message = {
+        'event': 'deleted',
+        'photo_id': str(instance.id),
+        'album_id': str(instance.album.id),
+    }
+
+    try:
+        producer.send_message('PHOTO_EVENTS', message)  # Topic for photo events
+        logger.info(f"Sent Kafka message for deleted photo: {message}")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
