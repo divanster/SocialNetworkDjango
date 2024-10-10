@@ -17,7 +17,7 @@ class Album(BaseModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
-    tags = GenericRelation(TaggedItem, related_query_name='photos')
+    tags = GenericRelation(TaggedItem, related_query_name='albums')
 
 
     class Meta:
