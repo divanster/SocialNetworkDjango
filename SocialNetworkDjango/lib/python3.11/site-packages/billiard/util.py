@@ -6,7 +6,6 @@
 # Copyright (c) 2006-2008, R Oudkerk --- see COPYING.txt
 # Licensed to PSF under a Contributor Agreement.
 #
-from __future__ import absolute_import
 
 import sys
 import errno
@@ -204,7 +203,7 @@ def set_pdeathsig(sig):
     """
     if not sys.platform.startswith('linux'):
         # currently we support only linux platform.
-        raise OSError()
+        raise OSError("pdeathsig is only supported on linux")
     try:
         if 'cffi' in sys.modules:
             ffi = cffi.FFI()
@@ -213,9 +212,9 @@ def set_pdeathsig(sig):
             C.prctl(PR_SET_PDEATHSIG, ffi.cast("int", sig))
         else:
             libc = ctypes.cdll.LoadLibrary("libc.so.6")
-            libc.prctl(PR_SET_PDEATHSIG, sig)
-    except Exception:
-        raise OSError()
+            libc.prctl(PR_SET_PDEATHSIG, ctypes.c_int(sig))
+    except Exception as e:
+        raise OSError("An error occured while setting pdeathsig") from e
 
 def _eintr_retry(func):
     '''

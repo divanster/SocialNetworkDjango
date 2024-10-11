@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os
 import sys
 import threading
@@ -35,7 +33,7 @@ from .exceptions import (  # noqa
 # Base type for contexts
 #
 
-class BaseContext(object):
+class BaseContext:
 
     ProcessError = ProcessError
     BufferTooShort = BufferTooShort

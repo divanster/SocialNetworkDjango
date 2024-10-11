@@ -5,19 +5,17 @@ from channels.layers import get_channel_layer
 from .models import Post
 from tagging.models import TaggedItem
 from django.contrib.contenttypes.models import ContentType
+from .tasks import send_post_event_to_kafka
+
 
 @receiver(post_save, sender=Post)
 def post_saved(sender, instance, created, **kwargs):
-    channel_layer = get_channel_layer()
+    # Send event to Kafka
     event_type = 'created' if created else 'updated'
+    send_post_event_to_kafka.delay(instance.id, event_type)
 
-    # Fetch tagged user IDs
-    tagged_items = TaggedItem.objects.filter(
-        content_type=ContentType.objects.get_for_model(Post),
-        object_id=instance.id
-    )
-    tagged_user_ids = list(tagged_items.values_list('tagged_user_id', flat=True))
-
+    # Send real-time update
+    channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         'posts',
         {
@@ -26,13 +24,16 @@ def post_saved(sender, instance, created, **kwargs):
             'post': str(instance.id),
             'title': instance.title,
             'content': instance.content,
-            'tagged_user_ids': [str(user_id) for user_id in tagged_user_ids],
         }
     )
 
 
 @receiver(post_delete, sender=Post)
 def post_deleted(sender, instance, **kwargs):
+    # Send event to Kafka
+    send_post_event_to_kafka.delay(instance.id, 'deleted')
+
+    # Send real-time delete notification
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         'posts',
@@ -42,7 +43,6 @@ def post_deleted(sender, instance, **kwargs):
             'post': str(instance.id),
             'title': instance.title,
             'content': instance.content,
-            'tagged_user_ids': [],
         }
     )
 
@@ -50,6 +50,7 @@ def post_deleted(sender, instance, **kwargs):
 @receiver(post_save, sender=TaggedItem)
 def tagged_item_saved(sender, instance, created, **kwargs):
     if instance.content_type.model == 'post':
+        # Real-time update for tagged users
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             'posts',

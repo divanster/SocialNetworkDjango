@@ -1,6 +1,8 @@
-# albums/consumers.py
-from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PostConsumer(AsyncWebsocketConsumer):
@@ -14,18 +16,29 @@ class PostConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        logger.info(f"Connected to WebSocket for post {self.post_id}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.group_name,
             self.channel_name
         )
+        logger.info(f"Disconnected from WebSocket for post {self.post_id}")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        # Handle message for specific post
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                'type': 'post_message',
+                'message': data.get('message')
+            }
+        )
+
+    async def post_message(self, event):
+        message = event.get('message')
         await self.send(text_data=json.dumps({
-            'message': data.get('message')
+            'message': message
         }))
 
 
@@ -39,16 +52,27 @@ class AllPostsConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        logger.info("Connected to WebSocket for all posts")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.group_name,
             self.channel_name
         )
+        logger.info("Disconnected from WebSocket for all posts")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        # Handle general posts message
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                'type': 'post_message',
+                'message': data.get('message')
+            }
+        )
+
+    async def post_message(self, event):
+        message = event.get('message')
         await self.send(text_data=json.dumps({
-            'message': data.get('message')
+            'message': message
         }))

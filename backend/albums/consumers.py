@@ -1,20 +1,30 @@
 # backend/albums/consumers.py
 
 import json
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async  # Correct import
+from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class AlbumConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        if not self.scope["user"].is_authenticated:
+            await self.close()
+            logger.warning("[WebSocket] Unauthorized access attempt.")
+            return
+
+        self.user = self.scope["user"]
         self.room_group_name = 'albums'
+
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
+        logger.info(f"[WebSocket] User {self.user.id} connected to albums group.")
         await self.accept()
 
     async def disconnect(self, close_code):
@@ -22,19 +32,12 @@ class AlbumConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+        logger.info(f"[WebSocket] User {self.user.id} disconnected from albums group.")
 
     async def album_message(self, event):
-        # Fetch tagged users if provided
         tagged_user_ids = event.get('tagged_user_ids', [])
-        tagged_users = []
-        for user_id in tagged_user_ids:
-            try:
-                user = await self.get_user(user_id)
-                tagged_users.append({'id': str(user.id), 'username': user.username})
-            except User.DoesNotExist:
-                continue
+        tagged_users = await self.get_users(tagged_user_ids)
 
-        # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'event': event['event'],
             'album': str(event['album']),
@@ -44,5 +47,5 @@ class AlbumConsumer(AsyncWebsocketConsumer):
         }))
 
     @database_sync_to_async
-    def get_user(self, user_id):
-        return User.objects.get(id=user_id)
+    def get_users(self, user_ids):
+        return list(User.objects.filter(id__in=user_ids).values('id', 'username'))

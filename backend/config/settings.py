@@ -58,13 +58,27 @@ KAFKA_TOPICS = {
     'NOTIFICATIONS': 'user-notifications',
     'ALBUM_EVENTS': 'album-events',
     'COMMENT_EVENTS': 'comment-events',
+    'FOLLOW_EVENTS': 'follow-events',
+    'FRIEND_EVENTS': 'friend-events',
+    'MESSENGER_EVENTS': 'messenger-events',
+    'NEWSFEED_EVENTS': 'newsfeed-events',
+    'PAGE_EVENTS': 'page-events',
+    'POST_EVENTS': 'post-events',
+    'REACTION_EVENTS': 'reaction-events',
+    'STORIES_EVENTS': 'stories-events',
+    'TAGGING_EVENTS': 'tagging-events',
 }
 
+# Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default backend for email and password
+    'social_core.backends.google.GoogleOAuth2',  # Example: Add Google OAuth2
+    'social_core.backends.facebook.FacebookOAuth2',  # Example: Add Facebook OAuth2
+]
 
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
-
 
 # Installed applications, including Django apps, third-party apps, and custom apps
 INSTALLED_APPS = [
@@ -86,6 +100,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_celery_beat',
     'csp',
+    'django_elasticsearch_dsl',
 
     # Custom apps
     'users.apps.UsersConfig',
@@ -139,13 +154,9 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                # Adds debug context processor
                 'django.template.context_processors.request',
-                # Adds request context processor
                 'django.contrib.auth.context_processors.auth',
-                # Adds authentication context processor
                 'django.contrib.messages.context_processors.messages',
-                # Adds messages context processor
             ],
         },
     },
@@ -154,6 +165,16 @@ TEMPLATES = [
 # WSGI and ASGI applications for handling HTTP and WebSocket requests
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+
+# Channels configuration for WebSocket handling
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [(env('REDIS_HOST'), env('REDIS_PORT'))],
+        },
+    },
+}
 
 # Database configuration using PostgreSQL, with credentials loaded from environment variables
 DATABASES = {
@@ -164,7 +185,7 @@ DATABASES = {
         'PASSWORD': env('POSTGRES_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
-        'CONN_MAX_AGE': 600,  # Optimizing database performance
+        'CONN_MAX_AGE': 600,
         'TEST': {
             'NAME': 'test_' + env('POSTGRES_DB'),
         },
@@ -173,19 +194,10 @@ DATABASES = {
 
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {'min_length': 8},
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 # Internationalization settings
@@ -207,12 +219,8 @@ AUTH_USER_MODEL = 'users.CustomUser'
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
@@ -290,26 +298,15 @@ EMAIL_USE_TLS = env('EMAIL_USE_TLS')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
-# Channels configuration
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [(env('REDIS_HOST'), env('REDIS_PORT'))],
-        },
-    },
-}
-
 # Celery configuration
-CELERY_BROKER_URL = env('CELERY_BROKER_URL',
-                        default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
-                            default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
+# Celery Beat Schedule
 CELERY_BEAT_SCHEDULE = {
     'consume-user-events-every-5-seconds': {
         'task': 'kafka_app.tasks.consume_user_events',
@@ -337,6 +334,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     'consume-newsfeed-events-every-10-seconds': {
         'task': 'newsfeed.tasks.consume_newsfeed_events',
+        'schedule': 10.0,  # every 10 seconds
+    },
+    'consume-page-events-every-10-seconds': {
+        'task': 'pages.tasks.consume_page_events',
         'schedule': 10.0,  # every 10 seconds
     },
     'consume-reaction-events-every-10-seconds': {
@@ -384,12 +385,9 @@ if SENTRY_DSN:
 
 # CSP settings
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = (
-"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = (
-"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = (
-"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
@@ -467,7 +465,7 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
-        'core': {  # Add your app logger
+        'core': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': False,
@@ -477,6 +475,13 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+    },
+}
+
+# Elasticsearch configuration
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'localhost:9200'
     },
 }
 

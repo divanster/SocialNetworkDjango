@@ -1,10 +1,13 @@
 # backend/tagging/signals.py
+
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from tagging.models import TaggedItem
 from notifications.models import Notification
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from .tasks import send_tagging_event_to_kafka  # Import task to send event to Kafka
+
 
 # Helper function to send real-time notifications for tags
 def send_tag_real_time_notification(user_id, message):
@@ -16,6 +19,7 @@ def send_tag_real_time_notification(user_id, message):
             'message': message
         }
     )
+
 
 @receiver(post_save, sender=TaggedItem)
 def tagged_item_created(sender, instance, created, **kwargs):
@@ -35,7 +39,12 @@ def tagged_item_created(sender, instance, created, **kwargs):
             instance.tagged_user.id,
             f"You were tagged by {instance.tagged_by.username} in a post."
         )
+
+        # Send tagging event to Kafka
+        send_tagging_event_to_kafka.delay(instance.id, 'created')
+
         print(f'TaggedItem created: {instance}')
+
 
 @receiver(post_delete, sender=TaggedItem)
 def tagged_item_deleted(sender, instance, **kwargs):
@@ -44,4 +53,8 @@ def tagged_item_deleted(sender, instance, **kwargs):
         instance.tagged_user.id,
         f"You were untagged from a post by {instance.tagged_by.username}."
     )
+
+    # Send tagging event to Kafka
+    send_tagging_event_to_kafka.delay(instance.id, 'deleted')
+
     print(f'TaggedItem deleted: {instance}')

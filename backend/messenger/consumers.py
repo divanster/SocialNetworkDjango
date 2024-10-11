@@ -1,6 +1,11 @@
 # backend/messenger/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from kafka_app.consumer import KafkaConsumerClient
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -14,11 +19,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
 
+        # Start consuming Kafka messages when the user connects
+        self.consumer = KafkaConsumerClient('MESSENGER_EVENTS')
+        asyncio.create_task(self.consume_messages())
+
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
+
+    async def consume_messages(self):
+        # Consume Kafka messages and forward them to WebSocket clients
+        try:
+            for message in self.consumer.consume_messages():
+                await self.send(text_data=json.dumps(message))
+        except Exception as e:
+            logger.error(f"Error consuming messages: {e}")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -31,102 +48,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def chat_message(self, event):
-        message = event['message']
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
-
-
-class NotificationConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.room_group_name = 'notifications'
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
-
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'notification_message',
-                'message': data['message']
-            }
-        )
-
-    async def notification_message(self, event):
-        message = event['message']
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
-
-
-class ActivityStatusConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.room_group_name = 'activity_status'
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
-
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'status_message',
-                'message': data['message']
-            }
-        )
-
-    async def status_message(self, event):
-        message = event['message']
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
-
-
-class CommentConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.room_group_name = 'comments'
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
-
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'comment_message',
-                'message': data['message']
-            }
-        )
-
-    async def comment_message(self, event):
         message = event['message']
         await self.send(text_data=json.dumps({
             'message': message
