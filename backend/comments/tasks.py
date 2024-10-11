@@ -1,28 +1,40 @@
+# backend/comments/tasks.py
+
 from celery import shared_task
-from kafka_app.consumer import KafkaConsumerClient
+from kafka_app.producer import KafkaProducerClient
+from .models import Comment
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
-def consume_comment_events():
-    consumer = KafkaConsumerClient('COMMENT_EVENTS')
-    for message in consumer.consume_messages():
-        try:
-            # Process the comment event message
-            event_type = message.get('action', 'created')
-            comment_id = message.get('comment_id')
+def send_comment_event_to_kafka(comment_id, event_type):
+    """
+    Celery task to send comment events to Kafka.
+    """
+    producer = KafkaProducerClient()
 
-            if event_type == "created":
-                # Handle created comments
-                logger.info(f"Processed comment creation event: {message}")
-            elif event_type == "deleted":
-                # Handle deleted comments
-                logger.info(f"Processed comment deletion event: {message}")
-            else:
-                logger.warning(f"Unknown event type: {event_type}")
+    try:
+        if event_type == 'deleted':
+            message = {
+                "comment_id": comment_id,
+                "action": "deleted"
+            }
+        else:
+            comment = Comment.objects.get(id=comment_id)
+            message = {
+                "comment_id": comment.id,
+                "content": comment.content,
+                "user_id": comment.user_id,
+                "post_id": comment.post_id,
+                "created_at": str(comment.created_at),
+                "event": event_type
+            }
 
-            # Add any additional processing logic here
-        except Exception as e:
-            logger.error(f"Error processing comment event: {e}")
+        producer.send_message('COMMENT_EVENTS', message)
+        logger.info(f"Sent Kafka message for comment {event_type}: {message}")
+    except Comment.DoesNotExist:
+        logger.error(f"Comment with ID {comment_id} does not exist.")
+    except Exception as e:
+        logger.error(f"Error sending Kafka message: {e}")

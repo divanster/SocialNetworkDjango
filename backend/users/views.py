@@ -1,4 +1,4 @@
-# users/views.py
+# backend/users/views.py
 
 import logging
 from rest_framework import viewsets, status
@@ -11,6 +11,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
+from users.tasks import send_welcome_email, send_profile_update_notification  # Import tasks
 
 # Initialize logger once at the top
 logger = logging.getLogger('users')
@@ -45,9 +46,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """
-        Ensures the user is associated with the profile during update.
+        Ensures the user is associated with the profile during update and sends notification.
         """
-        serializer.save(user=self.request.user)
+        profile = serializer.save(user=self.request.user)
+        # Trigger the task to send profile update notification
+        send_profile_update_notification.delay(profile.user.id)
+        logger.info(f"Profile updated for user {profile.user.id}, notification task scheduled.")
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):
@@ -97,6 +101,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            # Log and provide feedback for updating the user
+            logger.info(f"User data updated for user {request.user.id}")
         else:
             serializer = self.get_serializer(request.user)
 
@@ -113,7 +119,7 @@ class CustomUserSignupView(CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         """
-        Handles user creation. Logs the request data and handles errors.
+        Handles user creation and sends a welcome email.
         """
         logger.debug(f"Received signup request data: {request.data}")
         serializer = self.get_serializer(data=request.data)
@@ -122,6 +128,9 @@ class CustomUserSignupView(CreateAPIView):
                 with transaction.atomic():
                     user = serializer.save()
                     logger.debug(f"User created successfully: {user}")
+                    # Trigger the task to send a welcome email asynchronously
+                    send_welcome_email.delay(user.id)
+                    logger.info(f"Scheduled task to send welcome email to user {user.id}")
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Exception as e:
                 logger.error(f"Error during signup: {str(e)}")

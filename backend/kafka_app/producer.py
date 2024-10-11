@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class KafkaProducerClient:
     def __init__(self):
         try:
