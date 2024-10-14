@@ -15,24 +15,36 @@ env = environ.Env(
     DEBUG=(bool, False),
     DJANGO_SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
+
+    # PostgreSQL settings
     POSTGRES_DB=(str, 'app_db'),
     POSTGRES_USER=(str, 'app_user'),
     POSTGRES_PASSWORD=(str, 'app_password'),
     DB_HOST=(str, 'db'),
     DB_PORT=(str, '5432'),
+
+    # MongoDB settings
+    MONGO_DB_NAME=(str, 'social_db'),
+    MONGO_HOST=(str, 'localhost'),
+    MONGO_PORT=(int, 27017),
+    MONGO_USER=(str, ''),
+    MONGO_PASSWORD=(str, ''),
+    MONGO_AUTH_SOURCE=(str, 'admin'),
+
+    # Other settings
     CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000', 'http://127.0.0.1:3000']),
-    REDIS_HOST=(str, 'redis'),  # Defaults for Redis
-    REDIS_PORT=(int, 6379),  # Defaults for Redis
-    EMAIL_HOST=(str, 'smtp.gmail.com'),  # Defaults for Email
-    EMAIL_PORT=(int, 587),  # Defaults for Email
-    EMAIL_USE_TLS=(bool, True),  # Defaults for Email
-    EMAIL_HOST_USER=(str, ''),  # Defaults for Email user
-    EMAIL_HOST_PASSWORD=(str, ''),  # Defaults for Email password
-    SENTRY_DSN=(str, ''),  # Default for Sentry DSN
-    CELERY_BROKER_URL=(str, ''),  # Default for Celery Broker URL
-    CELERY_RESULT_BACKEND=(str, ''),  # Default for Celery Result Backend
-    KAFKA_BROKER_URL=(str, 'localhost:9092'),  # Default for Kafka
-    KAFKA_CONSUMER_GROUP_ID=(str, 'default_group'),  # Added consumer group ID
+    REDIS_HOST=(str, 'redis'),
+    REDIS_PORT=(int, 6379),
+    EMAIL_HOST=(str, 'smtp.gmail.com'),
+    EMAIL_PORT=(int, 587),
+    EMAIL_USE_TLS=(bool, True),
+    EMAIL_HOST_USER=(str, ''),
+    EMAIL_HOST_PASSWORD=(str, ''),
+    SENTRY_DSN=(str, ''),
+    CELERY_BROKER_URL=(str, ''),
+    CELERY_RESULT_BACKEND=(str, ''),
+    KAFKA_BROKER_URL=(str, 'localhost:9092'),
+    KAFKA_CONSUMER_GROUP_ID=(str, 'default_group'),
 )
 
 # Load environment variables from the .env file located in the project base directory
@@ -101,6 +113,7 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'csp',
     'django_elasticsearch_dsl',
+    'djongo',  # Added djongo for MongoDB support
 
     # Custom apps
     'users.apps.UsersConfig',
@@ -153,10 +166,10 @@ TEMPLATES = [
         'APP_DIRS': True,  # Include app directories for template lookup
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.debug',  # Adds debug context processor
+                'django.template.context_processors.request',  # Adds request context processor
+                'django.contrib.auth.context_processors.auth',  # Adds authentication context processor
+                'django.contrib.messages.context_processors.messages',  # Adds messages context processor
             ],
         },
     },
@@ -176,7 +189,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-# Database configuration using PostgreSQL, with credentials loaded from environment variables
+# Database configuration using PostgreSQL and MongoDB
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -188,9 +201,25 @@ DATABASES = {
         'CONN_MAX_AGE': 600,
         'TEST': {
             'NAME': 'test_' + env('POSTGRES_DB'),
+            'ENGINE': 'django.db.backends.postgresql',
+        },
+    },
+    'social_db': {
+        'ENGINE': 'djongo',
+        'NAME': env('MONGO_DB_NAME'),
+        'ENFORCE_SCHEMA': False,
+        'CLIENT': {
+            'host': env('MONGO_HOST'),
+            'port': env('MONGO_PORT'),
+            'username': env('MONGO_USER'),
+            'password': env('MONGO_PASSWORD'),
+            'authSource': env('MONGO_AUTH_SOURCE'),
         },
     },
 }
+
+# Database routers
+DATABASE_ROUTERS = ['config.database_router.SocialRouter']
 
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
@@ -305,6 +334,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
+
 
 # Celery Beat Schedule
 CELERY_BEAT_SCHEDULE = {

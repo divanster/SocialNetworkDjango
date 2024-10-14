@@ -1,6 +1,6 @@
 # backend/Dockerfile
 
-# Use a Debian-based image for better compatibility with confluent-kafka
+# Use a Debian-based image for better compatibility with confluent-kafka and MongoDB drivers
 FROM python:3.10-slim AS base
 
 # Set environment variables
@@ -35,8 +35,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxmlsec1-dev \
     libxmlsec1-openssl \
     postgresql-client \
-    netcat-openbsd && \
-    rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
+    netcat-openbsd \
+    python3-dev \
+    default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
 
 # Upgrade pip
 RUN pip install --upgrade pip

@@ -1,4 +1,5 @@
 # docker-compose.yml
+
 services:
   db:
     image: postgres:13-alpine
@@ -16,10 +17,28 @@ services:
     networks:
       - backend_network
 
+  mongo:
+    image: mongo:4.4
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-social_db}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   redis:
     image: redis:6-alpine
     volumes:
-      - redis_data:/data  # Added volume for persistence
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -33,18 +52,16 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_datalog:/var/lib/zookeeper/log
+    networks:
+      - kafka_network
     healthcheck:
       test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - kafka_network
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -57,19 +74,19 @@ services:
       KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
       KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'  # Ensures topics are auto-created if not present
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "9092:9092"  # Maps OUTSIDE listener
     volumes:
       - kafka_data:/var/lib/kafka/data
+    ports:
+      - "9092:9092"
+    networks:
+      - kafka_network
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9092"]
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - kafka_network
 
   web:
     build:
@@ -91,6 +108,8 @@ services:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -121,6 +140,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
@@ -145,6 +166,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
@@ -165,6 +188,8 @@ services:
       - ./vol/web:/vol/web
     depends_on:
       db:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -190,6 +215,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
@@ -199,7 +226,7 @@ services:
     networks:
       - backend_network
       - kafka_network
-    restart: always  # Ensures the consumer restarts on failure
+    restart: always
 
   frontend:
     build:
@@ -220,6 +247,7 @@ services:
 
 volumes:
   postgres_data:
+  mongo_data:
   redis_data:
   zookeeper_data:
   zookeeper_datalog:
