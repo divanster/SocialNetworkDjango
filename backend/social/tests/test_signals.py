@@ -1,91 +1,186 @@
-# backend/social/tests/test_signals.py
-
-from django.test import TestCase, override_settings
-from django.contrib.auth import get_user_model
-from social.models import Post, Tag
+from django.test import TestCase
+from unittest.mock import patch, MagicMock
+from social.models import Post
 from tagging.models import TaggedItem
-from asgiref.sync import async_to_sync
+from django.contrib.auth import get_user_model
 from channels.layers import get_channel_layer
-from unittest.mock import patch
 
 User = get_user_model()
 
-@override_settings(
-    CHANNEL_LAYERS={
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
-    }
-)
-class PostSignalsTests(TestCase):
+
+class PostSignalTest(TestCase):
 
     def setUp(self):
-        self.channel_layer = get_channel_layer()
-        async_to_sync(self.channel_layer.flush)()
+        # Create users for testing
         self.user = User.objects.create_user(
-            email='signaluser@example.com',
-            username='signaluser',
-            password='signalpassword'
+            username='author', email='author@example.com', password='password123'
         )
 
-    def test_post_created_signal(self):
-        post = Post.objects.create(
-            title='Signal Post',
-            content='Content for signal post.',
-            author=self.user
-        )
-        received_messages = async_to_sync(self.channel_layer.receive_group)('posts')
-        event = received_messages[0]
-        self.assertEqual(event['event'], 'created')
-        self.assertEqual(event['post'], str(post.id))
+    @patch('social.signals.send_post_event_to_kafka.delay')
+    @patch('social.signals.async_to_sync')
+    def test_post_created_signal(self, mock_async_to_sync, mock_kafka_task):
+        # Mock the channel layer to avoid real-time WebSocket operations
+        mock_channel_layer = MagicMock()
+        mock_async_to_sync.return_value = mock_channel_layer
 
-    def test_post_updated_signal(self):
+        # Create a post, triggering the post_saved signal
         post = Post.objects.create(
-            title='Signal Post',
-            content='Content for signal post.',
-            author=self.user
+            title='Test Post',
+            content='This is a test post content.',
+            author_id=self.user.id,
+            author_username=self.user.username,
         )
-        async_to_sync(self.channel_layer.flush)()
-        post.title = 'Updated Signal Post'
+
+        # Assert Kafka event was triggered
+        mock_kafka_task.assert_called_once_with(post.id, 'created')
+
+        # Assert that real-time group message was sent
+        mock_channel_layer.group_send.assert_called_once_with(
+            'posts',
+            {
+                'type': 'post_message',
+                'event': 'created',
+                'post': str(post.id),
+                'title': post.title,
+                'content': post.content,
+            }
+        )
+
+    @patch('social.signals.send_post_event_to_kafka.delay')
+    @patch('social.signals.async_to_sync')
+    def test_post_updated_signal(self, mock_async_to_sync, mock_kafka_task):
+        # Mock the channel layer to avoid real-time WebSocket operations
+        mock_channel_layer = MagicMock()
+        mock_async_to_sync.return_value = mock_channel_layer
+
+        # Create and then update the post, triggering the post_saved signal
+        post = Post.objects.create(
+            title='Test Post',
+            content='This is a test post content.',
+            author_id=self.user.id,
+            author_username=self.user.username,
+        )
+
+        post.title = 'Updated Test Post'
         post.save()
-        received_messages = async_to_sync(self.channel_layer.receive_group)('posts')
-        event = received_messages[0]
-        self.assertEqual(event['event'], 'updated')
-        self.assertEqual(event['post'], str(post.id))
 
-    def test_post_deleted_signal(self):
-        post = Post.objects.create(
-            title='Signal Post',
-            content='Content for signal post.',
-            author=self.user
+        # Assert Kafka event was triggered for the update
+        mock_kafka_task.assert_called_with(post.id, 'updated')
+
+        # Assert that real-time group message was sent for the update
+        mock_channel_layer.group_send.assert_called_with(
+            'posts',
+            {
+                'type': 'post_message',
+                'event': 'updated',
+                'post': str(post.id),
+                'title': post.title,
+                'content': post.content,
+            }
         )
-        async_to_sync(self.channel_layer.flush)()
-        post_id = post.id
+
+    @patch('social.signals.send_post_event_to_kafka.delay')
+    @patch('social.signals.async_to_sync')
+    def test_post_deleted_signal(self, mock_async_to_sync, mock_kafka_task):
+        # Mock the channel layer to avoid real-time WebSocket operations
+        mock_channel_layer = MagicMock()
+        mock_async_to_sync.return_value = mock_channel_layer
+
+        # Create a post and then delete it, triggering the post_deleted signal
+        post = Post.objects.create(
+            title='Test Post',
+            content='This is a test post content.',
+            author_id=self.user.id,
+            author_username=self.user.username,
+        )
         post.delete()
-        received_messages = async_to_sync(self.channel_layer.receive_group)('posts')
-        event = received_messages[0]
-        self.assertEqual(event['event'], 'deleted')
-        self.assertEqual(event['post'], str(post_id))
 
-    def test_tagged_item_saved_signal(self):
+        # Assert Kafka event was triggered for deletion
+        mock_kafka_task.assert_called_once_with(post.id, 'deleted')
+
+        # Assert that real-time group message was sent for the deletion
+        mock_channel_layer.group_send.assert_called_once_with(
+            'posts',
+            {
+                'type': 'post_message',
+                'event': 'deleted',
+                'post': str(post.id),
+                'title': post.title,
+                'content': post.content,
+            }
+        )
+
+    @patch('social.signals.async_to_sync')
+    def test_tagged_item_saved_signal(self, mock_async_to_sync):
+        # Mock the channel layer to avoid real-time WebSocket operations
+        mock_channel_layer = MagicMock()
+        mock_async_to_sync.return_value = mock_channel_layer
+
+        # Create a post
         post = Post.objects.create(
-            title='Tagged Post',
-            content='Post with tag.',
-            author=self.user
+            title='Test Post',
+            content='This is a test post content.',
+            author_id=self.user.id,
+            author_username=self.user.username,
         )
-        async_to_sync(self.channel_layer.flush)()
-        tagged_user = User.objects.create_user(
-            email='taggeduser@example.com',
-            username='taggeduser',
-            password='taggedpassword'
-        )
+
+        # Create a tagged item, triggering the tagged_item_saved signal
         tagged_item = TaggedItem.objects.create(
             content_object=post,
-            tagged_user=tagged_user,
-            tagged_by=self.user
+            tagged_user_id=self.user.id,
+            tagged_by=self.user,
         )
-        received_messages = async_to_sync(self.channel_layer.receive_group)('posts')
-        event = received_messages[0]
-        self.assertEqual(event['event'], 'tagged')
-        self.assertEqual(event['post'], str(post.id))
-        self.assertIn(str(tagged_user.id), event['tagged_user_ids'])
+
+        # Assert that real-time group message was sent for tagging
+        mock_channel_layer.group_send.assert_called_once_with(
+            'posts',
+            {
+                'type': 'post_message',
+                'event': 'tagged',
+                'post': str(post.id),
+                'title': post.title,
+                'content': post.content,
+                'tagged_user_ids': [str(tagged_item.tagged_user_id)],
+            }
+        )
+
+    @patch('social.signals.async_to_sync')
+    def test_tagged_item_saved_signal_update(self, mock_async_to_sync):
+        # Mock the channel layer to avoid real-time WebSocket operations
+        mock_channel_layer = MagicMock()
+        mock_async_to_sync.return_value = mock_channel_layer
+
+        # Create a post
+        post = Post.objects.create(
+            title='Test Post',
+            content='This is a test post content.',
+            author_id=self.user.id,
+            author_username=self.user.username,
+        )
+
+        # Create a tagged item
+        tagged_item = TaggedItem.objects.create(
+            content_object=post,
+            tagged_user_id=self.user.id,
+            tagged_by=self.user,
+        )
+
+        # Update the tagged item, triggering the tagged_item_saved signal for update
+        tagged_item.tagged_user_id = self.user.id
+        tagged_item.save()
+
+        # Assert that real-time group message was sent for untagging
+        mock_channel_layer.group_send.assert_called_with(
+            'posts',
+            {
+                'type': 'post_message',
+                'event': 'untagged',
+                'post': str(post.id),
+                'title': post.title,
+                'content': post.content,
+                'tagged_user_ids': [str(tagged_item.tagged_user_id)],
+            }
+        )
+
+
+

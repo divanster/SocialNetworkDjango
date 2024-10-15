@@ -1,4 +1,3 @@
-# backend/comments/tests/test_consumers.py
 import json
 import pytest
 from channels.testing import WebsocketCommunicator
@@ -28,12 +27,12 @@ async def test_comment_consumer():
         "comments",
         {
             "type": "comment_message",
-            "message": {"comment": "This is a test comment"}
+            "message": {"comment": "This is a test comment", "tagged_users": []}
         }
     )
     response = await communicator.receive_from()
     assert json.loads(response) == {
-        "message": {"comment": "This is a test comment"}
+        "message": {"comment": "This is a test comment", "tagged_users": []}
     }
 
     # Close the WebSocket connection

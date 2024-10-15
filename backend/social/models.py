@@ -1,26 +1,25 @@
-import os
-import uuid
+# social/models.py
+
 from django.db import models
 from core.models.base_models import BaseModel
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.contrib.contenttypes.fields import GenericRelation
-from tagging.models import TaggedItem  # Import TaggedItem for generic relations
-
-User = get_user_model()
+import uuid
 
 
 def post_image_file_path(instance, filename):
+    import os
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/post/', filename)
 
 
 class Post(BaseModel):
+    post_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     content = models.TextField()
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
-    tags = GenericRelation(TaggedItem, related_query_name='posts')  # Add generic relation for tags
+    author_id = models.IntegerField()
+    author_username = models.CharField(max_length=150)
+    tags = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -30,31 +29,32 @@ class Post(BaseModel):
 
     @property
     def average_rating(self):
-        ratings = self.ratings.all()
+        ratings = Rating.objects.using('social_db').filter(post_id=self.post_id)
         if ratings.exists():
             return sum(rating.value for rating in ratings) / ratings.count()
         return 0
 
 
 class PostImage(BaseModel):
-    post = models.ForeignKey(Post, related_name='images', on_delete=models.CASCADE)
+    post_id = models.UUIDField()
     image = models.ImageField(upload_to=post_image_file_path)
 
     def __str__(self):
-        return f"{self.post.title} Image"
+        return f"Image for Post ID {self.post_id}"
 
 
 class Rating(BaseModel):
-    post = models.ForeignKey(Post, related_name='ratings', on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    post_id = models.UUIDField()
+    user_id = models.IntegerField()
+    user_username = models.CharField(max_length=150)
     value = models.PositiveSmallIntegerField()
 
     class Meta:
-        unique_together = ('post', 'user')
+        unique_together = ('post_id', 'user_id')
 
     def clean(self):
         if self.value < 1 or self.value > 5:
             raise ValidationError('Rating value must be between 1 and 5.')
 
     def __str__(self):
-        return f"{self.post.title} - {self.value} Stars"
+        return f"Rating {self.value} Stars for Post ID {self.post_id}"

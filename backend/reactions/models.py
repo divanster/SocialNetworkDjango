@@ -1,12 +1,7 @@
 # reactions/models.py
 
-import uuid
 from django.db import models
-from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 
-User = get_user_model()
 
 class Reaction(models.Model):
     EMOJI_CHOICES = [
@@ -17,21 +12,17 @@ class Reaction(models.Model):
         ('sad', 'Sad'),
         ('angry', 'Angry'),
     ]
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-
-    # Generic relation to allow reacting to multiple types of content
-    content_type = models.ForeignKey(
-        ContentType,
-        on_delete=models.CASCADE
-    )
-    object_id = models.UUIDField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
+    user_id = models.IntegerField()
+    user_username = models.CharField(max_length=150)
+    reacted_item_type = models.CharField(
+        max_length=100)  # E.g., 'Post', 'Comment', etc.
+    reacted_item_id = models.CharField(
+        max_length=255)  # Use CharField to accommodate various ID types
     emoji = models.CharField(max_length=10, choices=EMOJI_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'content_type', 'object_id', 'emoji')
+        unique_together = ('user_id', 'reacted_item_type', 'reacted_item_id', 'emoji')
 
     def __str__(self):
-        return f"{self.user.username} reacted with {self.emoji}"
+        return f"{self.user_username} reacted with {self.emoji} on {self.reacted_item_type} {self.reacted_item_id}"

@@ -1,3 +1,4 @@
+# backend/albums/serializers.py
 from rest_framework import serializers
 from .models import Album, Photo
 from tagging.serializers import TaggedItemSerializer
@@ -40,10 +41,10 @@ class AlbumSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
         photos_data = validated_data.pop('photos_upload', [])
-        album = Album.objects.create(**validated_data)
+        album = Album.objects.using('social_db').create(**validated_data)
         self.create_tagged_items(album, tagged_user_ids)
         for photo_data in photos_data:
-            Photo.objects.create(album=album, **photo_data)
+            Photo.objects.using('social_db').create(album=album, **photo_data)
         return album
 
     def update(self, instance, validated_data):
@@ -51,7 +52,7 @@ class AlbumSerializer(serializers.ModelSerializer):
         photos_data = validated_data.pop('photos_upload', [])
         album = super().update(instance, validated_data)
         if tagged_user_ids is not None:
-            instance.tags.all().delete()
+            instance.tags.all().using('social_db').delete()
             self.create_tagged_items(album, tagged_user_ids)
 
         # Handle photo updates and deletions
@@ -71,14 +72,15 @@ class AlbumSerializer(serializers.ModelSerializer):
         updated_photo_ids = set(
             photo_data.get('id') for photo_data in photos_data if 'id' in photo_data)
         Photo.objects.filter(album=album,
-                             id__in=(existing_photo_ids - updated_photo_ids)).delete()
+                             id__in=(existing_photo_ids - updated_photo_ids)).using(
+            'social_db').delete()
 
         return album
 
     def create_tagged_items(self, album, tagged_user_ids):
         from tagging.models import TaggedItem
         for user_id in tagged_user_ids:
-            TaggedItem.objects.create(
+            TaggedItem.objects.using('social_db').create(
                 content_object=album,
                 tagged_user_id=user_id,
                 tagged_by=self.context['request'].user

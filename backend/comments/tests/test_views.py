@@ -1,4 +1,3 @@
-# backend/comments/tests/test_views.py
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.urls import reverse
@@ -23,6 +22,7 @@ class CommentViewSetTestCase(APITestCase):
         self.comment_data = {
             "post": self.post.id,
             "content": "This is a test comment",
+            "tagged_user_ids": []
         }
 
     @patch('comments.views.KafkaProducerClient.send_message')

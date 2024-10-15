@@ -1,5 +1,3 @@
-# albums/tests/test_serializers.py
-
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from albums.models import Album, Photo
@@ -21,10 +19,8 @@ class AlbumSerializerTest(TestCase):
         self.request.user = self.user
 
     def test_album_serializer_create(self):
-        image1 = SimpleUploadedFile("test1.jpg", b"file_content1",
-                                    content_type="image/jpeg")
-        image2 = SimpleUploadedFile("test2.jpg", b"file_content2",
-                                    content_type="image/jpeg")
+        image1 = SimpleUploadedFile("test1.jpg", b"file_content1", content_type="image/jpeg")
+        image2 = SimpleUploadedFile("test2.jpg", b"file_content2", content_type="image/jpeg")
         data = {
             'title': 'New Album',
             'description': 'An awesome album',
@@ -44,9 +40,8 @@ class AlbumSerializerTest(TestCase):
         self.assertEqual(album.photos.first().description, 'First photo')
 
     def test_album_serializer_update(self):
-        # Create initial album
-        album = Album.objects.create(user=self.user, title='Initial Album')
-        photo = Photo.objects.create(
+        album = Album.objects.using('social_db').create(user=self.user, title='Initial Album')
+        photo = Photo.objects.using('social_db').create(
             album=album,
             image=SimpleUploadedFile("test.jpg", b"content", content_type="image/jpeg"),
             description='Initial photo'

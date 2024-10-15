@@ -69,3 +69,33 @@ def consume_post_events():
         except Exception as e:
             logger.error(f"Error processing post event: {e}")
 
+
+@shared_task
+def process_new_post(post_id):
+    """
+    Celery task to process a newly created post.
+    This function could be used to perform various background actions,
+    such as indexing the post for search, sending notifications, etc.
+    """
+    producer = KafkaProducerClient()
+
+    try:
+        post = Post.objects.get(id=post_id)
+
+        # Example processing logic - Sending post to Kafka for analytics or feed distribution
+        message = {
+            "post_id": post.id,
+            "title": post.title,
+            "content": post.content,
+            "author_id": post.author_id,
+            "created_at": str(post.created_at),
+            "event": "created"
+        }
+
+        producer.send_message(
+            settings.KAFKA_TOPICS.get('POST_EVENTS', 'default-post-topic'), message)
+        logger.info(f"Processed new post and sent to Kafka: {message}")
+    except Post.DoesNotExist:
+        logger.error(f"Post with ID {post_id} does not exist.")
+    except Exception as e:
+        logger.error(f"Error processing new post: {e}")

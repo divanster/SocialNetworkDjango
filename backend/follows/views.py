@@ -1,4 +1,3 @@
-# backend/follows/views.py
 from rest_framework import viewsets, permissions
 from .models import Follow
 from .serializers import FollowSerializer
@@ -21,7 +20,9 @@ class FollowViewSet(viewsets.ModelViewSet):
         message = {
             "follow_id": instance.id,
             "follower_id": instance.follower.id,
-            "following_id": instance.following.id,
+            "follower_username": instance.follower.username,
+            "followed_id": instance.followed.id,
+            "followed_username": instance.followed.username,
             "created_at": str(instance.created_at),
         }
         try:
@@ -36,7 +37,7 @@ class FollowViewSet(viewsets.ModelViewSet):
         message = {
             "follow_id": instance.id,
             "follower_id": instance.follower.id,
-            "following_id": instance.following.id,
+            "followed_id": instance.followed.id,
             "action": "deleted"
         }
         try:

@@ -1,4 +1,4 @@
-# backend/notifications/views.py
+# backend/notifications/test_views.py
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView

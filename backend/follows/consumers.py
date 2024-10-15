@@ -1,5 +1,3 @@
-# backend/follows/consumers.py
-
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from kafka_app.consumer import KafkaConsumerClient

@@ -1,4 +1,3 @@
-# backend/comments/tests/test_serializers.py
 from rest_framework import serializers
 from rest_framework.test import APITestCase
 from comments.serializers import CommentSerializer
@@ -32,7 +31,9 @@ class CommentSerializerTestCase(APITestCase):
             'created_at': serializers.DateTimeField().to_representation(
                 comment.created_at),
             'updated_at': serializers.DateTimeField().to_representation(
-                comment.updated_at)
+                comment.updated_at),
+            'tags': [],
+            'tagged_user_ids': []
         }
 
         self.assertEqual(serializer.data, expected_data)
@@ -42,7 +43,8 @@ class CommentSerializerTestCase(APITestCase):
         data = {
             'user': self.user.id,
             'post': self.post.id,
-            'content': 'New comment content'
+            'content': 'New comment content',
+            'tagged_user_ids': []
         }
         serializer = CommentSerializer(data=data)
 

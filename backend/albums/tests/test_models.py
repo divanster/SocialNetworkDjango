@@ -1,43 +1,27 @@
-# albums/tests/test_models.py
-
-from django.test import TestCase
-from django.contrib.auth import get_user_model
+import pytest
 from albums.models import Album, Photo
-from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
-class AlbumModelTest(TestCase):
+@pytest.mark.django_db(databases=['social_db'])
+def test_create_album():
+    user = User.objects.create(email='test@example.com', username='testuser')
+    album = Album.objects.using('social_db').create(user=user, title="Test Album",
+                                                    description="This is a test album")
 
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email='user@example.com', username='testuser', password='password123'
-        )
+    assert album.title == "Test Album"
+    assert album.description == "This is a test album"
+    assert album.user == user
 
-    def test_album_creation(self):
-        album = Album.objects.create(
-            user=self.user,
-            title='Vacation Photos',
-            description='Photos from my vacation.'
-        )
-        self.assertEqual(album.title, 'Vacation Photos')
-        self.assertEqual(album.description, 'Photos from my vacation.')
-        self.assertEqual(album.user, self.user)
-        self.assertEqual(str(album), 'Vacation Photos')
 
-    def test_photo_creation(self):
-        album = Album.objects.create(user=self.user, title='Test Album')
-        image = SimpleUploadedFile(
-            name='test_image.jpg',
-            content=b'\x00\x00\x00\x00',
-            content_type='image/jpeg'
-        )
-        photo = Photo.objects.create(
-            album=album,
-            image=image,
-            description='A test photo.'
-        )
-        self.assertEqual(photo.album, album)
-        self.assertEqual(photo.description, 'A test photo.')
-        self.assertEqual(str(photo), f"Photo in {album.title}")
+@pytest.mark.django_db(databases=['social_db'])
+def test_create_photo():
+    user = User.objects.create(email='test@example.com', username='testuser')
+    album = Album.objects.using('social_db').create(user=user, title="Test Album")
+    photo = Photo.objects.using('social_db').create(album=album,
+                                                    description="Test Photo")
+
+    assert photo.album == album
+    assert photo.description == "Test Photo"

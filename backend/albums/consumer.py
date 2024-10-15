@@ -11,6 +11,8 @@ import json
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
+from albums.models import Album
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,11 +43,21 @@ class AlbumKafkaConsumerClient:
         for message in self.consumer:
             try:
                 data = message.value
-                # Add custom logic to handle the album event
                 logger.info(f"[KAFKA] Received album event: {data}")
-                # Handle album events here (e.g., analytics, notifications)
+                self.handle_album_event(data)
             except Exception as e:
                 logger.error(f"[KAFKA] Error processing message: {e}")
+
+    def handle_album_event(self, data):
+        # Handle logic for MongoDB data if needed
+        event_type = data.get('event')
+        if event_type == 'created':
+            album_id = data.get('album')
+            try:
+                album = Album.objects.using('social_db').get(pk=album_id)
+                logger.info(f"[KAFKA] Successfully fetched album: {album}")
+            except Album.DoesNotExist:
+                logger.error(f"[KAFKA] Album with ID {album_id} does not exist.")
 
 
 def main():

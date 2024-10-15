@@ -5,7 +5,19 @@ class SocialRouter:
     A router to control all database operations on models in social apps.
     """
 
-    route_app_labels = {'social', 'comments', 'reactions'}  # Add other social app labels as needed
+    route_app_labels = {
+        'albums',
+        'comments',
+        'media',
+        'messenger',
+        'newsfeed',
+        'notifications',
+        'pages',
+        'reactions',
+        'social',
+        'stories',
+        'tagging',
+    }
 
     def db_for_read(self, model, **hints):
         if model._meta.app_label in self.route_app_labels:
@@ -18,12 +30,10 @@ class SocialRouter:
         return 'default'
 
     def allow_relation(self, obj1, obj2, **hints):
-        if (
-            obj1._state.db in ('social_db', 'default') and
-            obj2._state.db in ('social_db', 'default')
-        ):
+        # Allow relations only within the same database
+        if obj1._state.db == obj2._state.db:
             return True
-        return None
+        return False  # Disallow cross-database relations
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if app_label in self.route_app_labels:

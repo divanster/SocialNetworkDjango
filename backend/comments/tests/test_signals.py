@@ -1,4 +1,3 @@
-# backend/comments/tests/test_signals.py
 from django.test import TestCase
 from unittest.mock import patch
 from comments.models import Comment
@@ -16,24 +15,15 @@ class CommentSignalsTestCase(TestCase):
         self.post = Post.objects.create(author=self.user, title='Test Post',
                                         content='Some content')
 
-    @patch('comments.signals.KafkaProducerClient.send_message')
-    def test_comment_created_signal(self, mock_send_message):
+    @patch('comments.signals.send_comment_event_to_kafka.delay')
+    def test_comment_created_signal(self, mock_send_comment_event_to_kafka):
         comment = Comment.objects.create(user=self.user, post=self.post,
                                          content="Test Comment")
-        mock_send_message.assert_called_once_with('COMMENT_EVENTS', {
-            "comment_id": comment.id,
-            "content": comment.content,
-            "user_id": comment.user_id,
-            "post_id": comment.post_id,
-            "created_at": str(comment.created_at),
-        })
+        mock_send_comment_event_to_kafka.assert_called_once_with(comment.id, 'created')
 
-    @patch('comments.signals.KafkaProducerClient.send_message')
-    def test_comment_deleted_signal(self, mock_send_message):
+    @patch('comments.signals.send_comment_event_to_kafka.delay')
+    def test_comment_deleted_signal(self, mock_send_comment_event_to_kafka):
         comment = Comment.objects.create(user=self.user, post=self.post,
                                          content="Test Comment")
         comment.delete()
-        mock_send_message.assert_called_once_with('COMMENT_EVENTS', {
-            "comment_id": comment.id,
-            "action": "deleted"
-        })
+        mock_send_comment_event_to_kafka.assert_called_once_with(comment.id, 'deleted')

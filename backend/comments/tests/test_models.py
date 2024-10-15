@@ -1,4 +1,3 @@
-# backend/comments/tests/test_models.py
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from comments.models import Comment
@@ -28,14 +27,16 @@ class CommentModelTestCase(TestCase):
     def test_str_method(self):
         # Test the __str__ method of the Comment model
         comment = Comment.objects.create(user=self.user, post=self.post,
-                                         content='A long comment that should be truncated.')
+                                         content='A long comment that should be '
+                                                 'truncated.')
         self.assertEqual(str(comment), 'A long comment that sho')
 
     def test_create_comment_without_content(self):
         # Test comment creation without content, should raise ValidationError
         with self.assertRaises(ValidationError):
             comment = Comment(user=self.user, post=self.post, content='')
-            comment.full_clean()  # This is used to manually trigger the model validation
+            comment.full_clean()  # This is used to manually trigger the model
+            # validation
 
     def test_related_post_comments(self):
         # Test post's related comments

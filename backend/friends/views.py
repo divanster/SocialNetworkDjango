@@ -1,4 +1,4 @@
-# backend/friends/views.py
+# backend/friends/test_views.py
 from rest_framework import viewsets, permissions, serializers
 from .models import FriendRequest, Friendship
 from .serializers import FriendRequestSerializer, FriendshipSerializer

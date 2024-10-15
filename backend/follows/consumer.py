@@ -13,6 +13,7 @@ django.setup()
 
 logger = logging.getLogger(__name__)
 
+
 class KafkaConsumerClient:
     def __init__(self, topic):
         self.topic = topic
@@ -32,7 +33,8 @@ class KafkaConsumerClient:
                 logger.info(f"Connected to Kafka topic: {self.topic}")
                 return consumer
             except Exception as e:
-                logger.error(f"Failed to connect to Kafka: {e}. Retrying in 5 seconds...")
+                logger.error(f"Failed to connect to Kafka: {e}. Retrying "
+                             f"in 5 seconds...")
                 time.sleep(5)
 
     def consume_messages(self):
@@ -40,10 +42,12 @@ class KafkaConsumerClient:
             logger.info(f"Received message: {message.value}")
             # Add your processing logic here if necessary
 
+
 def main():
     topic = settings.KAFKA_TOPICS['FOLLOW_EVENTS']
     consumer_client = KafkaConsumerClient(topic)
     consumer_client.consume_messages()
+
 
 if __name__ == "__main__":
     main()

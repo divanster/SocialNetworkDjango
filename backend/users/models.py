@@ -1,4 +1,4 @@
-# backend/users/models.py
+# users/models.py
 
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
@@ -7,10 +7,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericRelation
 
-# Assuming 'core.models.base_models' provides BaseModel and UUIDModel
-from core.models.base_models import BaseModel, UUIDModel
 
 # Define CustomUserManager
 class CustomUserManager(BaseUserManager):
@@ -51,7 +48,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     """
     Custom user model that uses email instead of username for authentication.
     """
-
     email = models.EmailField(unique=True, db_index=True)
     username = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=True)
@@ -67,10 +63,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
-# After defining CustomUser, import TaggedItem to prevent circular imports
-from tagging.models import TaggedItem
-
-
 def user_profile_picture_file_path(instance, filename):
     """
     Generates a file path for a new user profile picture.
@@ -83,7 +75,7 @@ def user_profile_picture_file_path(instance, filename):
 
 
 # Define UserProfile
-class UserProfile(UUIDModel, BaseModel):  # Inherit UUIDModel and BaseModel
+class UserProfile(models.Model):
     """
     UserProfile model that stores additional information about the user.
     """
@@ -123,7 +115,9 @@ class UserProfile(UUIDModel, BaseModel):  # Inherit UUIDModel and BaseModel
     relationship_status = models.CharField(max_length=1,
                                            choices=RELATIONSHIP_STATUS_CHOICES,
                                            default='S')
-    tags = GenericRelation(TaggedItem, related_query_name='userprofiles')
+
+    # Removed GenericRelation to TaggedItem to avoid cross-database relations
+    # If you need to store tags, consider using a JSONField or another approach
 
     def __str__(self):
         return f'{self.user.username} Profile'

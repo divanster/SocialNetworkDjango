@@ -1,4 +1,4 @@
-# backend/pages/views.py
+# backend/pages/test_views.py
 from rest_framework import viewsets, permissions
 from .models import Page
 from .serializers import PageSerializer

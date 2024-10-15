@@ -1,65 +1,45 @@
-# backend/friends/tests/test_serializers.py
-
-from django.test import TestCase
-from django.contrib.auth import get_user_model
-from friends.models import FriendRequest, Friendship
+from rest_framework.test import APITestCase
 from friends.serializers import FriendRequestSerializer, FriendshipSerializer
-from rest_framework.exceptions import ValidationError
+from friends.models import FriendRequest, Friendship
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 
-class FriendRequestSerializerTests(TestCase):
-
+class FriendSerializerTestCase(APITestCase):
     def setUp(self):
-        self.sender = User.objects.create_user(
-            email='sender@example.com',
-            username='sender',
-            password='password1'
-        )
-        self.receiver = User.objects.create_user(
-            email='receiver@example.com',
-            username='receiver',
-            password='password2'
-        )
+        self.user1 = User.objects.create_user(email='user1@example.com',
+                                              username='user1', password='password123')
+        self.user2 = User.objects.create_user(email='user2@example.com',
+                                              username='user2', password='password123')
 
-    def test_friend_request_serializer_create(self):
-        data = {
-            'receiver': self.receiver.id,
+    def test_friend_request_serialization(self):
+        # Create a friend request instance
+        friend_request = FriendRequest.objects.create(sender_id=self.user1.id,
+                                                      sender_username=self.user1.username,
+                                                      receiver_id=self.user2.id,
+                                                      receiver_username=self.user2.username)
+        serializer = FriendRequestSerializer(friend_request)
+        expected_data = {
+            'id': friend_request.id,
+            'sender': self.user1.id,
+            'receiver': self.user2.id,
+            'created_at': friend_request.created_at.isoformat(),
+            'status': friend_request.status,
         }
-        serializer = FriendRequestSerializer(data=data)
-        serializer.context['request'] = type('Request', (object,),
-                                             {'user': self.sender})()
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        friend_request = serializer.save(sender=self.sender)
-        self.assertEqual(friend_request.sender, self.sender)
-        self.assertEqual(friend_request.receiver, self.receiver)
-        self.assertEqual(friend_request.status, 'pending')
+        self.assertEqual(serializer.data, expected_data)
 
-    def test_friend_request_serializer_validation(self):
-        data = {}
-        serializer = FriendRequestSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('receiver', serializer.errors)
-
-
-class FriendshipSerializerTests(TestCase):
-
-    def setUp(self):
-        self.user1 = User.objects.create_user(
-            email='user1@example.com',
-            username='user1',
-            password='password1'
-        )
-        self.user2 = User.objects.create_user(
-            email='user2@example.com',
-            username='user2',
-            password='password2'
-        )
-        self.friendship = Friendship.objects.create(user1=self.user1, user2=self.user2)
-
-    def test_friendship_serializer(self):
-        serializer = FriendshipSerializer(instance=self.friendship)
-        data = serializer.data
-        self.assertEqual(data['user1'], self.user1.id)
-        self.assertEqual(data['user2'], self.user2.id)
+    def test_friendship_serialization(self):
+        # Create a friendship instance
+        friendship = Friendship.objects.create(user1_id=self.user1.id,
+                                               user1_username=self.user1.username,
+                                               user2_id=self.user2.id,
+                                               user2_username=self.user2.username)
+        serializer = FriendshipSerializer(friendship)
+        expected_data = {
+            'id': friendship.id,
+            'user1': self.user1.id,
+            'user2': self.user2.id,
+            'created_at': friendship.created_at.isoformat(),
+        }
+        self.assertEqual(serializer.data, expected_data)

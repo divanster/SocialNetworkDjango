@@ -1,9 +1,8 @@
+# friends/models.py
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from core.models.base_models import BaseModel
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
 
 
 class FriendRequest(BaseModel):
@@ -12,79 +11,54 @@ class FriendRequest(BaseModel):
         ACCEPTED = 'accepted', 'Accepted'
         REJECTED = 'rejected', 'Rejected'
 
-    sender = models.ForeignKey(User, related_name='sent_friend_requests',
-                               on_delete=models.CASCADE)
-    receiver = models.ForeignKey(User, related_name='received_friend_requests',
-                                 on_delete=models.CASCADE)
+    sender_id = models.IntegerField()
+    sender_username = models.CharField(max_length=150)
+    receiver_id = models.IntegerField()
+    receiver_username = models.CharField(max_length=150)
     status = models.CharField(max_length=10, choices=Status.choices,
                               default=Status.PENDING)
 
     class Meta:
-        unique_together = ('sender', 'receiver')
+        unique_together = ('sender_id', 'receiver_id')
         constraints = [
-            models.UniqueConstraint(fields=['sender', 'receiver'],
+            models.UniqueConstraint(fields=['sender_id', 'receiver_id'],
                                     condition=models.Q(status='pending'),
                                     name='unique_pending_request')
         ]
 
-    def clean(self):
-        # Check if sender has blocked the receiver or vice versa
-        if Block.objects.filter(blocker=self.sender, blocked=self.receiver).exists() or \
-                Block.objects.filter(blocker=self.receiver,
-                                     blocked=self.sender).exists():
-            raise ValidationError(
-                "Cannot send friend request. One of the users is blocked.")
-
-    def save(self, *args, **kwargs):
-        self.clean()  # Call the clean method before saving to validate
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        return f"{self.sender.username} -> {self.receiver.username} ({self.status})"
+        return f"{self.sender_username} -> {self.receiver_username} ({self.status})"
 
 
 class Friendship(BaseModel):
-    user1 = models.ForeignKey(User, related_name='friendships',
-                              on_delete=models.CASCADE)
-    user2 = models.ForeignKey(User, related_name='friends', on_delete=models.CASCADE)
+    user1_id = models.IntegerField()
+    user1_username = models.CharField(max_length=150)
+    user2_id = models.IntegerField()
+    user2_username = models.CharField(max_length=150)
 
     class Meta:
+        unique_together = ('user1_id', 'user2_id')
         constraints = [
-            models.UniqueConstraint(fields=['user1', 'user2'],
-                                    name='unique_friendship'),
-            models.CheckConstraint(check=models.Q(user1__lt=models.F('user2')),
+            models.CheckConstraint(check=models.Q(user1_id__lt=models.F('user2_id')),
                                    name='user1_lt_user2'),
         ]
 
-    def clean(self):
-        # Check if either user has blocked the other
-        if Block.objects.filter(blocker=self.user1, blocked=self.user2).exists() or \
-                Block.objects.filter(blocker=self.user2, blocked=self.user1).exists():
-            raise ValidationError(
-                "Cannot create friendship. One of the users is blocked.")
-
-    def save(self, *args, **kwargs):
-        self.clean()  # Call the clean method before saving to validate
-        if self.user1.id > self.user2.id:
-            self.user1, self.user2 = self.user2, self.user1
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        return f"{self.user1.username} & {self.user2.username}"
+        return f"{self.user1_username} & {self.user2_username}"
 
 
 class Block(BaseModel):
-    blocker = models.ForeignKey(User, related_name='blocker_set',
-                                on_delete=models.CASCADE)
-    blocked = models.ForeignKey(User, related_name='blocked_set',
-                                on_delete=models.CASCADE)
+    blocker_id = models.IntegerField()
+    blocker_username = models.CharField(max_length=150)
+    blocked_id = models.IntegerField()
+    blocked_username = models.CharField(max_length=150)
 
     class Meta:
-        unique_together = ('blocker', 'blocked')
+        unique_together = ('blocker_id', 'blocked_id')
         constraints = [
-            models.CheckConstraint(check=~models.Q(blocker=models.F('blocked')),
+            models.CheckConstraint(check=~models.Q(blocker_id=models.F('blocked_id')),
                                    name='block_self_check')
         ]
 
     def __str__(self):
-        return f"{self.blocker.username} blocked {self.blocked.username}"
+        return f"{self.blocker_username} blocked {self.blocked_username}"

@@ -1,5 +1,4 @@
 # backend/comments/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from kafka_app.consumer import KafkaConsumerClient
@@ -34,16 +33,14 @@ def send_comment_event_to_kafka(comment_id, event_type):
                 "event": event_type
             }
 
-        # Get Kafka topic from settings for better flexibility
-        kafka_topic = settings.KAFKA_TOPICS.get('COMMENT_EVENTS',
-                                                'default-comment-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get('COMMENT_EVENTS', 'default-comment-topic')
         producer.send_message(kafka_topic, message)
-
         logger.info(f"Sent Kafka message for comment {event_type}: {message}")
     except Comment.DoesNotExist:
         logger.error(f"Comment with ID {comment_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
+        raise e
 
 
 @shared_task
@@ -56,7 +53,6 @@ def consume_comment_events():
 
     for message in consumer.consume_messages():
         try:
-            # Add comment-specific processing logic here if needed
             logger.info(f"Processed comment event: {message}")
         except Exception as e:
             logger.error(f"Error processing comment event: {e}")

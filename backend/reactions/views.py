@@ -1,4 +1,4 @@
-# backend/reactions/views.py
+# backend/reactions/test_views.py
 from rest_framework import viewsets, permissions
 from .models import Reaction
 from .serializers import ReactionSerializer

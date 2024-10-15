@@ -6,7 +6,8 @@ from .tasks import process_new_album
 
 
 class AlbumViewSet(viewsets.ModelViewSet):
-    queryset = Album.objects.all()
+    queryset = Album.objects.using(
+        'social_db').all()  # Modified to explicitly use MongoDB
     serializer_class = AlbumSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser]
@@ -20,8 +21,5 @@ class AlbumViewSet(viewsets.ModelViewSet):
 
 
 class PhotoViewSet(viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing photos.
-    """
-    queryset = Photo.objects.all()
+    queryset = Photo.objects.using('social_db').all()  # Explicitly use MongoDB
     serializer_class = PhotoSerializer

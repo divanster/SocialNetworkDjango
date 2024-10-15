@@ -1,10 +1,10 @@
 # backend/albums/consumers.py
-
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
+from albums.models import Album
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -48,4 +48,5 @@ class AlbumConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_users(self, user_ids):
-        return list(User.objects.filter(id__in=user_ids).values('id', 'username'))
+        return list(User.objects.filter(id__in=user_ids).using('default').values('id',
+                                                                                 'username'))

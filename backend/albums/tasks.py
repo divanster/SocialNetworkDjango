@@ -1,5 +1,3 @@
-# backend/albums/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from .models import Album, Photo
@@ -62,11 +60,16 @@ def send_photo_event_to_kafka(self, photo_id, event_type):
 def process_new_album(album_id):
     """
     Celery task to process a newly created album.
+    This could be used to send notifications, perform analytics, or any other async processing.
     """
     try:
         album = Album.objects.get(id=album_id)
         # Add any post-processing logic here (e.g., notifications, analytics)
         logger.info(f"Processing new album with ID: {album_id} - Title: {album.title}")
+
+        # Here you could trigger additional tasks, such as sending notifications
+        # send_notification_to_followers(album_id)
+
     except Album.DoesNotExist:
         logger.error(f"Album with ID {album_id} does not exist.")
     except Exception as e:

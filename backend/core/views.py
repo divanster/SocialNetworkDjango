@@ -1,4 +1,4 @@
-# core/views.py
+# core/test_views.py
 
 import json
 import logging

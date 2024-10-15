@@ -1,5 +1,3 @@
-# backend/follows/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from kafka_app.consumer import KafkaConsumerClient
@@ -28,7 +26,9 @@ def send_follow_event_to_kafka(follow_id, event_type):
             message = {
                 "follow_id": follow.id,
                 "follower_id": follow.follower.id,
-                "following_id": follow.followed.id,
+                "follower_username": follow.follower.username,
+                "followed_id": follow.followed.id,
+                "followed_username": follow.followed.username,
                 "created_at": str(follow.created_at),
                 "event": event_type
             }
