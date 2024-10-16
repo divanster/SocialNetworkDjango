@@ -1,6 +1,7 @@
-# docker-compose.yml
+version: '3.8'  # Explicitly set the version to ensure compatibility with Docker features
 
 services:
+  # PostgreSQL service for Django models that use SQL
   db:
     image: postgres:13-alpine
     environment:
@@ -17,12 +18,13 @@ services:
     networks:
       - backend_network
 
+  # MongoDB service for apps using MongoEngine
   mongo:
     image: mongo:4.4
     environment:
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-social_db}
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-password}
     volumes:
       - mongo_data:/data/db
     ports:
@@ -35,6 +37,7 @@ services:
       timeout: 10s
       retries: 5
 
+  # Redis service used for caching and Celery broker
   redis:
     image: redis:6-alpine
     volumes:
@@ -47,6 +50,7 @@ services:
     networks:
       - backend_network
 
+  # Zookeeper service to manage Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     environment:
@@ -63,6 +67,7 @@ services:
       timeout: 10s
       retries: 5
 
+  # Kafka service for handling events and topics
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     depends_on:
@@ -88,12 +93,16 @@ services:
       timeout: 10s
       retries: 5
 
+  # Django Web Service (including ASGI for WebSockets)
   web:
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: >
       sh -c "
+        ./wait-for-it.sh db:5432 -- 
+        ./wait-for-it.sh mongo:27017 -- 
+        ./wait-for-it.sh redis:6379 -- 
         ./wait-for-it.sh kafka:9093 -- 
         python /app/manage.py wait_for_db &&
         python /app/manage.py makemigrations --noinput &&
@@ -126,6 +135,7 @@ services:
       - backend_network
       - kafka_network
 
+  # Celery Worker for processing tasks asynchronously
   celery-worker:
     build:
       context: ./backend
@@ -152,6 +162,7 @@ services:
       - backend_network
       - kafka_network
 
+  # Celery Beat for scheduling tasks periodically
   celery-beat:
     build:
       context: ./backend
@@ -178,6 +189,7 @@ services:
       - backend_network
       - kafka_network
 
+  # Worker to run background Django tasks using Channels
   worker:
     build:
       context: ./backend
@@ -201,6 +213,7 @@ services:
       - backend_network
       - kafka_network
 
+  # Kafka Consumer for Albums - consuming album-related messages from Kafka
   kafka-consumer-albums:
     build:
       context: ./backend
@@ -228,6 +241,7 @@ services:
       - kafka_network
     restart: always
 
+  # React Frontend service
   frontend:
     build:
       context: ./frontend
@@ -245,6 +259,7 @@ services:
     networks:
       - frontend_network
 
+# Volumes for data persistence
 volumes:
   postgres_data:
   mongo_data:
@@ -253,6 +268,7 @@ volumes:
   zookeeper_datalog:
   kafka_data:
 
+# Networks for inter-service communication
 networks:
   backend_network:
     driver: bridge

@@ -55,6 +55,13 @@ urlpatterns += [
     path('api/v1/', include((api_v1_patterns, 'api_v1'), namespace='api_v1')),
 ]
 
+# Custom error handlers
+handler400 = 'config.views.custom_400_view'
+handler403 = 'config.views.custom_403_view'
+handler404 = 'config.views.custom_404_view'
+handler500 = 'config.views.custom_500_view'
+
+
 # Add debug toolbar and static/media URLs for development
 if settings.DEBUG:
     import debug_toolbar

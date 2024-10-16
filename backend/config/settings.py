@@ -1,11 +1,10 @@
-# backend/config/settings.py
-
 import os
 import sys
 from pathlib import Path
 from datetime import timedelta
 import environ
 from django.core.exceptions import ImproperlyConfigured
+from mongoengine import connect  # Import MongoEngine for MongoDB
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -16,22 +15,22 @@ env = environ.Env(
     DJANGO_SECRET_KEY=(str, ''),
     ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
 
-    # PostgreSQL settings
+    # PostgreSQL settings for Django ORM
     POSTGRES_DB=(str, 'app_db'),
     POSTGRES_USER=(str, 'app_user'),
     POSTGRES_PASSWORD=(str, 'app_password'),
     DB_HOST=(str, 'db'),
     DB_PORT=(str, '5432'),
 
-    # MongoDB settings
+    # MongoDB settings for apps using MongoEngine
     MONGO_DB_NAME=(str, 'social_db'),
-    MONGO_HOST=(str, 'localhost'),
+    MONGO_HOST=(str, 'mongo'),  # Use Docker service name or localhost
     MONGO_PORT=(int, 27017),
     MONGO_USER=(str, ''),
     MONGO_PASSWORD=(str, ''),
     MONGO_AUTH_SOURCE=(str, 'admin'),
 
-    # Other settings
+    # Redis and other settings
     CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000', 'http://127.0.0.1:3000']),
     REDIS_HOST=(str, 'redis'),
     REDIS_PORT=(int, 6379),
@@ -62,37 +61,29 @@ DEBUG = env('DEBUG')
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
-# Kafka settings
+# Kafka settings for event-driven architecture
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL')
 KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID')
 KAFKA_TOPICS = {
     'USER_EVENTS': 'user-events',
     'NOTIFICATIONS': 'user-notifications',
-    'ALBUM_EVENTS': 'album-events',
-    'COMMENT_EVENTS': 'comment-events',
-    'FOLLOW_EVENTS': 'follow-events',
-    'FRIEND_EVENTS': 'friend-events',
-    'MESSENGER_EVENTS': 'messenger-events',
-    'NEWSFEED_EVENTS': 'newsfeed-events',
-    'PAGE_EVENTS': 'page-events',
-    'POST_EVENTS': 'post-events',
-    'REACTION_EVENTS': 'reaction-events',
-    'STORIES_EVENTS': 'stories-events',
-    'TAGGING_EVENTS': 'tagging-events',
+    # Add other events here...
 }
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',  # Default backend for email and password
-    'social_core.backends.google.GoogleOAuth2',  # Example: Add Google OAuth2
-    'social_core.backends.facebook.FacebookOAuth2',  # Example: Add Facebook OAuth2
+    'django.contrib.auth.backends.ModelBackend',  # Default email/password backend
+    'social_core.backends.google.GoogleOAuth2',  # Google OAuth2 backend
+    'social_core.backends.facebook.FacebookOAuth2',  # Facebook OAuth2 backend
 ]
+
 
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
 
-# Installed applications, including Django apps, third-party apps, and custom apps
+
+# Installed applications (including both PostgreSQL-backed apps and MongoDB-backed apps)
 INSTALLED_APPS = [
     # Django default apps
     'django.contrib.admin',
@@ -112,26 +103,17 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_celery_beat',
     'csp',
-    'django_elasticsearch_dsl',
-    'djongo',  # Added djongo for MongoDB support
+    'django_elasticsearch_dsl',  # Elasticsearch support for searching content
 
-    # Custom apps
-    'users.apps.UsersConfig',
-    'follows.apps.FollowsConfig',
-    'reactions.apps.ReactionsConfig',
-    'stories.apps.StoriesConfig',
-    'social.apps.SocialConfig',
-    'messenger.apps.MessengerConfig',
-    'newsfeed.apps.NewsfeedConfig',
-    'pages.apps.PagesConfig',
-    'tagging.apps.TaggingConfig',
-    'friends.apps.FriendsConfig',
-    'comments.apps.CommentsConfig',
-    'notifications.apps.NotificationsConfig',
-    'albums.apps.AlbumsConfig',
-    'core.apps.CoreConfig',
+    # Custom apps (Define here which apps use PostgreSQL and which use MongoDB)
+    'users.apps.UsersConfig',  # PostgreSQL
+    'albums.apps.AlbumsConfig',  # PostgreSQL
+    'stories.apps.StoriesConfig',  # MongoDB via MongoEngine
+    'tagging.apps.TaggingConfig',  # MongoDB via MongoEngine
+    'reactions.apps.ReactionsConfig',  # PostgreSQL
+    'core.apps.CoreConfig',  # Core utilities, often PostgreSQL
 
-    # Kafka broker
+    # Kafka broker app
     'kafka_app.apps.KafkaAppConfig',
 ]
 
@@ -163,23 +145,23 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],  # List of directories to search for templates
-        'APP_DIRS': True,  # Include app directories for template lookup
+        'APP_DIRS': True,  # Automatically search app directories
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',  # Adds debug context processor
-                'django.template.context_processors.request',  # Adds request context processor
-                'django.contrib.auth.context_processors.auth',  # Adds authentication context processor
-                'django.contrib.messages.context_processors.messages',  # Adds messages context processor
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
 ]
 
-# WSGI and ASGI applications for handling HTTP and WebSocket requests
+# WSGI and ASGI application configuration
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Channels configuration for WebSocket handling
+# Channels configuration for WebSocket handling using Redis as a broker
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -189,7 +171,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-# Database configuration using PostgreSQL and MongoDB
+# Database configuration using PostgreSQL for core functionalities
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -204,27 +186,24 @@ DATABASES = {
             'ENGINE': 'django.db.backends.postgresql',
         },
     },
-    'social_db': {
-        'ENGINE': 'djongo',
-        'NAME': env('MONGO_DB_NAME'),
-        'ENFORCE_SCHEMA': False,
-        'CLIENT': {
-            'host': env('MONGO_HOST'),
-            'port': env('MONGO_PORT'),
-            'username': env('MONGO_USER'),
-            'password': env('MONGO_PASSWORD'),
-            'authSource': env('MONGO_AUTH_SOURCE'),
-        },
-    },
 }
 
-# Database routers
-DATABASE_ROUTERS = ['config.database_router.SocialRouter']
+# MongoDB connection settings for apps using MongoEngine (like 'stories' and 'tagging')
+connect(
+    db=env('MONGO_DB_NAME'),
+    username=env('MONGO_USER') or None,
+    password=env('MONGO_PASSWORD') or None,
+    host=env('MONGO_HOST'),
+    port=int(env('MONGO_PORT')),
+    authentication_source=env('MONGO_AUTH_SOURCE'),
+)
 
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 8}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -233,8 +212,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
-USE_L10N = True
-USE_TZ = True
+USE_TZ = True  # Removed USE_L10N as it's deprecated in Django 5.x
 
 # Static and media file settings
 STATIC_URL = '/static/'
@@ -246,9 +224,11 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Custom user model
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# Django REST Framework configuration
+# Django REST Framework configuration for API handling
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+    'rest_framework_simplejwt.authentication.JWTAuthentication',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -265,7 +245,7 @@ REST_FRAMEWORK = {
     },
 }
 
-# Simple JWT configuration
+# Simple JWT configuration for authentication
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -280,7 +260,7 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-# Djoser configuration
+# Djoser configuration for user management APIs
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': True,
@@ -299,7 +279,7 @@ DJOSER = {
     },
 }
 
-# Spectacular configuration
+# Spectacular configuration for OpenAPI documentation
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Social Network APIs',
     'VERSION': '1.0.0',
@@ -316,10 +296,10 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# CORS settings
+# CORS settings to allow frontend origins
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
-# Email configuration
+# Email configuration for sending out notifications
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST')
 EMAIL_PORT = env('EMAIL_PORT')
@@ -327,72 +307,26 @@ EMAIL_USE_TLS = env('EMAIL_USE_TLS')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
-# Celery configuration
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+# Celery configuration for background task processing
+CELERY_BROKER_URL = env('CELERY_BROKER_URL',
+                        default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
+                            default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
-
-# Celery Beat Schedule
+# Celery Beat Schedule for periodic tasks
 CELERY_BEAT_SCHEDULE = {
     'consume-user-events-every-5-seconds': {
         'task': 'kafka_app.tasks.consume_user_events',
         'schedule': 5.0,  # every 5 seconds
     },
-    'consume-album-events-every-10-seconds': {
-        'task': 'albums.tasks.consume_album_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-comment-events-every-10-seconds': {
-        'task': 'comments.tasks.consume_comment_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-follow-events-every-10-seconds': {
-        'task': 'follows.tasks.consume_follow_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-friend-events-every-10-seconds': {
-        'task': 'friends.tasks.consume_friend_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-messenger-events-every-10-seconds': {
-        'task': 'messenger.tasks.consume_messenger_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-newsfeed-events-every-10-seconds': {
-        'task': 'newsfeed.tasks.consume_newsfeed_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-page-events-every-10-seconds': {
-        'task': 'pages.tasks.consume_page_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-reaction-events-every-10-seconds': {
-        'task': 'reactions.tasks.consume_reaction_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-social-events-every-10-seconds': {
-        'task': 'social.tasks.consume_social_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-stories-events-every-10-seconds': {
-        'task': 'stories.tasks.consume_stories_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-tagging-events-every-10-seconds': {
-        'task': 'tagging.tasks.consume_tagging_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
-    'consume-notifications-events-every-10-seconds': {
-        'task': 'notifications.tasks.consume_notifications_events',
-        'schedule': 10.0,  # every 10 seconds
-    },
+    # Add other scheduled tasks as needed
 }
 
-# Caching configuration
+# Redis Caching configuration
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -403,7 +337,7 @@ CACHES = {
     }
 }
 
-# Sentry integration
+# Sentry integration for error tracking and monitoring
 SENTRY_DSN = env('SENTRY_DSN', default='')
 if SENTRY_DSN:
     sentry_sdk.init(
@@ -413,18 +347,21 @@ if SENTRY_DSN:
         send_default_pii=True
     )
 
-# CSP settings
+# Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_SCRIPT_SRC = (
+"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = (
+"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = (
+"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
 CSP_FORM_ACTION = ("'self'",)
 CSP_REPORT_URI = '/csp-violation-report/'
 
-# Security settings for production
+# Security settings for production deployment
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
@@ -514,7 +451,6 @@ ELASTICSEARCH_DSL = {
         'hosts': 'localhost:9200'
     },
 }
-
 
 # from . import cron_jobs
 # CRONJOBS = cron_jobs.CRONJOBS
