@@ -1,26 +1,7 @@
 from mongoengine import Document, StringField, UUIDField, ListField, IntField, DateTimeField
 from datetime import datetime
 import uuid
-
-
-class MongoBaseModel(Document):
-    """
-    Base model for MongoDB collections to include shared fields.
-    """
-    created_at = DateTimeField(default=datetime.utcnow, help_text="Timestamp of when the document was created")
-    updated_at = DateTimeField(default=datetime.utcnow, help_text="Timestamp of when the document was last updated")
-
-    meta = {
-        'abstract': True
-    }
-
-    def save(self, *args, **kwargs):
-        """
-        Override the save method to update `updated_at` every time the document is saved.
-        """
-        if self.pk:  # If the document already exists, update `updated_at`
-            self.updated_at = datetime.utcnow()
-        return super(MongoBaseModel, self).save(*args, **kwargs)
+from core.models.base_models import MongoBaseModel  # Assuming the base model is in core.models.base_models
 
 
 class Comment(MongoBaseModel):
@@ -29,12 +10,12 @@ class Comment(MongoBaseModel):
     Stored in MongoDB as a document.
     """
     comment_id = UUIDField(binary=False, primary_key=True, default=uuid.uuid4, required=True)
-    user_id = IntField(required=True)
-    user_username = StringField(max_length=150, required=True)
-    post_id = UUIDField(binary=False, null=True, required=False)
-    post_title = StringField(max_length=255, null=True, required=False)
-    content = StringField(default='No content')
-    tags = ListField(StringField(), default=list, blank=True)
+    user_id = IntField(required=True, help_text="ID of the user who made the comment")
+    user_username = StringField(max_length=150, required=True, help_text="Username of the user who made the comment")
+    post_id = UUIDField(binary=False, null=True, required=False, help_text="ID of the related post")
+    post_title = StringField(max_length=255, null=True, required=False, help_text="Title of the related post")
+    content = StringField(default='No content', help_text="Content of the comment")
+    tags = ListField(StringField(), default=list, help_text="List of tags associated with the comment")
 
     meta = {
         'collection': 'comments',  # MongoDB collection name
@@ -48,3 +29,11 @@ class Comment(MongoBaseModel):
 
     def __str__(self):
         return self.content[:20]
+
+    def save(self, *args, **kwargs):
+        """
+        Override save method to update 'updated_at' timestamp on every update.
+        """
+        if self.pk:
+            self.updated_at = datetime.utcnow()
+        return super().save(*args, **kwargs)
