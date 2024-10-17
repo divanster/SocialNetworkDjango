@@ -1,5 +1,3 @@
-# users/models.py
-
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
 from django.db import models
@@ -7,6 +5,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.conf import settings
+import os
+import uuid
 
 
 # Define CustomUserManager
@@ -67,8 +67,6 @@ def user_profile_picture_file_path(instance, filename):
     """
     Generates a file path for a new user profile picture.
     """
-    import uuid
-    import os
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/profile_pictures/', filename)
@@ -95,8 +93,11 @@ class UserProfile(models.Model):
     ]
 
     # One-to-one relationship with the custom user model
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-                                related_name='profile')
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
 
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
@@ -104,17 +105,22 @@ class UserProfile(models.Model):
     date_of_birth = models.DateField(null=True, blank=True)
 
     # ImageField to store profile picture, using the file path function
-    profile_picture = models.ImageField(upload_to=user_profile_picture_file_path,
-                                        null=True, blank=True,
-                                        default='static/default_images/profile_picture.png')
+    profile_picture = models.ImageField(
+        upload_to=user_profile_picture_file_path,
+        null=True,
+        blank=True,
+        default='static/default_images/profile_picture.png'
+    )
 
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     town = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
-    relationship_status = models.CharField(max_length=1,
-                                           choices=RELATIONSHIP_STATUS_CHOICES,
-                                           default='S')
+    relationship_status = models.CharField(
+        max_length=1,
+        choices=RELATIONSHIP_STATUS_CHOICES,
+        default='S'
+    )
 
     # Removed GenericRelation to TaggedItem to avoid cross-database relations
     # If you need to store tags, consider using a JSONField or another approach
