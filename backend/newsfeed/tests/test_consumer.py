@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import json
+import time
 from newsfeed.consumer import NewsfeedKafkaConsumerClient
 
 
@@ -23,7 +24,8 @@ class TestNewsfeedKafkaConsumerClient(unittest.TestCase):
 
     @patch('newsfeed.consumer.KafkaConsumer')
     @patch('newsfeed.consumer.logger')
-    def test_kafka_connection_failure(self, mock_logger, mock_kafka_consumer):
+    @patch('time.sleep', return_value=None)  # To prevent the test from actually sleeping
+    def test_kafka_connection_failure(self, mock_sleep, mock_logger, mock_kafka_consumer):
         """
         Test that the Kafka consumer handles a failure to connect correctly.
         """
@@ -31,13 +33,13 @@ class TestNewsfeedKafkaConsumerClient(unittest.TestCase):
         mock_kafka_consumer.side_effect = Exception("Failed to connect to Kafka")
         topic = 'NEWSFEED_EVENTS'
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):  # Expect RuntimeError due to max retries being exceeded
             NewsfeedKafkaConsumerClient(topic)
 
         # Verify error message is logged when connection fails
-        mock_logger.error.assert_called_with(
-            "Failed to connect to Kafka: Failed to connect to Kafka. Retrying in 5 "
-            "seconds..."
+        self.assertGreaterEqual(mock_logger.error.call_count, 1)
+        mock_logger.error.assert_any_call(
+            "Failed to connect to Kafka: Failed to connect to Kafka. Retrying in 5 seconds..."
         )
 
     @patch('newsfeed.consumer.KafkaConsumer')

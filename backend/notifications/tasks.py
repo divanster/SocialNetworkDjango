@@ -1,7 +1,4 @@
-# backend/notifications/tasks.py
-
 from celery import shared_task
-
 from kafka_app.consumer import KafkaConsumerClient
 from kafka_app.producer import KafkaProducerClient
 from .models import Notification
@@ -9,8 +6,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@shared_task
-def send_notification_event_to_kafka(notification_id, event_type):
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def send_notification_event_to_kafka(self, notification_id, event_type):
     """
     Celery task to send notification events to Kafka.
     """
@@ -26,8 +24,10 @@ def send_notification_event_to_kafka(notification_id, event_type):
             notification = Notification.objects.get(id=notification_id)
             message = {
                 "notification_id": notification.id,
-                "user_id": notification.user_id,
-                "message": notification.message,
+                "sender_id": notification.sender_id,
+                "receiver_id": notification.receiver_id,
+                "notification_type": notification.notification_type,
+                "text": notification.text,
                 "created_at": str(notification.created_at),
                 "event": event_type,
             }
@@ -38,6 +38,8 @@ def send_notification_event_to_kafka(notification_id, event_type):
         logger.error(f"Notification with ID {notification_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
+        self.retry(exc=e)
+
 
 @shared_task
 def consume_notification_events():

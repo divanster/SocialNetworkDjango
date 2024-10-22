@@ -1,48 +1,38 @@
-# backend/notifications/consumers.py
+# backend/notifications/serializers.py
 
-import json
-import logging
-from channels.generic.websocket import AsyncWebsocketConsumer
-
-logger = logging.getLogger(__name__)
+from rest_framework import serializers
+from .models import Notification
 
 
-class NotificationConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        if not self.scope["user"].is_authenticated:
-            await self.close()
-            return
+class NotificationSerializer(serializers.Serializer):
+    """
+    Serializer for the Notification model.
+    Converts MongoEngine Document fields into a format suitable for JSON APIs.
+    """
+    id = serializers.CharField(read_only=True)
+    sender_id = serializers.IntegerField()
+    sender_username = serializers.CharField(max_length=150)
+    receiver_id = serializers.IntegerField()
+    receiver_username = serializers.CharField(max_length=150)
+    notification_type = serializers.ChoiceField(choices=[choice[0] for choice in Notification.NOTIFICATION_TYPES])
+    text = serializers.CharField(required=False, allow_blank=True)
+    is_read = serializers.BooleanField(default=False)
+    content_type = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    object_id = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
-        self.user = self.scope["user"]
-        self.room_group_name = f'notifications_{self.user.id}'
+    def create(self, validated_data):
+        return Notification(**validated_data).save()
 
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+    def update(self, instance, validated_data):
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.save()
+        return instance
 
-        logger.info(f'User {self.user.id} connected to notifications.')
-        await self.accept()
 
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-        logger.info(f'User {self.user.id} disconnected from notifications.')
-
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'notification_message',
-                'message': data['message']
-            }
-        )
-
-    async def notification_message(self, event):
-        message = event['message']
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
+class NotificationCountSerializer(serializers.Serializer):
+    """
+    Serializer for notification count.
+    """
+    count = serializers.IntegerField()

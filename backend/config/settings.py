@@ -42,7 +42,7 @@ env = environ.Env(
     SENTRY_DSN=(str, ''),
     CELERY_BROKER_URL=(str, ''),
     CELERY_RESULT_BACKEND=(str, ''),
-    KAFKA_BROKER_URL=(str, 'localhost:9092'),
+    KAFKA_BROKER_URL=(str, 'localhost:9093'),
     KAFKA_CONSUMER_GROUP_ID=(str, 'default_group'),
 )
 

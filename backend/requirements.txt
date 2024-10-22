@@ -1,89 +1,112 @@
 # Backend Requirements - Resolved Versions for Compatibility
-amqp==5.2.0
-asgiref==3.8.1
-attrs==23.2.0
-billiard==4.2.0
-celery==5.4.0
-certifi==2024.7.4
-cffi==1.16.0
-channels==4.1.0
-channels-redis==4.2.0
-charset-normalizer==3.3.2
-click==8.1.7
-click-didyoumean==0.3.1
-click-plugins==1.1.1
-click-repl==0.3.0
-cloc==0.2.5
-colored==2.2.4
-cron-descriptor==1.4.5
-cryptography==42.0.8
-daphne==4.0.0
-defusedxml==0.8.0rc2
-Django==5.1.1
-django-celery-beat==2.7.0
-django-cors-headers==4.4.0
-django-elasticsearch-dsl==8.0
-django-environ==0.11.2
-django-extensions==3.2.3
-django-gravatar==0.1.0
-django-prometheus==2.3.1
-django-redis==5.4.0
-django-templated-mail==1.1.1
-django-timezone-field==7.0
-django_csp==3.8
-djangorestframework==3.14.0
-djangorestframework-simplejwt==5.3.1
-djoser==2.2.3
-drf-spectacular==0.26.2
-drf-yasg==1.21.7
-elastic-transport==8.13.1
-elasticsearch>=8.0.0,<9.0.0  # Relaxed for compatibility
-elasticsearch-dsl>=8.0.0,<9.0.0
-gunicorn==22.0.0
-idna==3.8
-inflection==0.5.1
-iniconfig==2.0.0
-jsonschema==4.23.0
-jsonschema-specifications==2023.12.1
-kafka-python==2.0.2
-kombu==5.4.0
-msgpack==1.0.8
-oauthlib==3.2.2
-packaging==24.1
-Pillow==9.5.0
-pluggy==1.5.0
-prometheus_client==0.20.0
-prompt_toolkit==3.0.47
-psycopg2==2.9.9
-pycparser==2.22
-PyJWT==2.8.0
-pytest==8.3.3
-pytest-django==4.8.0
-pytest-asyncio==0.24.0
-python-crontab==3.2.0
-python-dateutil==2.9.0.post0
-python3-openid==3.2.0
-pytz==2024.1
-PyYAML==6.0.1
-redis==5.0.8
-referencing==0.35.1
-requests>=2.31.0,<3.0.0  # Ensure compatibility with urllib3
-requests-oauthlib==2.0.0
-rpds-py==0.19.0
-sentry-sdk>=2.14.0,<3.0  # Relaxed to work with urllib3 versions
-setuptools==74.1.2
-six==1.16.0
-social-auth-app-django==5.4.2
-social-auth-core==4.5.4
-sqlparse>=0.4.4,<0.5  # Adjusted for compatibility
-typing_extensions==4.12.2
-tzdata==2024.1
-uritemplate==4.1.1
-urllib3>=1.26.11,<3.0  # Relaxed to meet requirements from multiple libraries
-vine==5.1.0
-wcwidth==0.2.13
-whitenoise==6.7.0
 
-# Removed Djongo and added MongoEngine
-mongoengine==0.27.0  # MongoEngine for ODM
-pymongo>=4.0,<5.0  # PyMongo for MongoEngine and direct access to MongoDB
+# Django Framework and Core Backend
+Django==4.2.5                          # Stable Long Term Support version of Django
+djangorestframework==3.14.0             # Django Rest Framework for building APIs
+django-cors-headers==4.4.0              # CORS headers handling for cross-origin requests
+django-timezone-field==7.0              # Utility to handle timezones in Django models
+django_csp==3.8                         # Content Security Policy (CSP) support for Django to mitigate XSS attacks
+
+# Authentication and Authorization
+djangorestframework-simplejwt==5.3.1    # JWT authentication support for DRF
+djoser==2.2.3                           # Simplifies the implementation of authentication in Django REST Framework
+social-auth-app-django==5.4.2           # Social authentication for Django
+social-auth-core==4.5.4                 # Core library for handling social authentication protocols
+python3-openid==3.2.0                   # OpenID authentication support for social auth
+PyJWT==2.8.0                            # JSON Web Tokens implementation in Python
+
+# Celery, Asynchronous Operations, and Channels
+celery==5.4.0                           # Celery for managing distributed task queues
+django-celery-beat==2.7.0               # Celery scheduler for Django
+billiard==4.2.0                         # Pool and process management (required by Celery)
+amqp==5.2.0                             # Python AMQP messaging library for Celery
+kombu==5.4.0                            # Messaging library for Python, used by Celery
+asgiref==3.8.1                          # ASGI reference implementation, used by Django Channels
+channels==4.1.0                         # Django Channels for handling WebSocket, HTTP2, etc.
+channels-redis==4.2.0                   # Redis integration for Django Channels
+daphne==4.0.0                           # ASGI server for Django Channels
+
+# Kafka and Messaging
+kafka-python==2.0.2                     # Kafka integration for Python applications
+
+# Storage and Image Processing
+Pillow==9.5.0                           # Image processing library for Python
+
+# MongoDB and ORM (MongoEngine as replacement for Djongo)
+mongoengine==0.24.2                     # MongoDB Object-Document Mapper (ODM) for Python
+pymongo==3.12.3                         # Official MongoDB driver for Python
+
+# PostgreSQL and Database Interaction
+psycopg2==2.9.9                         # PostgreSQL adapter for Python
+django-redis==5.4.0                     # Redis cache backend for Django
+
+# Elasticsearch and Search Utilities
+elastic-transport==8.13.1               # Transport layer for Elasticsearch clients
+elasticsearch>=8.0.0,<9.0.0             # Elasticsearch Python client
+elasticsearch-dsl>=8.0.0,<9.0.0         # High-level Python client for Elasticsearch
+django-elasticsearch-dsl==8.0           # Django integration for Elasticsearch DSL
+
+# Security and Cryptography
+cryptography==42.0.8                    # Cryptographic recipes and primitives for Python
+defusedxml==0.8.0rc2                    # XML security package to help protect against XML vulnerabilities
+
+# Email and Communication
+django-templated-mail==1.1.1            # Simple Django templated mail rendering for email communications
+
+# Prometheus Monitoring
+django-prometheus==2.3.1                # Django integration for Prometheus monitoring
+prometheus_client==0.20.0               # Python client for Prometheus metrics
+
+# Utility Libraries and Tools
+django-environ==0.11.2                  # Django library for reading environment variables
+django-extensions==3.2.3                # Extra management commands and utilities for Django
+django-gravatar==0.1.0                  # Gravatar integration for Django
+drf-yasg==1.21.7                        # Yet Another Swagger Generator - API documentation for Django Rest Framework
+drf-spectacular==0.26.2                 # Another library for generating OpenAPI 3.0 specifications for Django Rest Framework
+gunicorn==22.0.0                        # Python WSGI HTTP Server for UNIX
+setuptools==74.1.2                      # Library for installing Python packages
+cloc==0.2.5                             # Utility for counting lines of code
+iniconfig==2.0.0                        # Simple parser for INI-style files
+oauthlib==3.2.2                         # OAuth library for Python
+pycparser==2.22                         # C parser for Python
+six==1.16.0                             # Python 2 and 3 compatibility utilities
+sqlparse>=0.4.4,<0.5                    # SQL parsing library
+wcwidth==0.2.13                         # Measure the width of Unicode strings
+vine==5.1.0                             # Helper library for managing callback chains
+uritemplate==4.1.1                      # URI template parser for Python
+
+# Requests and HTTP Libraries
+requests>=2.31.0,<3.0.0                 # HTTP library for Python
+requests-oauthlib==2.0.0                # OAuth library for HTTP requests in Python
+urllib3>=1.26.11,<3.0                   # HTTP client for Python
+
+# Testing
+pytest==8.3.3                           # Testing framework for Python
+pytest-django==4.8.0                    # Django plugin for pytest
+pytest-asyncio==0.24.0                  # AsyncIO support for pytest
+
+# Graphs and Visualization
+pygraphviz==1.7                         # Graph visualization library
+
+# Timezone and Date Utilities
+python-dateutil==2.9.0.post0            # Date and time parsing utility for Python
+pytz==2024.1                            # World timezone definitions for Python
+tzdata==2024.1                          # Timezone data for Python
+
+# Click Command Line Tools
+click==8.1.7                            # Python command line interface library
+click-didyoumean==0.3.1                 # Extension for Click to add 'did you mean' suggestions
+click-plugins==1.1.1                    # Extension for Click to support plugins
+click-repl==0.3.0                       # REPL (interactive shell) for Click applications
+
+# JSON, Validation, and Referencing
+jsonschema==4.23.0                      # JSON schema validation for Python
+jsonschema-specifications==2023.12.1    # Specifications for JSON schema validation
+referencing==0.35.1                     # References in JSON Schema (draft-2020-12)
+
+# Miscellaneous
+msgpack==1.0.8                          # MessagePack (binary JSON) serialization for Python
+inflection==0.5.1                       # Inflection utilities for Python (e.g., converting words from singular to plural)
+attrs==23.2.0                           # Attribute handling for Python classes
+rpds-py==0.19.0                         # Rust-based persistent data structures for Python
+packaging==24.1                         # Packaging utilities for Python

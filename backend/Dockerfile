@@ -1,5 +1,5 @@
 # Use a Debian-based image for better compatibility with confluent-kafka and MongoDB drivers
-FROM python:5.11-slim AS base
+FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -9,34 +9,18 @@ ENV PYTHONUNBUFFERED=1 \
 # Set the working directory
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies in smaller groups
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \                          # Install GCC compiler \
-    g++ \                          # Install G++ compiler \
-    libc-dev \                     # C standard library for development \
-    make \                         # Build tool for packages \
-    libssl-dev \                   # SSL library (e.g., used by MongoDB) \
-    libsasl2-dev \                 # Required for authentication (MongoDB, Kafka) \
-    libpq-dev \                    # PostgreSQL development files \
-    libjpeg-dev \                  # Required for image processing (Pillow) \
-    zlib1g-dev \                   # Compression library, needed by Pillow \
-    graphviz \                     # Graph generation tool, useful for visualizations \
-    libgraphviz-dev \              # Graphviz library for Python bindings \
-    curl \                         # Utility for transferring data \
-    bash \                         # Shell to run shell scripts \
-    libffi-dev \                   # FFI, needed for cryptography packages \
-    libfreetype6-dev \             # Font rendering, needed by Pillow \
-    libfontconfig1 \               # Font configuration and customization \
-    libxrender1 \                  # Rendering library, often needed for graph visualization \
-    libxml2 \                      # XML library for XML parsing \
-    libxslt-dev \                  # XSLT processing library \
-    libxmlsec1-dev \               # XML security library (used by some APIs) \
-    libxmlsec1-openssl \           # Adds OpenSSL support for XML security \
-    postgresql-client \            # PostgreSQL client to interact with the database \
-    netcat-openbsd \               # Utility to help with service readiness checks \
-    python3-dev \                  # Python development files \
-    default-libmysqlclient-dev \   # MySQL client, just in case MySQL is used in the project \
-    && rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
+    gcc g++ libc-dev make \
+    libssl-dev libsasl2-dev libpq-dev \
+    libjpeg62-turbo-dev zlib1g-dev && \
+    apt-get install -y --no-install-recommends \
+    curl bash libffi-dev libfreetype6-dev libfontconfig1 libxrender1 && \
+    apt-get install -y --no-install-recommends \
+    libxml2 libxslt1-dev libxmlsec1-dev libxmlsec1-openssl \
+    postgresql-client netcat-openbsd python3-dev \
+    default-libmysqlclient-dev graphviz libgraphviz-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip to the latest version
 RUN pip install --upgrade pip

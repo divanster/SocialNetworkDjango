@@ -1,5 +1,3 @@
-# backend/notifications/consumer.py
-
 import os
 import django
 import time
@@ -21,7 +19,11 @@ class NotificationsKafkaConsumer:
         self.consumer = self.get_kafka_consumer()
 
     def get_kafka_consumer(self):
-        while True:
+        retries = 0
+        max_retries = 5
+        wait_time = 5
+
+        while retries < max_retries:
             try:
                 consumer = KafkaConsumer(
                     self.topic,
@@ -34,16 +36,18 @@ class NotificationsKafkaConsumer:
                 logger.info(f"Connected to Kafka topic: {self.topic}")
                 return consumer
             except Exception as e:
-                logger.error(
-                    f"Failed to connect to Kafka: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                logger.error(f"Failed to connect to Kafka: {e}. Retrying in {wait_time} seconds...")
+                retries += 1
+                time.sleep(wait_time)
+
+        logger.error("Exceeded maximum retry attempts. Kafka consumer not initialized.")
+        raise RuntimeError("Failed to connect to Kafka after multiple retries.")
 
     def consume_messages(self):
         for message in self.consumer:
             try:
-                # Process the notification message
                 logger.info(f"Consumed notification message: {message.value}")
-                # Add your processing logic here
+                # Add processing logic here
             except Exception as e:
                 logger.error(f"Error processing message: {e}")
 
