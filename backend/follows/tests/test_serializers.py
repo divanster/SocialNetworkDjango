@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 # Get the custom User model
 User = get_user_model()
 
+
 class FollowSerializerTestCase(APITestCase):
     """
     Test case for the FollowSerializer.
@@ -44,7 +45,8 @@ class FollowSerializerTestCase(APITestCase):
         }
 
         # Check that serialized data matches the expected data
-        self.assertEqual(serializer.data, expected_data, "Serialized data does not match the follow instance.")
+        self.assertEqual(serializer.data, expected_data,
+                         "Serialized data does not match the follow instance.")
 
     def test_follow_deserialization(self):
         """
@@ -59,12 +61,15 @@ class FollowSerializerTestCase(APITestCase):
         serializer = FollowSerializer(data=data)
 
         # Serializer should be valid with correct input data
-        self.assertTrue(serializer.is_valid(), "Serializer should be valid with correct input data.")
+        self.assertTrue(serializer.is_valid(),
+                        "Serializer should be valid with correct input data.")
         validated_data = serializer.validated_data
 
         # Check the deserialized data
-        self.assertEqual(validated_data['follower'], self.user1, "Follower does not match the expected user.")
-        self.assertEqual(validated_data['followed'], self.user2, "Followed does not match the expected user.")
+        self.assertEqual(validated_data['follower'], self.user1,
+                         "Follower does not match the expected user.")
+        self.assertEqual(validated_data['followed'], self.user2,
+                         "Followed does not match the expected user.")
 
     def test_duplicate_follow_validation(self):
         """
@@ -82,8 +87,10 @@ class FollowSerializerTestCase(APITestCase):
         serializer = FollowSerializer(data=data)
 
         # Serializer should not be valid with duplicate data
-        self.assertFalse(serializer.is_valid(), "Serializer should be invalid for duplicate follow relationships.")
-        self.assertIn('non_field_errors', serializer.errors, "Expected validation error for duplicate follow.")
+        self.assertFalse(serializer.is_valid(),
+                         "Serializer should be invalid for duplicate follow relationships.")
+        self.assertIn('non_field_errors', serializer.errors,
+                      "Expected validation error for duplicate follow.")
 
     def test_self_follow_validation(self):
         """
@@ -98,8 +105,10 @@ class FollowSerializerTestCase(APITestCase):
         serializer = FollowSerializer(data=data)
 
         # Serializer should be invalid for self-following
-        self.assertFalse(serializer.is_valid(), "Serializer should be invalid for self-follow relationships.")
-        self.assertIn('non_field_errors', serializer.errors, "Expected validation error for self-follow relationships.")
+        self.assertFalse(serializer.is_valid(),
+                         "Serializer should be invalid for self-follow relationships.")
+        self.assertIn('non_field_errors', serializer.errors,
+                      "Expected validation error for self-follow relationships.")
 
     def test_create_follow(self):
         """
@@ -113,14 +122,17 @@ class FollowSerializerTestCase(APITestCase):
         serializer = FollowSerializer(data=data)
 
         # Ensure the serializer is valid and save the follow instance
-        self.assertTrue(serializer.is_valid(), "Serializer should be valid with correct input data.")
+        self.assertTrue(serializer.is_valid(),
+                        "Serializer should be valid with correct input data.")
         follow = serializer.save()
 
         # Validate that the follow instance was correctly saved
-        self.assertEqual(Follow.objects.count(), 1, "There should be one follow relationship in the database.")
-        self.assertEqual(follow.follower, self.user1, "Follower does not match the expected user.")
-        self.assertEqual(follow.followed, self.user2, "Followed does not match the expected user.")
-
+        self.assertEqual(Follow.objects.count(), 1,
+                         "There should be one follow relationship in the database.")
+        self.assertEqual(follow.follower, self.user1,
+                         "Follower does not match the expected user.")
+        self.assertEqual(follow.followed, self.user2,
+                         "Followed does not match the expected user.")
 
     def tearDown(self):
         """

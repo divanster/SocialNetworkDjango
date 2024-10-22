@@ -1,4 +1,3 @@
-# backend/messenger/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from kafka_app.consumer import KafkaConsumerClient
@@ -19,7 +18,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
 
-        # Start consuming Kafka messages when the user connects
+        # Start consuming Kafka messages asynchronously
         self.consumer = KafkaConsumerClient('MESSENGER_EVENTS')
         asyncio.create_task(self.consume_messages())
 
@@ -28,9 +27,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+        self.consumer.close()
 
     async def consume_messages(self):
-        # Consume Kafka messages and forward them to WebSocket clients
         try:
             for message in self.consumer.consume_messages():
                 await self.send(text_data=json.dumps(message))

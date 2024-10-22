@@ -1,3 +1,5 @@
+# backend/friends/models.py
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from core.models.base_models import BaseModel
@@ -5,7 +7,6 @@ from core.models.base_models import BaseModel
 
 # FriendRequest model to manage friend requests between users
 class FriendRequest(BaseModel):
-    # Status choices for friend request (Pending, Accepted, Rejected)
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         ACCEPTED = 'accepted', 'Accepted'

@@ -1,3 +1,5 @@
+# backend/kafka_app/consumer.py
+
 import os
 import django
 import time
@@ -20,7 +22,7 @@ class KafkaConsumerClient:
 
     def get_kafka_consumer(self):
         retries = 0
-        max_retries = settings.KAFKA_MAX_RETRIES if hasattr(settings, 'KAFKA_MAX_RETRIES') else 5
+        max_retries = getattr(settings, 'KAFKA_MAX_RETRIES', 5)
         wait_time = 5  # seconds
 
         while retries < max_retries or max_retries == -1:
@@ -48,11 +50,11 @@ class KafkaConsumerClient:
             for message in self.consumer:
                 # Process the message
                 logger.info(f"Received message: {message.value}")
-                # Add your message processing logic here You could also add retry
-                # logic for individual message processing failures
                 self.process_message(message.value)
         except Exception as e:
             logger.error(f"Error while consuming messages: {e}")
+        finally:
+            self.close()
 
     def process_message(self, message):
         """
@@ -63,6 +65,12 @@ class KafkaConsumerClient:
             # Your actual message processing code here
         except Exception as e:
             logger.error(f"Error processing message: {e}")
+
+    def close(self):
+        if self.consumer:
+            logger.info("Closing Kafka consumer...")
+            self.consumer.close()
+            logger.info("Kafka consumer closed.")
 
 def main():
     topic = settings.KAFKA_TOPICS['ALBUM_EVENTS']

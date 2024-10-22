@@ -24,6 +24,36 @@ class MessageTasksTestCase(TestCase):
         )
 
     @patch('messenger.tasks.KafkaProducerClient.send_message')
-    def test_send_message_event_to_kafka(self, mock_send_message):
+    def test_send_message_event_to_kafka_created(self, mock_send_message):
+        """
+        Test that a Kafka message is sent for a 'created' event.
+        """
         send_message_event_to_kafka(self.message.id, 'created')
-        mock_send_message.assert_called_once()
+
+        expected_message = {
+            "message_id": str(self.message.id),
+            "content": self.message.content,
+            "sender_id": self.message.sender_id,
+            "receiver_id": self.message.receiver_id,
+            "timestamp": self.message.timestamp.isoformat(),
+            "event": "created"
+        }
+
+        # Check that the send_message method was called with the expected message content
+        mock_send_message.assert_called_once_with('MESSENGER_EVENTS', expected_message)
+
+    @patch('messenger.tasks.KafkaProducerClient.send_message')
+    def test_send_message_event_to_kafka_deleted(self, mock_send_message):
+        """
+        Test that a Kafka message is sent for a 'deleted' event.
+        """
+        # Call the task for a deleted event
+        send_message_event_to_kafka(self.message.id, 'deleted')
+
+        expected_message = {
+            "message_id": str(self.message.id),
+            "action": "deleted"
+        }
+
+        # Check that the send_message method was called with the expected message content
+        mock_send_message.assert_called_once_with('MESSENGER_EVENTS', expected_message)

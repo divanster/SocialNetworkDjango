@@ -1,5 +1,3 @@
-# backend/messenger/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from kafka_app.consumer import KafkaConsumerClient
@@ -26,9 +24,12 @@ def send_message_event_to_kafka(message_id, event_type):
             message_instance = Message.objects.get(id=message_id)
             message = {
                 "message_id": message_instance.id,
+                "sender_id": message_instance.sender_id,
+                "sender_username": message_instance.sender_username,
+                "receiver_id": message_instance.receiver_id,
+                "receiver_username": message_instance.receiver_username,
                 "content": message_instance.content,
-                "user_id": message_instance.user.id,
-                "created_at": str(message_instance.created_at),
+                "timestamp": str(message_instance.timestamp),
                 "event": event_type
             }
 
@@ -36,6 +37,7 @@ def send_message_event_to_kafka(message_id, event_type):
         kafka_topic = settings.KAFKA_TOPICS.get('MESSENGER_EVENTS', 'default-messenger-topic')
         producer.send_message(kafka_topic, message)
 
+        producer.close()
         logger.info(f"Sent Kafka message for message {event_type}: {message}")
     except Message.DoesNotExist:
         logger.error(f"Message with ID {message_id} does not exist.")
@@ -47,14 +49,45 @@ def send_message_event_to_kafka(message_id, event_type):
 def consume_message_events():
     """
     Celery task to consume message events from Kafka.
+    Consumes events and processes them based on event type.
     """
     kafka_topic = settings.KAFKA_TOPICS.get('MESSENGER_EVENTS', 'default-messenger-topic')
     consumer = KafkaConsumerClient(kafka_topic)
 
-    for message in consumer.consume_messages():
-        try:
-            # Add message-specific processing logic here
-            logger.info(f"Processed message event: {message}")
-            # Example: Notify users of a new message, update message analytics, etc.
-        except Exception as e:
-            logger.error(f"Error processing message event: {e}")
+    try:
+        for message in consumer.consume_messages():
+            try:
+                logger.info(f"Processing message event: {message}")
+                process_message_event(message)
+            except Exception as e:
+                logger.error(f"Error processing message event: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error during message consumption: {e}")
+    finally:
+        consumer.close()
+
+
+def process_message_event(message):
+    """
+    Process each message received from Kafka.
+    Add logic to handle different message events here, such as updating UI,
+    notifying users, or saving messages.
+    """
+    event_type = message.get("event")
+    try:
+        if event_type == "created":
+            # Handle new message creation logic if needed, such as notifying users
+            logger.info(f"New message created event: {message}")
+        elif event_type == "updated":
+            # Handle message updates, such as marking messages as read
+            logger.info(f"Message updated event: {message}")
+        elif event_type == "deleted":
+            # Handle deletion logic
+            message_id = message.get("message_id")
+            if message_id:
+                Message.objects.filter(id=message_id).delete()
+                logger.info(f"Message with ID {message_id} deleted successfully.")
+        else:
+            logger.warning(f"Unknown event type: {event_type}")
+    except Exception as e:
+        logger.error(f"Error processing message event {message}: {e}")

@@ -3,7 +3,6 @@ from datetime import datetime
 
 from core.models.base_models import MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel
 
-
 class Message(MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel):
     """
     Stores the messages sent between users.
@@ -23,9 +22,7 @@ class Message(MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel):
         'ordering': ['-timestamp'],
         'indexes': [
             {'fields': ['sender_id', 'receiver_id']},
-            # Optimized queries by sender and receiver
             {'fields': ['$content'], 'default_language': 'english'}
-            # Full-text search index on content
         ],
     }
 

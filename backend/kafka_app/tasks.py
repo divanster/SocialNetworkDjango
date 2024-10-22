@@ -5,7 +5,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=10)  # Retry up to 3 times with a delay of 10 seconds
+
+@shared_task(bind=True, max_retries=3,
+             default_retry_delay=10)  # Retry up to 3 times with a delay of 10 seconds
 def send_to_kafka(self, topic_key, message):
     try:
         producer = KafkaProducerClient()
