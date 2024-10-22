@@ -1,8 +1,7 @@
 from mongoengine import Document, StringField, UUIDField, ListField, IntField, DateTimeField
 from datetime import datetime
 import uuid
-from core.models.base_models import MongoBaseModel  # Assuming the base model is in core.models.base_models
-
+from core.models.base_models import MongoBaseModel
 
 class Comment(MongoBaseModel):
     """

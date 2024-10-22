@@ -1,4 +1,4 @@
-#!/Users/apple/100DayPython/SocialNetworkDjango/SocialNetworkDjango/bin/python
+#!/Users/apple/100DayPython/SocialNetworkDjango/SocialNetworkDjango/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys

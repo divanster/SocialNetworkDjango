@@ -1,3 +1,6 @@
+# albums/tests/test_signals.py
+
+import json
 from django.test import TestCase
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
@@ -5,26 +8,37 @@ from channels.layers import get_channel_layer
 from channels.routing import URLRouter
 from django.urls import path
 from albums.consumers import AlbumConsumer
-import json
 from django.contrib.auth import get_user_model
+import pytest
+from asgiref.testing import ApplicationCommunicator
 
 User = get_user_model()
 
 
+@pytest.mark.asyncio
 class AlbumConsumerTest(TestCase):
 
-    @database_sync_to_async
-    async def asyncSetUp(self):
-        self.application = URLRouter([
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Set up any necessary test environment or state
+
+    @pytest.mark.asyncio
+    async def test_album_consumer_receives_message(self):
+        """
+        Test that the consumer properly receives and processes an album event message.
+        """
+        # Set up the application for testing
+        application = URLRouter([
             path('ws/albums/', AlbumConsumer.as_asgi()),
         ])
 
-    @database_sync_to_async
-    async def test_album_consumer_receives_message(self):
-        communicator = WebsocketCommunicator(self.application, 'ws/albums/')
+        # Instantiate a WebsocketCommunicator
+        communicator = WebsocketCommunicator(application, 'ws/albums/')
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
+        # Simulate sending a message to the group
         channel_layer = get_channel_layer()
         event = {
             'type': 'album_message',
@@ -36,25 +50,37 @@ class AlbumConsumerTest(TestCase):
         }
         await channel_layer.group_send('albums', event)
 
-        response = await communicator.receive_from()
-        response_data = json.loads(response)
-        self.assertEqual(response_data['event'], 'created')
-        self.assertEqual(response_data['album'], 'album-id')
-        self.assertEqual(response_data['title'], 'New Album')
-        self.assertEqual(response_data['description'], 'Album description')
-        self.assertEqual(response_data['tagged_users'], [])
+        # Receive message from the WebSocket
+        response = await communicator.receive_json_from()
+        self.assertEqual(response['event'], 'created')
+        self.assertEqual(response['album'], 'album-id')
+        self.assertEqual(response['title'], 'New Album')
+        self.assertEqual(response['description'], 'Album description')
+        self.assertEqual(response['tagged_users'], [])
 
+        # Close the WebSocket connection
         await communicator.disconnect()
 
-    @database_sync_to_async
+    @pytest.mark.asyncio
     async def test_album_consumer_receives_message_with_tagged_users(self):
+        """
+        Test that the consumer properly receives and processes an album event message,
+        with tagged users included.
+        """
+        # Create users
         user1 = await self.create_user('user1@example.com', 'user1')
         user2 = await self.create_user('user2@example.com', 'user2')
 
-        communicator = WebsocketCommunicator(self.application, 'ws/albums/')
+        # Set up the application
+        application = URLRouter([
+            path('ws/albums/', AlbumConsumer.as_asgi()),
+        ])
+
+        communicator = WebsocketCommunicator(application, 'ws/albums/')
         connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
+        # Send message to the group with tagged users
         channel_layer = get_channel_layer()
         event = {
             'type': 'album_message',
@@ -66,18 +92,23 @@ class AlbumConsumerTest(TestCase):
         }
         await channel_layer.group_send('albums', event)
 
-        response = await communicator.receive_from()
-        response_data = json.loads(response)
-        self.assertEqual(len(response_data['tagged_users']), 2)
-        tagged_usernames = [user['username'] for user in response_data['tagged_users']]
+        # Receive message
+        response = await communicator.receive_json_from()
+        self.assertEqual(len(response['tagged_users']), 2)
+        tagged_usernames = [user['username'] for user in response['tagged_users']]
         self.assertIn('user1', tagged_usernames)
         self.assertIn('user2', tagged_usernames)
 
         await communicator.disconnect()
 
     @database_sync_to_async
-    async def create_user(self, email, username):
-        user = await database_sync_to_async(User.objects.create_user)(
-            email=email, username=username, password='password123'
+    def create_user(self, email, username):
+        """
+        Helper function to create a user asynchronously.
+        """
+        user = User.objects.create_user(
+            email=email,
+            username=username,
+            password='password123'
         )
         return user

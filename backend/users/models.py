@@ -1,12 +1,20 @@
-from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
-                                        PermissionsMixin)
+# ===========================
+# Custom User and Profile
+# ===========================
 from django.db import models
+import uuid
+import os
+from mongoengine import Document, DateTimeField as MongoDateTimeField, \
+    BooleanField as MongoBooleanField, UUIDField as MongoUUIDField
+from datetime import datetime
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
+    PermissionsMixin
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 from django.conf import settings
-import os
-import uuid
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 # Define CustomUserManager
@@ -122,9 +130,6 @@ class UserProfile(models.Model):
         default='S'
     )
 
-    # Removed GenericRelation to TaggedItem to avoid cross-database relations
-    # If you need to store tags, consider using a JSONField or another approach
-
     def __str__(self):
         return f'{self.user.username} Profile'
 
@@ -144,3 +149,12 @@ class UserProfile(models.Model):
         if self.date_of_birth and self.date_of_birth > timezone.now().date():
             raise ValidationError(_('Date of birth cannot be in the future.'))
         super().clean()
+
+
+# Connect signals to automatically create or update UserProfile
+@receiver(post_save, sender=CustomUser)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+    else:
+        instance.profile.save()

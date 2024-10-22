@@ -1,6 +1,7 @@
 # backend/comments/tasks.py
+
 from celery import shared_task
-from kafka_app.producer import KafkaProducerClient
+from core.utils import get_kafka_producer
 from kafka_app.consumer import KafkaConsumerClient
 from django.conf import settings
 from .models import Comment
@@ -14,7 +15,7 @@ def send_comment_event_to_kafka(comment_id, event_type):
     """
     Celery task to send comment events to Kafka.
     """
-    producer = KafkaProducerClient()
+    producer = get_kafka_producer()  # Use core utility for KafkaProducerClient
 
     try:
         if event_type == 'deleted':
@@ -27,8 +28,8 @@ def send_comment_event_to_kafka(comment_id, event_type):
             message = {
                 "comment_id": comment.id,
                 "content": comment.content,
-                "user_id": comment.user.id,
-                "post_id": comment.post.id,
+                "user_id": comment.user_id,
+                "post_id": comment.post_id,
                 "created_at": str(comment.created_at),
                 "event": event_type
             }

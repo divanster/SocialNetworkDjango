@@ -1,5 +1,4 @@
 # backend/follows/consumer.py
-
 import os
 import django
 import time
@@ -33,18 +32,21 @@ class KafkaConsumerClient:
                 logger.info(f"Connected to Kafka topic: {self.topic}")
                 return consumer
             except Exception as e:
-                logger.error(f"Failed to connect to Kafka: {e}. Retrying "
-                             f"in 5 seconds...")
+                logger.error(f"Failed to connect to Kafka: {e}. Retrying in 5 seconds...")
                 time.sleep(5)
 
     def consume_messages(self):
         for message in self.consumer:
             logger.info(f"Received message: {message.value}")
-            # Add your processing logic here if necessary
+            self.process_message(message.value)
+
+    def process_message(self, message):
+        # Add your custom processing logic here if needed
+        logger.info(f"Processing message: {message}")
 
 
 def main():
-    topic = settings.KAFKA_TOPICS['FOLLOW_EVENTS']
+    topic = settings.KAFKA_TOPICS.get('FOLLOW_EVENTS', 'default-follow-topic')
     consumer_client = KafkaConsumerClient(topic)
     consumer_client.consume_messages()
 

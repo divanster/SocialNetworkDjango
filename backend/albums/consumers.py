@@ -1,14 +1,15 @@
 # backend/albums/consumers.py
+
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from albums.models import Album
+from django.core.cache import cache
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
-
 
 class AlbumConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -48,5 +49,14 @@ class AlbumConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_users(self, user_ids):
-        return list(User.objects.filter(id__in=user_ids).using('default').values('id',
-                                                                                 'username'))
+        cached_users = cache.get_many(user_ids)
+        missing_ids = [uid for uid in user_ids if uid not in cached_users]
+
+        # Fetch users only if not already cached
+        if missing_ids:
+            missing_users = User.objects.filter(id__in=missing_ids).using('default').values('id', 'username')
+            # Add to cache with a timeout
+            cache.set_many({user['id']: user for user in missing_users}, timeout=300)
+            cached_users.update({user['id']: user for user in missing_users})
+
+        return list(cached_users.values())

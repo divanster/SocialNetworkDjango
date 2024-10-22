@@ -22,7 +22,9 @@ class AlbumKafkaConsumerClient:
         self.consumer = self.get_kafka_consumer()
 
     def get_kafka_consumer(self):
-        while True:
+        retry_count = 0
+        max_retries = 5
+        while retry_count < max_retries:
             try:
                 consumer = KafkaConsumer(
                     self.topic,
@@ -35,9 +37,14 @@ class AlbumKafkaConsumerClient:
                 logger.info(f"[KAFKA] Connected to topic: {self.topic}")
                 return consumer
             except Exception as e:
+                retry_count += 1
+                wait_time = min(5 * (2 ** retry_count),
+                                60)  # Exponential backoff with max wait of 60 seconds
                 logger.error(
-                    f"[KAFKA] Failed to connect: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                    f"[KAFKA] Failed to connect (attempt {retry_count}): {e}. Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+        raise ConnectionError("[KAFKA] Max retries reached. Could not connect to "
+                              "Kafka broker.")
 
     def consume_messages(self):
         for message in self.consumer:

@@ -1,16 +1,17 @@
+# backend/albums/tasks.py
 from celery import shared_task
+from kafka.errors import KafkaTimeoutError
 from kafka_app.producer import KafkaProducerClient
 from .models import Album, Photo
-from albums.utils import get_kafka_producer
+from core.utils import get_kafka_producer
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=5)
 def send_album_event_to_kafka(self, album_id, event_type):
     producer = get_kafka_producer()
-
     try:
         album = Album.objects.get(id=album_id)
         tagged_user_ids = list(album.tags.values_list('tagged_user_id', flat=True))
@@ -27,18 +28,20 @@ def send_album_event_to_kafka(self, album_id, event_type):
         logger.info(f"[TASK] Sent Kafka message for album {event_type}: {message}")
     except Album.DoesNotExist:
         logger.error(f"[TASK] Album with ID {album_id} does not exist.")
+    except KafkaTimeoutError as e:
+        logger.error(f"[TASK] Kafka timeout: {e}")
+        self.retry(exc=e,
+                   countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
         logger.error(f"[TASK] Error sending Kafka message: {e}")
         self.retry(exc=e, countdown=60)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=5)
 def send_photo_event_to_kafka(self, photo_id, event_type):
     producer = get_kafka_producer()
-
     try:
         photo = Photo.objects.get(id=photo_id)
-
         message = {
             'event': event_type,
             'photo_id': str(photo.id),
@@ -51,26 +54,38 @@ def send_photo_event_to_kafka(self, photo_id, event_type):
         logger.info(f"[TASK] Sent Kafka message for photo {event_type}: {message}")
     except Photo.DoesNotExist:
         logger.error(f"[TASK] Photo with ID {photo_id} does not exist.")
+    except KafkaTimeoutError as e:
+        logger.error(f"[TASK] Kafka timeout: {e}")
+        self.retry(exc=e,
+                   countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
         logger.error(f"[TASK] Error sending Kafka message: {e}")
         self.retry(exc=e, countdown=60)
 
 
-@shared_task
-def process_new_album(album_id):
+@shared_task(bind=True, max_retries=5)
+def process_new_album(self, album_id):
     """
     Celery task to process a newly created album.
     This could be used to send notifications, perform analytics, or any other async processing.
     """
     try:
+        # Retrieve the album using MongoEngine and verify it exists
         album = Album.objects.get(id=album_id)
-        # Add any post-processing logic here (e.g., notifications, analytics)
-        logger.info(f"Processing new album with ID: {album_id} - Title: {album.title}")
 
-        # Here you could trigger additional tasks, such as sending notifications
+        # Perform the desired post-processing tasks, such as analytics or notifications
+        logger.info(
+            f"[TASK] Processing new album with ID: {album_id} - Title: {album.title}")
+
+        # Example of triggering a notification system
         # send_notification_to_followers(album_id)
 
+        # Example: Hook for an analytics function
+        # analytics.process_album_created(album)
+
     except Album.DoesNotExist:
-        logger.error(f"Album with ID {album_id} does not exist.")
+        logger.error(f"[TASK] Album with ID {album_id} does not exist.")
     except Exception as e:
-        logger.error(f"Error processing album with ID {album_id}: {e}")
+        logger.error(f"[TASK] Error processing album with ID {album_id}: {e}")
+        self.retry(exc=e, countdown=60 * (
+                    2 ** self.request.retries))  # Exponential backoff retry

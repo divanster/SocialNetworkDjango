@@ -1,6 +1,8 @@
+# backend/follows/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from kafka_app.consumer import KafkaConsumerClient
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 
 class FollowConsumer(AsyncWebsocketConsumer):
@@ -11,11 +13,8 @@ class FollowConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         await self.accept()
-
-        # Consume Kafka messages and send to WebSocket clients
-        consumer = KafkaConsumerClient('FOLLOW_EVENTS')
-        for message in consumer.consume_messages():
-            await self.send(text_data=json.dumps(message))
+        # Kafka consumption can be done via a Celery worker or similar approach.
+        await self.send(text_data=json.dumps({"message": "WebSocket connected."}))
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(

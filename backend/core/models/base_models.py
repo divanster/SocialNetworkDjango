@@ -1,8 +1,17 @@
 from django.db import models
 import uuid
 import os
-from mongoengine import Document, DateTimeField as MongoDateTimeField, BooleanField as MongoBooleanField, UUIDField as MongoUUIDField
+from mongoengine import Document, DateTimeField as MongoDateTimeField, \
+    BooleanField as MongoBooleanField, UUIDField as MongoUUIDField
 from datetime import datetime
+from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
+                                        PermissionsMixin)
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
+from django.conf import settings
+from django.db.models.signals import pre_save, post_save
+
 
 # ===========================
 # BaseModel for Django ORM
@@ -29,6 +38,13 @@ class SoftDeleteModel(models.Model):
     class Meta:
         abstract = True
 
+    def delete(self, using=None, keep_parents=False):
+        """
+        Soft delete by setting `is_deleted` to True.
+        """
+        self.is_deleted = True
+        self.save()
+
 
 class UUIDModel(models.Model):
     """
@@ -44,6 +60,7 @@ class FilePathModel(models.Model):
     """
     Base model to handle file paths for file uploads.
     """
+
     def generate_file_path(self, filename):
         ext = filename.split('.')[-1]
         filename = f'{uuid.uuid4()}.{ext}'
@@ -88,6 +105,13 @@ class MongoSoftDeleteModel(Document):
     meta = {
         'abstract': True,
     }
+
+    def soft_delete(self):
+        """
+        Soft delete by setting `is_deleted` to True.
+        """
+        self.is_deleted = True
+        self.save()
 
 
 class MongoUUIDModel(Document):
