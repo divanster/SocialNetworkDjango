@@ -1,75 +1,66 @@
-# backend/albums/consumer.py
-import os
-import django
-import time
 import logging
-from kafka import KafkaConsumer
-from django.conf import settings
-import json
-
-# Set up Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
-
-from albums.models import Album
+from kafka_app.base_consumer import BaseKafkaConsumer
+from albums.models import Album, Photo
 
 logger = logging.getLogger(__name__)
 
 
-class AlbumKafkaConsumerClient:
+class AlbumKafkaConsumer(BaseKafkaConsumer):
     def __init__(self):
-        self.topic = settings.KAFKA_TOPICS.get('ALBUM_EVENTS', 'default-album-topic')
-        self.consumer = self.get_kafka_consumer()
+        topic = 'album-events'
+        group_id = 'album_group'
+        super().__init__(topic, group_id)
 
-    def get_kafka_consumer(self):
-        retry_count = 0
-        max_retries = 5
-        while retry_count < max_retries:
-            try:
-                consumer = KafkaConsumer(
-                    self.topic,
-                    bootstrap_servers=settings.KAFKA_BROKER_URL,
-                    group_id=settings.KAFKA_CONSUMER_GROUP_ID,
-                    auto_offset_reset='earliest',
-                    enable_auto_commit=True,
-                    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-                )
-                logger.info(f"[KAFKA] Connected to topic: {self.topic}")
-                return consumer
-            except Exception as e:
-                retry_count += 1
-                wait_time = min(5 * (2 ** retry_count),
-                                60)  # Exponential backoff with max wait of 60 seconds
-                logger.error(
-                    f"[KAFKA] Failed to connect (attempt {retry_count}): {e}. Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
-        raise ConnectionError("[KAFKA] Max retries reached. Could not connect to "
-                              "Kafka broker.")
+    def process_message(self, message):
+        try:
+            event_type = message.get('event')
+            album_id = message.get('album_id')
+            if event_type == 'created':
+                # Logic when an album is created
+                logger.info(f"[KAFKA] Album created with ID: {album_id}")
+            elif event_type == 'updated':
+                # Logic when an album is updated
+                logger.info(f"[KAFKA] Album updated with ID: {album_id}")
+            elif event_type == 'deleted':
+                # Logic when an album is deleted
+                logger.info(f"[KAFKA] Album deleted with ID: {album_id}")
+            else:
+                logger.warning(f"[KAFKA] Unrecognized album event type: {event_type}")
+        except Exception as e:
+            logger.error(f"[KAFKA] Error processing album message: {e}")
 
-    def consume_messages(self):
-        for message in self.consumer:
-            try:
-                data = message.value
-                logger.info(f"[KAFKA] Received album event: {data}")
-                self.handle_album_event(data)
-            except Exception as e:
-                logger.error(f"[KAFKA] Error processing message: {e}")
 
-    def handle_album_event(self, data):
-        # Handle logic for MongoDB data if needed
-        event_type = data.get('event')
-        if event_type == 'created':
-            album_id = data.get('album')
-            try:
-                album = Album.objects.using('social_db').get(pk=album_id)
-                logger.info(f"[KAFKA] Successfully fetched album: {album}")
-            except Album.DoesNotExist:
-                logger.error(f"[KAFKA] Album with ID {album_id} does not exist.")
+class PhotoKafkaConsumer(BaseKafkaConsumer):
+    def __init__(self):
+        topic = 'photo-events'
+        group_id = 'photo_group'
+        super().__init__(topic, group_id)
+
+    def process_message(self, message):
+        try:
+            event_type = message.get('event')
+            photo_id = message.get('photo_id')
+            if event_type == 'created':
+                # Logic when a photo is created
+                logger.info(f"[KAFKA] Photo created with ID: {photo_id}")
+            elif event_type == 'updated':
+                # Logic when a photo is updated
+                logger.info(f"[KAFKA] Photo updated with ID: {photo_id}")
+            elif event_type == 'deleted':
+                # Logic when a photo is deleted
+                logger.info(f"[KAFKA] Photo deleted with ID: {photo_id}")
+            else:
+                logger.warning(f"[KAFKA] Unrecognized photo event type: {event_type}")
+        except Exception as e:
+            logger.error(f"[KAFKA] Error processing photo message: {e}")
 
 
 def main():
-    consumer_client = AlbumKafkaConsumerClient()
-    consumer_client.consume_messages()
+    album_consumer_client = AlbumKafkaConsumer()
+    photo_consumer_client = PhotoKafkaConsumer()
+
+    album_consumer_client.consume_messages()
+    photo_consumer_client.consume_messages()
 
 
 if __name__ == "__main__":

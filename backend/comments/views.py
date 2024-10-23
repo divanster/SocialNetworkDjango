@@ -1,10 +1,12 @@
 # backend/comments/views.py
-
 from rest_framework import viewsets
 from .models import Comment
 from .serializers import CommentSerializer
-from core.utils import get_kafka_producer  # Updated import to use core utility
+from kafka_app.producer import KafkaProducerClient
+import logging
 
+logger = logging.getLogger(__name__)
+producer = KafkaProducerClient()
 
 class CommentViewSet(viewsets.ModelViewSet):
     """
@@ -18,41 +20,53 @@ class CommentViewSet(viewsets.ModelViewSet):
         Overridden perform_create method to save comment and send event to Kafka.
         """
         instance = serializer.save(user=self.request.user)  # Ensure the user is set correctly
-        producer = get_kafka_producer()  # Use core utility for KafkaProducerClient
         message = {
+            "event": "created",
             "comment_id": instance.id,
             "content": instance.content,
             "user_id": instance.user_id,
             "post_id": instance.post_id,
             "created_at": str(instance.created_at),
-            "event": "created"
         }
-        producer.send_message('COMMENT_EVENTS', message)
+        try:
+            producer.send_message('COMMENT_EVENTS', message)
+            logger.info(f"Sent Kafka message for comment created: {message}")
+        except Exception as e:
+            logger.error(f"Failed to send comment event to Kafka: {e}")
 
     def perform_update(self, serializer):
         """
         Overridden perform_update method to update comment and send update event to Kafka.
         """
         instance = serializer.save()
-        producer = get_kafka_producer()  # Use core utility for KafkaProducerClient
         message = {
+            "event": "updated",
             "comment_id": instance.id,
             "content": instance.content,
             "user_id": instance.user_id,
             "post_id": instance.post_id,
             "updated_at": str(instance.updated_at),
-            "event": "updated"
         }
-        producer.send_message('COMMENT_EVENTS', message)
+        try:
+            producer.send_message('COMMENT_EVENTS', message)
+            logger.info(f"Sent Kafka message for comment updated: {message}")
+        except Exception as e:
+            logger.error(f"Failed to send comment event to Kafka: {e}")
 
     def perform_destroy(self, instance):
         """
         Overridden perform_destroy method to delete comment and send delete event to Kafka.
         """
-        producer = get_kafka_producer()  # Use core utility for KafkaProducerClient
         message = {
+            "event": "deleted",
             "comment_id": instance.id,
-            "action": "deleted"
+            "post_id": instance.post_id,
+            "user_id": instance.user_id,
         }
-        producer.send_message('COMMENT_EVENTS', message)
+        try:
+            producer.send_message('COMMENT_EVENTS', message)
+            logger.info(f"Sent Kafka message for comment deleted: {message}")
+        except Exception as e:
+            logger.error(f"Failed to send comment event to Kafka: {e}")
+
         instance.delete()

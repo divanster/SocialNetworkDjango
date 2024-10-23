@@ -30,6 +30,10 @@ class StoryConsumer(AsyncWebsocketConsumer):
 
     async def story_message(self, event):
         message = event['message']
+        # Modify the message to include new fields
         await self.send(text_data=json.dumps({
-            'message': message
+            'message': message,
+            'media_type': event.get('media_type'),
+            'media_url': event.get('media_url'),
+            'is_active': event.get('is_active')
         }))

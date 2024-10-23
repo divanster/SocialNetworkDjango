@@ -51,13 +51,16 @@ class KafkaStoryConsumer:
 
         if event_type == 'created':
             logger.info(f"Processing 'created' story event for Story ID: {story_id}")
-            # Here you can add additional logic to process the creation of a story
+            # Additional logic to handle creation of story with media
+            media_type = message.get('media_type', 'text')
+            media_url = message.get('media_url', None)
+            logger.info(f"Media type: {media_type}, Media URL: {media_url}")
         elif event_type == 'updated':
             logger.info(f"Processing 'updated' story event for Story ID: {story_id}")
-            # Here you can add additional logic to process story updates
+            # Additional update handling logic
         elif event_type == 'deleted':
             logger.info(f"Processing 'deleted' story event for Story ID: {story_id}")
-            # Here you can add additional logic to process story deletion
+            # Additional logic to handle deletion
         else:
             logger.warning(f"Unknown story event type: {event_type}")
 

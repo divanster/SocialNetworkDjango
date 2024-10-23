@@ -135,6 +135,34 @@ services:
       - backend_network
       - kafka_network
 
+  # Centralized Kafka Consumer Service
+  kafka-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+        ./wait-for-it.sh kafka:9093 -- 
+        python /app/kafka_app/consumer.py
+      "
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    networks:
+      - backend_network
+      - kafka_network
+    restart: always
+
   # Celery Worker for processing tasks asynchronously
   celery-worker:
     build:
@@ -212,34 +240,6 @@ services:
     networks:
       - backend_network
       - kafka_network
-
-  # Kafka Consumer for Albums - consuming album-related messages from Kafka
-  kafka-consumer-albums:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: >
-      sh -c "
-        ./wait-for-it.sh kafka:9093 -- 
-        python manage.py run_kafka_consumer_albums
-      "
-    volumes:
-      - ./backend:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    env_file:
-      - ./backend/.env
-    networks:
-      - backend_network
-      - kafka_network
-    restart: always
 
   # React Frontend service
   frontend:

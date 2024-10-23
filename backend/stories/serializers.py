@@ -1,5 +1,3 @@
-# backend/stories/serializers.py
-
 from rest_framework import serializers
 from .models import Story
 from tagging.models import TaggedItem
@@ -15,16 +13,22 @@ class StorySerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    # New fields for media, is_active, and viewed_by
+    media_type = serializers.ChoiceField(choices=['image', 'video', 'text'], required=False)
+    media_url = serializers.URLField(required=False, allow_null=True)
+    is_active = serializers.BooleanField(read_only=True)  # Only server can modify is_active
+    viewed_by = serializers.ListField(
+        child=serializers.IntegerField(),
+        read_only=True  # Viewed_by list should be managed internally, not by the user
+    )
 
     class Meta:
         model = Story
         fields = [
-            'id', 'user_id', 'user_username', 'content', 'created_at', 'updated_at',
-            'tags',
-            'tagged_user_ids'
+            'id', 'user_id', 'user_username', 'content', 'media_type', 'media_url',
+            'is_active', 'viewed_by', 'created_at', 'updated_at', 'tags', 'tagged_user_ids'
         ]
-        read_only_fields = ['id', 'user_id', 'user_username', 'created_at',
-                            'updated_at', 'tags']
+        read_only_fields = ['id', 'user_id', 'user_username', 'is_active', 'viewed_by', 'created_at', 'updated_at', 'tags']
 
     def get_tags(self, obj):
         # Get all tags for this story
@@ -46,16 +50,19 @@ class StorySerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
-        story = super().update(instance, validated_data)
+        # Update the Story instance with validated data
+        instance = super().update(instance, validated_data)
         if tagged_user_ids is not None:
             # Remove existing tags and add new ones
             TaggedItem.objects.using('tags_db').filter(tagged_item_type='Story',
-                                                       tagged_item_id=str(
-                                                           instance.id)).delete()
-            self.create_tagged_items(story, tagged_user_ids)
-        return story
+                                                       tagged_item_id=str(instance.id)).delete()
+            self.create_tagged_items(instance, tagged_user_ids)
+        return instance
 
     def create_tagged_items(self, story, tagged_user_ids):
+        """
+        Create tagging entries for the story.
+        """
         for user_id in tagged_user_ids:
             TaggedItem.objects.using('tags_db').create(
                 tagged_item_type='Story',

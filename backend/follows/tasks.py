@@ -62,35 +62,3 @@ def send_follow_event_to_kafka(self, follow_id, event_type):
         # Retry the task in case of failure, with exponential backoff
         raise self.retry(exc=e, countdown=60)
 
-
-@shared_task(bind=True, max_retries=3)
-def consume_follow_events(self):
-    """
-    Celery task to consume follow events from Kafka.
-
-    This function continuously consumes messages from a specified Kafka topic and processes
-    each message accordingly. In case of failure, the task retries.
-
-    Args:
-        None
-
-    Raises:
-        self.retry: Retries the task in case of an exception during consumption.
-    """
-    kafka_topic = settings.KAFKA_TOPICS.get('FOLLOW_EVENTS', 'default-follow-topic')
-    consumer = KafkaConsumerClient(kafka_topic)
-
-    try:
-        # Consume messages from Kafka topic
-        for message in consumer.consume_messages():
-            try:
-                # Add follow-specific processing logic here if needed
-                logger.info(f"[KAFKA] Processed follow event: {message}")
-            except Exception as e:
-                logger.error(f"[KAFKA] Error processing follow event: {e}")
-                # Optionally, raise self.retry() here if message consumption fails
-    except Exception as e:
-        logger.error(
-            f"[KAFKA] Error consuming follow events from topic '{kafka_topic}': {e}")
-        # Retry consuming messages in case of error with an exponential backoff
-        raise self.retry(exc=e, countdown=60)

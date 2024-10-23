@@ -39,14 +39,3 @@ def send_notification_event_to_kafka(self, notification_id, event_type):
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
         self.retry(exc=e)
-
-
-@shared_task
-def consume_notification_events():
-    consumer = KafkaConsumerClient('NOTIFICATIONS_EVENTS')
-    for message in consumer.consume_messages():
-        try:
-            # Add processing logic here for received notification messages
-            logger.info(f"Processed notification event: {message}")
-        except Exception as e:
-            logger.error(f"Error processing notification event: {e}")

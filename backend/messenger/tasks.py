@@ -45,28 +45,6 @@ def send_message_event_to_kafka(message_id, event_type):
         logger.error(f"Error sending Kafka message: {e}")
 
 
-@shared_task
-def consume_message_events():
-    """
-    Celery task to consume message events from Kafka.
-    Consumes events and processes them based on event type.
-    """
-    kafka_topic = settings.KAFKA_TOPICS.get('MESSENGER_EVENTS', 'default-messenger-topic')
-    consumer = KafkaConsumerClient(kafka_topic)
-
-    try:
-        for message in consumer.consume_messages():
-            try:
-                logger.info(f"Processing message event: {message}")
-                process_message_event(message)
-            except Exception as e:
-                logger.error(f"Error processing message event: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error during message consumption: {e}")
-    finally:
-        consumer.close()
-
-
 def process_message_event(message):
     """
     Process each message received from Kafka.

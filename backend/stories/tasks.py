@@ -10,9 +10,6 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def send_story_event_to_kafka(story_id, event_type):
-    """
-    Celery task to send story events to Kafka.
-    """
     producer = KafkaProducerClient()
 
     try:
@@ -26,7 +23,11 @@ def send_story_event_to_kafka(story_id, event_type):
             message = {
                 "story_id": story.id,
                 "user_id": story.user_id,
+                "user_username": story.user_username,
                 "content": story.content,
+                "media_type": story.media_type,
+                "media_url": story.media_url,
+                "is_active": story.is_active,
                 "created_at": str(story.created_at),
                 "event": event_type,
             }

@@ -16,7 +16,7 @@ def story_saved(sender, instance, created, **kwargs):
     Logs whether the story was created or updated and sends an event to Kafka.
     """
     event_type = 'created' if created else 'updated'
-    logger.info(f'Story {event_type} with ID: {instance.id}, User: {instance.user_username}, Content: {instance.content[:30]}')
+    logger.info(f'Story {event_type} with ID: {instance.id}, User: {instance.user_username}, Content: {instance.content[:30]}, Media Type: {instance.media_type}')
 
     # Send story event to Kafka
     send_story_event_to_kafka.delay(instance.id, event_type)

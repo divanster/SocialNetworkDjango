@@ -1,4 +1,5 @@
 # backend/stories/views.py
+from datetime import datetime
 
 from rest_framework import viewsets, permissions
 from .models import Story
@@ -11,5 +12,8 @@ class StoryViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        serializer.save(user_id=self.request.user.id,
-                        user_username=self.request.user.username)
+        serializer.save(
+            user_id=self.request.user.id,
+            user_username=self.request.user.username,
+            created_at=datetime.now()
+        )

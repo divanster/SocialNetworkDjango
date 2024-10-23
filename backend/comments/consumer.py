@@ -1,53 +1,38 @@
 # backend/comments/consumer.py
-import os
-import django
-import time
 import logging
-from kafka import KafkaConsumer
-from django.conf import settings
-import json
-
-# Set up Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
+from kafka_app.base_consumer import BaseKafkaConsumer
 
 logger = logging.getLogger(__name__)
 
+class CommentsKafkaConsumer(BaseKafkaConsumer):
+    def __init__(self):
+        # Initialize with topic and group_id
+        super().__init__(topic='comment-events', group_id='comments_group')
 
-class KafkaConsumerClient:
-    def __init__(self, topic):
-        self.topic = topic
-        self.consumer = self.get_kafka_consumer()
-
-    def get_kafka_consumer(self):
-        while True:
-            try:
-                consumer = KafkaConsumer(
-                    self.topic,
-                    bootstrap_servers=settings.KAFKA_BROKER_URL,
-                    group_id=settings.KAFKA_CONSUMER_GROUP_ID,
-                    auto_offset_reset='earliest',
-                    enable_auto_commit=True,
-                    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-                )
-                logger.info(f"Connected to Kafka topic: {self.topic}")
-                return consumer
-            except Exception as e:
-                logger.error(
-                    f"Failed to connect to Kafka: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
-
-    def consume_messages(self):
-        for message in self.consumer:
-            logger.info(f"Received message: {message.value}")
-            yield message.value  # Added to properly use with WebSocket consumer
-
+    def process_message(self, message):
+        try:
+            # Process the comment event here
+            event_type = message.get('event')
+            if event_type == 'created':
+                comment_id = message.get('comment_id')
+                logger.info(f"[KAFKA] Received 'created' event for comment ID: {comment_id}")
+                # Add your comment processing logic here
+            elif event_type == 'updated':
+                comment_id = message.get('comment_id')
+                logger.info(f"[KAFKA] Received 'updated' event for comment ID: {comment_id}")
+                # Add your comment processing logic here
+            elif event_type == 'deleted':
+                comment_id = message.get('comment_id')
+                logger.info(f"[KAFKA] Received 'deleted' event for comment ID: {comment_id}")
+                # Add your comment processing logic here
+            else:
+                logger.warning(f"[KAFKA] Unrecognized event type: {event_type}")
+        except Exception as e:
+            logger.error(f"[KAFKA] Error processing message: {e}")
 
 def main():
-    topic = settings.KAFKA_TOPICS['COMMENT_EVENTS']
-    consumer_client = KafkaConsumerClient(topic)
+    consumer_client = CommentsKafkaConsumer()
     consumer_client.consume_messages()
-
 
 if __name__ == "__main__":
     main()

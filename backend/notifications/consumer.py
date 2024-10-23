@@ -1,58 +1,33 @@
-import os
-import django
-import time
-import json
-import logging
-from kafka import KafkaConsumer
-from django.conf import settings
+# backend/notifications/consumer.py
 
-# Set up Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
+import logging
+from kafka_app.base_consumer import BaseKafkaConsumer
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
-class NotificationsKafkaConsumer:
-    def __init__(self, topic):
-        self.topic = topic
-        self.consumer = self.get_kafka_consumer()
+class NotificationKafkaConsumer(BaseKafkaConsumer):
+    def __init__(self):
+        # Initialize with topic and group_id
+        topic = settings.KAFKA_TOPICS.get('NOTIFICATIONS_EVENTS',
+                                          'default-notifications-topic')
+        group_id = settings.KAFKA_CONSUMER_GROUP_ID
+        super().__init__(topic, group_id)
 
-    def get_kafka_consumer(self):
-        retries = 0
-        max_retries = 5
-        wait_time = 5
-
-        while retries < max_retries:
-            try:
-                consumer = KafkaConsumer(
-                    self.topic,
-                    bootstrap_servers=settings.KAFKA_BROKER_URL,
-                    group_id=settings.KAFKA_CONSUMER_GROUP_ID,
-                    auto_offset_reset='earliest',
-                    enable_auto_commit=True,
-                    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-                )
-                logger.info(f"Connected to Kafka topic: {self.topic}")
-                return consumer
-            except Exception as e:
-                logger.error(f"Failed to connect to Kafka: {e}. Retrying in {wait_time} seconds...")
-                retries += 1
-                time.sleep(wait_time)
-
-        logger.error("Exceeded maximum retry attempts. Kafka consumer not initialized.")
-        raise RuntimeError("Failed to connect to Kafka after multiple retries.")
-
-    def consume_messages(self):
-        for message in self.consumer:
-            try:
-                logger.info(f"Consumed notification message: {message.value}")
-                # Add processing logic here
-            except Exception as e:
-                logger.error(f"Error processing message: {e}")
+    def process_message(self, message):
+        # Add your custom processing logic for notifications here
+        try:
+            logger.info(f"Processing notification event: {message}")
+            # Implement the business logic here (e.g., update database, send notification)
+        except Exception as e:
+            logger.error(f"[KAFKA] Error processing notification message: {e}")
 
 
-# To run this consumer, you can create a separate script or call it directly:
-if __name__ == "__main__":
-    consumer_client = NotificationsKafkaConsumer('NOTIFICATIONS_EVENTS')
+def main():
+    consumer_client = NotificationKafkaConsumer()
     consumer_client.consume_messages()
+
+
+if __name__ == "__main__":
+    main()

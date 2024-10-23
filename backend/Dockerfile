@@ -46,7 +46,7 @@ RUN useradd -m django-user && \
 COPY . /app
 
 # Copy wait-for-it.sh to /app directory and make it executable
-COPY wait-for-it.sh /app/wait-for-it.sh
+# COPY wait-for-it.sh /app/wait-for-it.sh
 RUN chmod +x /app/wait-for-it.sh  # Ensure wait-for-it.sh script is executable
 
 # Ensure all files are owned by django-user for security purposes

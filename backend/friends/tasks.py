@@ -53,19 +53,3 @@ def send_friend_event_to_kafka(friend_event_id, event_type, is_friendship=False)
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
 
-
-@shared_task
-def consume_friend_events():
-    """
-    Celery task to consume friend events from Kafka.
-    """
-    kafka_topic = settings.KAFKA_TOPICS.get('FRIEND_EVENTS', 'default-friend-topic')
-    consumer = KafkaConsumerClient(kafka_topic)
-
-    for message in consumer.consume_messages():
-        try:
-            # Add friend-specific processing logic here, e.g. updating status,
-            # sending notifications
-            logger.info(f"Processed friend event: {message}")
-        except Exception as e:
-            logger.error(f"Error processing friend event: {e}")

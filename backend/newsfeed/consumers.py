@@ -1,4 +1,3 @@
-# backend/newsfeed/consumers.py
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -49,7 +48,5 @@ class NewsfeedConsumer(AsyncWebsocketConsumer):
 
     async def feed_message(self, event):
         message = event['message']
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
+        await self.send(text_data=json.dumps({'message': message}))
         logger.info(f'Sent message: {message}')

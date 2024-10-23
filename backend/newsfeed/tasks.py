@@ -21,6 +21,7 @@ MODEL_MAP = {
     'Story': Story,
 }
 
+
 @shared_task
 def send_newsfeed_event_to_kafka(object_id, event_type, model_name):
     """
@@ -48,7 +49,8 @@ def send_newsfeed_event_to_kafka(object_id, event_type, model_name):
                 'event_type': event_type,
                 'model_name': model_name,
                 'data': {
-                    'content': getattr(instance, 'content', None),  # Example: adjust as needed per model
+                    'content': getattr(instance, 'content', None),
+                    # Example: adjust as needed per model
                     'created_at': str(getattr(instance, 'created_at', None)),
                     'author_id': getattr(instance, 'author_id', None),
                 }
@@ -62,19 +64,3 @@ def send_newsfeed_event_to_kafka(object_id, event_type, model_name):
         logger.error(f"{model_name} with ID {object_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-
-
-@shared_task
-def consume_newsfeed_events():
-    """
-    Celery task to consume newsfeed events from Kafka.
-    """
-    topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS', 'default-newsfeed-topic')
-    consumer = KafkaConsumerClient(topic)
-    for message in consumer.consume_messages():
-        try:
-            # Add newsfeed-specific processing logic here for consumed Kafka messages
-            logger.info(f"Processed newsfeed event: {message}")
-            # Example: Updating search indexes, sending notifications, or updating a newsfeed cache
-        except Exception as e:
-            logger.error(f"Error processing newsfeed event: {e}")

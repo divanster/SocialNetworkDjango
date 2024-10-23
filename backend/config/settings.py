@@ -61,14 +61,19 @@ DEBUG = env('DEBUG')
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
-# Kafka settings for event-driven architecture
-KAFKA_BROKER_URL = env('KAFKA_BROKER_URL')
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID')
-KAFKA_TOPICS = {
-    'USER_EVENTS': 'user-events',
-    'NOTIFICATIONS': 'user-notifications',
-    # Add other events here...
-}
+
+# =====================
+# Kafka Configuration
+# =====================
+
+# Kafka broker URL for event-driven architecture
+KAFKA_BROKER_URL = env('KAFKA_BROKER_URL')  # Kafka broker URL for communication
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='main_consumer_group')  # Kafka consumer group ID
+
+# Kafka topics for different events parsed from a comma-separated list
+KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
+KAFKA_TOPICS = dict(item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item)
+
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
@@ -112,9 +117,9 @@ INSTALLED_APPS = [
     'tagging.apps.TaggingConfig',  # MongoDB via MongoEngine
     'reactions.apps.ReactionsConfig',  # PostgreSQL
     'core.apps.CoreConfig',  # Core utilities, often PostgreSQL
-
-    # Kafka broker app
-    'kafka_app.apps.KafkaAppConfig',
+    'notifications.apps.NotificationsConfig',  # Add notifications app (as an example)
+    'comments.apps.CommentsConfig',  # Add comments app if available
+    'kafka_app.apps.KafkaAppConfig',  # Kafka broker app
 ]
 
 if DEBUG:

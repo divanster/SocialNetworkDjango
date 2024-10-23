@@ -1,9 +1,6 @@
-# backend/friends/consumers.py
-
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
-from kafka_app.consumer import KafkaConsumerClient
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +13,7 @@ class FriendRequestConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         await self.accept()
-
-        # Consume Kafka messages and send to WebSocket clients
-        consumer = KafkaConsumerClient('FRIEND_EVENTS')
-        for message in consumer.consume_messages():
-            await self.send(text_data=json.dumps(message))
+        await self.send(text_data=json.dumps({"message": "WebSocket connected."}))
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
