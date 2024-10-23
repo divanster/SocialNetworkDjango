@@ -18,11 +18,7 @@ class PhotoSerializer(serializers.ModelSerializer):
 
 class AlbumSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, read_only=True)
-    photos_upload = serializers.ListField(
-        child=PhotoSerializer(),  # Modified to use PhotoSerializer for consistency
-        write_only=True,
-        required=False
-    )
+    photos_upload = PhotoSerializer(many=True, write_only=True, required=False)
     tags = TaggedItemSerializer(many=True, read_only=True)
     tagged_user_ids = serializers.ListField(
         child=serializers.UUIDField(format='hex_verbose'),
@@ -42,35 +38,46 @@ class AlbumSerializer(serializers.ModelSerializer):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
         photos_data = validated_data.pop('photos_upload', [])
         album = Album.objects.using('social_db').create(**validated_data)
+
+        # Create tagged items for the new album
         self.create_tagged_items(album, tagged_user_ids)
+
+        # Create photos for the album
         for photo_data in photos_data:
             Photo.objects.using('social_db').create(album=album, **photo_data)
+
         return album
 
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
         photos_data = validated_data.pop('photos_upload', [])
         album = super().update(instance, validated_data)
+
         if tagged_user_ids is not None:
-            instance.tags.all().using('social_db').delete()
+            # Remove all existing tags
+            instance.tags.using('social_db').all().delete()
+            # Recreate tags with the provided user IDs
             self.create_tagged_items(album, tagged_user_ids)
 
-        # Handle photo updates and deletions
+        # Update existing photos or add new ones
         existing_photos = {photo.id: photo for photo in instance.photos.all()}
+
         for photo_data in photos_data:
             photo_id = photo_data.get('id')
             if photo_id and photo_id in existing_photos:
+                # Update existing photo
                 photo = existing_photos[photo_id]
                 photo.image = photo_data.get('image', photo.image)
                 photo.description = photo_data.get('description', photo.description)
-                photo.save()
-            elif photo_id is None:
-                Photo.objects.create(album=album, **photo_data)
+                photo.save(using='social_db')
+            elif not photo_id:
+                # Create new photo
+                Photo.objects.using('social_db').create(album=album, **photo_data)
 
-        # Delete photos not included in the update
+        # Delete photos that were not included in the update request
         existing_photo_ids = set(existing_photos.keys())
-        updated_photo_ids = set(
-            photo_data.get('id') for photo_data in photos_data if 'id' in photo_data)
+        updated_photo_ids = {photo_data.get('id') for photo_data in photos_data if
+                             'id' in photo_data}
         Photo.objects.filter(album=album,
                              id__in=(existing_photo_ids - updated_photo_ids)).using(
             'social_db').delete()
@@ -79,9 +86,14 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     def create_tagged_items(self, album, tagged_user_ids):
         from tagging.models import TaggedItem
+
+        tagged_by = self.context['request'].user
         for user_id in tagged_user_ids:
-            TaggedItem.objects.using('social_db').create(
-                content_object=album,
-                tagged_user_id=user_id,
-                tagged_by=self.context['request'].user
-            )
+            try:
+                TaggedItem.objects.using('social_db').create(
+                    content_object=album,
+                    tagged_user_id=user_id,
+                    tagged_by=tagged_by
+                )
+            except User.DoesNotExist:
+                continue  # Ignore if user does not exist

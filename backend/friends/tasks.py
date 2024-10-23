@@ -1,8 +1,5 @@
-# backend/friends/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from kafka_app.consumer import KafkaConsumerClient
 from django.conf import settings
 from .models import FriendRequest, Friendship
 import logging
@@ -10,13 +7,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task
-def send_friend_event_to_kafka(friend_event_id, event_type, is_friendship=False):
+def process_friend_event(friend_event_id, event_type, is_friendship=False):
     """
-    Celery task to send friend events (friend requests or friendships) to Kafka.
+    Celery task to process friend events (friend requests or friendships) and send them to Kafka.
     """
     producer = KafkaProducerClient()
 
     try:
+        # Create message data for Kafka based on the type of event
         if event_type == 'deleted':
             message = {
                 "friend_event_id": friend_event_id,
@@ -24,6 +22,7 @@ def send_friend_event_to_kafka(friend_event_id, event_type, is_friendship=False)
             }
         else:
             if is_friendship:
+                # Fetch Friendship instance and create a message
                 friendship = Friendship.objects.get(id=friend_event_id)
                 message = {
                     "friendship_id": friendship.id,
@@ -33,6 +32,7 @@ def send_friend_event_to_kafka(friend_event_id, event_type, is_friendship=False)
                     "event": event_type
                 }
             else:
+                # Fetch FriendRequest instance and create a message
                 friend_request = FriendRequest.objects.get(id=friend_event_id)
                 message = {
                     "friend_request_id": friend_request.id,
@@ -48,8 +48,8 @@ def send_friend_event_to_kafka(friend_event_id, event_type, is_friendship=False)
         producer.send_message(kafka_topic, message)
 
         logger.info(f"Sent Kafka message for {event_type}: {message}")
-    except (FriendRequest.DoesNotExist, Friendship.DoesNotExist):
-        logger.error(f"Friend event with ID {friend_event_id} does not exist.")
+
+    except (FriendRequest.DoesNotExist, Friendship.DoesNotExist) as e:
+        logger.error(f"Friend event with ID {friend_event_id} does not exist. Error: {e}")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-

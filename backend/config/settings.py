@@ -119,6 +119,12 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',  # Core utilities, often PostgreSQL
     'notifications.apps.NotificationsConfig',  # Add notifications app (as an example)
     'comments.apps.CommentsConfig',  # Add comments app if available
+    'friends.apps.FriendsConfig',
+    'follows.apps.FollowsConfig',
+    'messenger.apps.MessengerConfig',
+    'newsfeeds.apps.NewsfeedsConfig',
+    'pages.apps.PagesConfig',
+    'social.apps.SocialConfig',
     'kafka_app.apps.KafkaAppConfig',  # Kafka broker app
 ]
 
@@ -325,7 +331,7 @@ CELERY_TIMEZONE = 'UTC'
 # Celery Beat Schedule for periodic tasks
 CELERY_BEAT_SCHEDULE = {
     'consume-user-events-every-5-seconds': {
-        'task': 'kafka_app.tasks.consume_user_events',
+        'task': 'kafka_app.tasks.start_central_kafka_consumer',
         'schedule': 5.0,  # every 5 seconds
     },
     # Add other scheduled tasks as needed

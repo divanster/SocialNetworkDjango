@@ -2,13 +2,11 @@
 
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from kafka_app.consumer import KafkaConsumerClient
 from .models import Page
 import logging
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
 
 @shared_task
 def send_page_event_to_kafka(page_id, event_type):
@@ -19,11 +17,13 @@ def send_page_event_to_kafka(page_id, event_type):
 
     try:
         if event_type == 'deleted':
+            # Prepare the message for deleted page event
             message = {
                 "page_id": page_id,
                 "action": "deleted"
             }
         else:
+            # Prepare the message for created or updated page event
             page = Page.objects.get(id=page_id)
             message = {
                 "page_id": page.id,
@@ -33,24 +33,14 @@ def send_page_event_to_kafka(page_id, event_type):
                 "event": event_type,
             }
 
-        producer.send_message('PAGE_EVENTS', message)
+        # Send the constructed message to the PAGE_EVENTS Kafka topic
+        kafka_topic = settings.KAFKA_TOPICS.get('PAGE_EVENTS', 'default-page-topic')
+        producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for page {event_type}: {message}")
+
     except Page.DoesNotExist:
         logger.error(f"Page with ID {page_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-
-
-@shared_task
-def consume_page_events():
-    """
-    Celery task to consume page events from Kafka.
-    """
-    topic = settings.KAFKA_TOPICS.get('PAGE_EVENTS', 'default-page-topic')
-    consumer = KafkaConsumerClient(topic)
-    for message in consumer.consume_messages():
-        try:
-            # Add page-specific processing logic here
-            logger.info(f"Processed page event: {message}")
-        except Exception as e:
-            logger.error(f"Error processing page event: {e}")
+    finally:
+        producer.close()  # Ensure the producer is properly closed

@@ -1,72 +1,102 @@
-# backend/comments/views.py
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied, NotFound
 from .models import Comment
 from .serializers import CommentSerializer
-from kafka_app.producer import KafkaProducerClient
 import logging
 
 logger = logging.getLogger(__name__)
-producer = KafkaProducerClient()
 
 class CommentViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing Comment CRUD operations. Uses Kafka to produce comment events.
+    ViewSet for managing Comment CRUD operations.
     """
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_serializer_context(self):
+        """
+        Add additional context for the serializer to have access to the request.
+        This will be useful for tagging.
+        """
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
+    def get_queryset(self):
+        """
+        Override the default queryset to allow filtering by the current user
+        if needed.
+        """
+        queryset = Comment.objects.all()
+        post_id = self.request.query_params.get('post_id')
+        if post_id:
+            queryset = queryset.filter(post_id=post_id)
+        return queryset
 
     def perform_create(self, serializer):
         """
-        Overridden perform_create method to save comment and send event to Kafka.
+        Overridden perform_create method to save comment.
+        Kafka task is triggered via signals.
         """
-        instance = serializer.save(user=self.request.user)  # Ensure the user is set correctly
-        message = {
-            "event": "created",
-            "comment_id": instance.id,
-            "content": instance.content,
-            "user_id": instance.user_id,
-            "post_id": instance.post_id,
-            "created_at": str(instance.created_at),
-        }
-        try:
-            producer.send_message('COMMENT_EVENTS', message)
-            logger.info(f"Sent Kafka message for comment created: {message}")
-        except Exception as e:
-            logger.error(f"Failed to send comment event to Kafka: {e}")
+        if not self.request.user.is_authenticated:
+            logger.warning(f"[VIEW] Unauthorized comment creation attempt")
+            raise PermissionDenied("You need to be logged in to create a comment.")
+
+        instance = serializer.save(user=self.request.user)
+        logger.info(f"[VIEW] Created Comment with ID {instance.id}")
 
     def perform_update(self, serializer):
         """
-        Overridden perform_update method to update comment and send update event to Kafka.
+        Overridden perform_update method to update comment.
+        Kafka task is triggered via signals.
         """
-        instance = serializer.save()
-        message = {
-            "event": "updated",
-            "comment_id": instance.id,
-            "content": instance.content,
-            "user_id": instance.user_id,
-            "post_id": instance.post_id,
-            "updated_at": str(instance.updated_at),
-        }
-        try:
-            producer.send_message('COMMENT_EVENTS', message)
-            logger.info(f"Sent Kafka message for comment updated: {message}")
-        except Exception as e:
-            logger.error(f"Failed to send comment event to Kafka: {e}")
+        instance = serializer.instance
+        if instance.user != self.request.user:
+            logger.warning(f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {self.request.user.id}")
+            raise PermissionDenied("You do not have permission to edit this comment.")
+
+        updated_instance = serializer.save()
+        logger.info(f"[VIEW] Updated Comment with ID {updated_instance.id}")
 
     def perform_destroy(self, instance):
         """
-        Overridden perform_destroy method to delete comment and send delete event to Kafka.
+        Overridden perform_destroy method to delete comment.
+        Kafka task is triggered via signals.
         """
-        message = {
-            "event": "deleted",
-            "comment_id": instance.id,
-            "post_id": instance.post_id,
-            "user_id": instance.user_id,
-        }
-        try:
-            producer.send_message('COMMENT_EVENTS', message)
-            logger.info(f"Sent Kafka message for comment deleted: {message}")
-        except Exception as e:
-            logger.error(f"Failed to send comment event to Kafka: {e}")
+        if instance.user != self.request.user:
+            logger.warning(f"[VIEW] Unauthorized delete attempt on Comment ID {instance.id} by user {self.request.user.id}")
+            raise PermissionDenied("You do not have permission to delete this comment.")
 
         instance.delete()
+        logger.info(f"[VIEW] Deleted Comment with ID {instance.id}")
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Custom destroy method to handle not found comments explicitly.
+        """
+        try:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Comment.DoesNotExist:
+            logger.error(f"[VIEW] Attempted to delete non-existent Comment ID {kwargs.get('pk')}")
+            raise NotFound("Comment not found.")
+
+    def update(self, request, *args, **kwargs):
+        """
+        Custom update method to provide better response when trying to update.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # Ensure the user trying to update the comment is the owner
+        if instance.user != request.user:
+            logger.warning(f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {request.user.id}")
+            raise PermissionDenied("You do not have permission to update this comment.")
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)

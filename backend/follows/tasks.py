@@ -1,6 +1,7 @@
+# backend/follows/tasks.py
+
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from kafka_app.consumer import KafkaConsumerClient
 from django.conf import settings
 from .models import Follow
 import logging
@@ -9,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3)
-def send_follow_event_to_kafka(self, follow_id, event_type):
+def process_follow_event_task(self, follow_id, event_type):
     """
-    Celery task to send follow events to Kafka.
+    Celery task to process follow events and send them to Kafka.
 
     This function attempts to send information about a follow event (created or deleted)
     to a Kafka topic using a Kafka producer. In case of failure, it retries the operation.
@@ -61,4 +62,3 @@ def send_follow_event_to_kafka(self, follow_id, event_type):
             f"[KAFKA] Error sending follow {event_type} event to Kafka for follow ID {follow_id}: {e}")
         # Retry the task in case of failure, with exponential backoff
         raise self.retry(exc=e, countdown=60)
-

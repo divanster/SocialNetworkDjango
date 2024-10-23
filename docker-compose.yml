@@ -62,7 +62,7 @@ services:
     networks:
       - kafka_network
     healthcheck:
-      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      test: ["CMD", "echo ruok | nc localhost 2181"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -88,7 +88,7 @@ services:
     networks:
       - kafka_network
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      test: ["CMD", "/bin/sh -c 'kafka-topics --bootstrap-server localhost:9092 --list || exit 1'"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -100,10 +100,10 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "
-        ./wait-for-it.sh db:5432 -- 
-        ./wait-for-it.sh mongo:27017 -- 
-        ./wait-for-it.sh redis:6379 -- 
-        ./wait-for-it.sh kafka:9093 -- 
+        ./wait-for-it.sh db:5432 --timeout=120 &&
+        ./wait-for-it.sh mongo:27017 --timeout=120 &&
+        ./wait-for-it.sh redis:6379 --timeout=120 &&
+        ./wait-for-it.sh kafka:9093 --timeout=120 &&
         python /app/manage.py wait_for_db &&
         python /app/manage.py makemigrations --noinput &&
         python /app/manage.py migrate --noinput &&
@@ -127,7 +127,7 @@ services:
     env_file:
       - ./backend/.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      test: ["CMD", "curl -f http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -142,7 +142,11 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "
-        ./wait-for-it.sh kafka:9093 -- 
+        ./wait-for-it.sh db:5432 --timeout=120 &&
+        ./wait-for-it.sh mongo:27017 --timeout=120 &&
+        ./wait-for-it.sh redis:6379 --timeout=120 &&
+        ./wait-for-it.sh kafka:9093 --timeout=120 &&
+        ./wait-for-it.sh web:8000 --timeout=120 &&
         python /app/kafka_app/consumer.py
       "
     volumes:
@@ -155,6 +159,8 @@ services:
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      web:
         condition: service_healthy
     env_file:
       - ./backend/.env
@@ -170,7 +176,11 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "
-        ./wait-for-it.sh kafka:9093 -- 
+        ./wait-for-it.sh db:5432 --timeout=120 &&
+        ./wait-for-it.sh mongo:27017 --timeout=120 &&
+        ./wait-for-it.sh redis:6379 --timeout=120 &&
+        ./wait-for-it.sh kafka:9093 --timeout=120 &&
+        ./wait-for-it.sh web:8000 --timeout=120 &&
         celery -A config worker --loglevel=info
       "
     volumes:
@@ -183,6 +193,8 @@ services:
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      web:
         condition: service_healthy
     env_file:
       - ./backend/.env
@@ -197,7 +209,11 @@ services:
       dockerfile: Dockerfile
     command: >
       sh -c "
-        ./wait-for-it.sh kafka:9093 -- 
+        ./wait-for-it.sh db:5432 --timeout=120 &&
+        ./wait-for-it.sh mongo:27017 --timeout=120 &&
+        ./wait-for-it.sh redis:6379 --timeout=120 &&
+        ./wait-for-it.sh kafka:9093 --timeout=120 &&
+        ./wait-for-it.sh web:8000 --timeout=120 &&
         celery -A config beat --loglevel=info
       "
     volumes:
@@ -211,6 +227,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      web:
+        condition: service_healthy
     env_file:
       - ./backend/.env
     networks:
@@ -222,7 +240,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: python /app/manage.py runworker default --verbosity 2
+    command: >
+      sh -c "
+        ./wait-for-it.sh db:5432 --timeout=120 &&
+        ./wait-for-it.sh mongo:27017 --timeout=120 &&
+        ./wait-for-it.sh redis:6379 --timeout=120 &&
+        ./wait-for-it.sh kafka:9093 --timeout=120 &&
+        ./wait-for-it.sh web:8000 --timeout=120 &&
+        python /app/manage.py runworker default --verbosity 2
+      "
     volumes:
       - ./backend:/app
       - ./vol/web:/vol/web
@@ -234,6 +260,8 @@ services:
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      web:
         condition: service_healthy
     env_file:
       - ./backend/.env
@@ -247,9 +275,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
-        NODE_OPTIONS: ${NODE_OPTIONS:-"--openssl-legacy-provider"}
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-"http://localhost:8000"}
+        - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
+        - NODE_OPTIONS=${NODE_OPTIONS:-"--openssl-legacy-provider"}
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-"http://localhost:8000"}
     volumes:
       - ./frontend:/app
     ports:
@@ -265,8 +293,23 @@ volumes:
   mongo_data:
   redis_data:
   zookeeper_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /tmp/zookeeper_data
   zookeeper_datalog:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /tmp/zookeeper_datalog
   kafka_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /tmp/kafka_data
 
 # Networks for inter-service communication
 networks:

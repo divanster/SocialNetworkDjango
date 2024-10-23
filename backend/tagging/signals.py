@@ -6,7 +6,11 @@ from tagging.models import TaggedItem
 from notifications.models import Notification
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from .tasks import send_tagging_event_to_kafka  # Import task to send event to Kafka
+from .tasks import send_tagging_event_to_kafka  # Import Celery task
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Helper function to send real-time notifications for tags
@@ -40,10 +44,10 @@ def tagged_item_created(sender, instance, created, **kwargs):
             f"You were tagged by {instance.tagged_by.username} in a post."
         )
 
-        # Send tagging event to Kafka
+        # Trigger Celery task to send the tagging event to Kafka
         send_tagging_event_to_kafka.delay(instance.id, 'created')
 
-        print(f'TaggedItem created: {instance}')
+        logger.info(f"TaggedItem created: {instance}")
 
 
 @receiver(post_delete, sender=TaggedItem)
@@ -54,7 +58,7 @@ def tagged_item_deleted(sender, instance, **kwargs):
         f"You were untagged from a post by {instance.tagged_by.username}."
     )
 
-    # Send tagging event to Kafka
+    # Trigger Celery task to send the tagging event to Kafka
     send_tagging_event_to_kafka.delay(instance.id, 'deleted')
 
-    print(f'TaggedItem deleted: {instance}')
+    logger.info(f"TaggedItem deleted: {instance}")

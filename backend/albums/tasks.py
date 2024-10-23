@@ -1,17 +1,17 @@
 # backend/albums/tasks.py
+
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from kafka_app.producer import KafkaProducerClient
 from .models import Album, Photo
-from core.utils import get_kafka_producer
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=5)
-def send_album_event_to_kafka(self, album_id, event_type):
-    producer = get_kafka_producer()
+def process_album_event_task(self, album_id, event_type):
+    producer = KafkaProducerClient()
     try:
         album = Album.objects.get(id=album_id)
         tagged_user_ids = list(album.tags.values_list('tagged_user_id', flat=True))
@@ -24,8 +24,10 @@ def send_album_event_to_kafka(self, album_id, event_type):
             'tagged_user_ids': [str(user_id) for user_id in tagged_user_ids],
         }
 
+        # Send message to Kafka
         producer.send_message('ALBUM_EVENTS', message)
         logger.info(f"[TASK] Sent Kafka message for album {event_type}: {message}")
+
     except Album.DoesNotExist:
         logger.error(f"[TASK] Album with ID {album_id} does not exist.")
     except KafkaTimeoutError as e:
@@ -38,8 +40,8 @@ def send_album_event_to_kafka(self, album_id, event_type):
 
 
 @shared_task(bind=True, max_retries=5)
-def send_photo_event_to_kafka(self, photo_id, event_type):
-    producer = get_kafka_producer()
+def process_photo_event_task(self, photo_id, event_type):
+    producer = KafkaProducerClient()
     try:
         photo = Photo.objects.get(id=photo_id)
         message = {
@@ -50,8 +52,10 @@ def send_photo_event_to_kafka(self, photo_id, event_type):
             'image_path': photo.image.url,
         }
 
+        # Send message to Kafka
         producer.send_message('PHOTO_EVENTS', message)
         logger.info(f"[TASK] Sent Kafka message for photo {event_type}: {message}")
+
     except Photo.DoesNotExist:
         logger.error(f"[TASK] Photo with ID {photo_id} does not exist.")
     except KafkaTimeoutError as e:
@@ -70,17 +74,13 @@ def process_new_album(self, album_id):
     This could be used to send notifications, perform analytics, or any other async processing.
     """
     try:
-        # Retrieve the album using MongoEngine and verify it exists
         album = Album.objects.get(id=album_id)
 
-        # Perform the desired post-processing tasks, such as analytics or notifications
+        # Perform post-processing tasks, e.g., analytics or notifications
         logger.info(
             f"[TASK] Processing new album with ID: {album_id} - Title: {album.title}")
 
-        # Example of triggering a notification system
-        # send_notification_to_followers(album_id)
-
-        # Example: Hook for an analytics function
+        # Example: send_notification_to_followers(album_id)
         # analytics.process_album_created(album)
 
     except Album.DoesNotExist:

@@ -1,20 +1,24 @@
+# backend/posts/signals.py
+
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import Post
 from tagging.models import TaggedItem
-from django.contrib.contenttypes.models import ContentType
 from .tasks import send_post_event_to_kafka
+import logging
 
+logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Post)
 def post_saved(sender, instance, created, **kwargs):
-    # Send event to Kafka
+    # Trigger the Celery task to send the event to Kafka
     event_type = 'created' if created else 'updated'
     send_post_event_to_kafka.delay(instance.id, event_type)
+    logger.info(f"Triggered Celery task for post {event_type} event with ID {instance.id}")
 
-    # Send real-time update
+    # Send real-time update via Django Channels
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         'posts',
@@ -27,13 +31,13 @@ def post_saved(sender, instance, created, **kwargs):
         }
     )
 
-
 @receiver(post_delete, sender=Post)
 def post_deleted(sender, instance, **kwargs):
-    # Send event to Kafka
+    # Trigger the Celery task to send the deleted event to Kafka
     send_post_event_to_kafka.delay(instance.id, 'deleted')
+    logger.info(f"Triggered Celery task for deleted post event with ID {instance.id}")
 
-    # Send real-time delete notification
+    # Send real-time delete notification via Django Channels
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         'posts',
@@ -45,7 +49,6 @@ def post_deleted(sender, instance, **kwargs):
             'content': instance.content,
         }
     )
-
 
 @receiver(post_save, sender=TaggedItem)
 def tagged_item_saved(sender, instance, created, **kwargs):

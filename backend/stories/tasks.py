@@ -1,15 +1,19 @@
 # backend/stories/tasks.py
+
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from django.conf import settings
 from .models import Story
 import logging
-import json
 
 logger = logging.getLogger(__name__)
 
-@shared_task
-def send_story_event_to_kafka(story_id, event_type):
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def send_story_event_to_kafka(self, story_id, event_type):
+    """
+    Celery task to send story events to Kafka.
+    """
     producer = KafkaProducerClient()
 
     try:
@@ -19,7 +23,8 @@ def send_story_event_to_kafka(story_id, event_type):
                 "event": "deleted"
             }
         else:
-            story = Story.objects.using('stories_db').get(id=story_id)
+            # Fetch the story instance from the database
+            story = Story.objects.get(id=story_id)
             message = {
                 "story_id": story.id,
                 "user_id": story.user_id,
@@ -32,9 +37,15 @@ def send_story_event_to_kafka(story_id, event_type):
                 "event": event_type,
             }
 
-        producer.send_message(settings.KAFKA_TOPICS['STORY_EVENTS'], message)
+        # Send the constructed message to the STORY_EVENTS Kafka topic
+        kafka_topic = settings.KAFKA_TOPICS.get('STORY_EVENTS', 'default-story-topic')
+        producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for story event {event_type}: {message}")
+
     except Story.DoesNotExist:
         logger.error(f"Story with ID {story_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
+        self.retry(exc=e)  # Retry the task in case of failure
+    finally:
+        producer.close()  # Properly close the producer to ensure no open connections

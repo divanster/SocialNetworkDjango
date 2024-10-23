@@ -1,8 +1,5 @@
-# backend/newsfeed/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from kafka_app.consumer import KafkaConsumerClient
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
@@ -21,9 +18,8 @@ MODEL_MAP = {
     'Story': Story,
 }
 
-
 @shared_task
-def send_newsfeed_event_to_kafka(object_id, event_type, model_name):
+def send_newsfeed_event_task(object_id, event_type, model_name):
     """
     Celery task to send various newsfeed model events to Kafka.
     """
@@ -48,19 +44,37 @@ def send_newsfeed_event_to_kafka(object_id, event_type, model_name):
                 'id': instance.id,
                 'event_type': event_type,
                 'model_name': model_name,
-                'data': {
-                    'content': getattr(instance, 'content', None),
-                    # Example: adjust as needed per model
-                    'created_at': str(getattr(instance, 'created_at', None)),
-                    'author_id': getattr(instance, 'author_id', None),
-                }
+                'data': _get_instance_data(instance),
             }
 
         # Send the constructed message to the NEWSFEED_EVENTS Kafka topic
-        producer.send_message('NEWSFEED_EVENTS', message)
+        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS', 'default-newsfeed-topic')
+        producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for {model_name} {event_type}: {message}")
 
     except model.DoesNotExist:
         logger.error(f"{model_name} with ID {object_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
+    finally:
+        producer.close()
+
+def _get_instance_data(instance):
+    """
+    Extract data from an instance to send in the Kafka message.
+    Adjust this function to handle specific fields per model.
+    """
+    data = {}
+    if hasattr(instance, 'content'):
+        data['content'] = instance.content
+    if hasattr(instance, 'created_at'):
+        data['created_at'] = str(instance.created_at)
+    if hasattr(instance, 'author_id'):
+        data['author_id'] = instance.author_id
+    if hasattr(instance, 'author_username'):
+        data['author_username'] = instance.author_username
+    if hasattr(instance, 'title'):
+        data['title'] = instance.title
+
+    # Add more fields as needed per model
+    return data
