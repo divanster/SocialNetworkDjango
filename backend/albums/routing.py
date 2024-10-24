@@ -1,7 +1,6 @@
-# albums/routing.py
 from django.urls import re_path
-from .consumers import AlbumConsumer
+from kafka_app.consumer import KafkaConsumerApp  # Correct import
 
 websocket_urlpatterns = [
-    re_path(r'ws/albums/$', AlbumConsumer.as_asgi()),
+    re_path(r'ws/albums/$', KafkaConsumerApp.as_asgi()),  # If you need WebSocket, use KafkaConsumerApp or a relevant centralized consumer handler.
 ]

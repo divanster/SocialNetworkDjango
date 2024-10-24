@@ -1,8 +1,5 @@
-# backend/users/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from users.models import CustomUser, UserProfile
 from notifications.services import create_notification
 import logging
 from django.conf import settings
@@ -22,6 +19,9 @@ def process_user_event_task(user_id, event_type):
     producer = KafkaProducerClient()
 
     try:
+        # Import models dynamically to avoid AppRegistryNotReady errors
+        from users.models import CustomUser
+
         user = CustomUser.objects.get(id=user_id)
         if event_type == 'new_user':
             # Handle user registration logic
@@ -68,6 +68,9 @@ def handle_user_registration(user):
         user (CustomUser): The user object.
     """
     try:
+        # Import models dynamically to avoid AppRegistryNotReady errors
+        from users.models import UserProfile
+
         # Create UserProfile automatically when a new user registers
         UserProfile.objects.create(user=user)
         logger.info(f"[USER] UserProfile created for user: {user.email}")
@@ -95,6 +98,9 @@ def handle_profile_update(user):
         user (CustomUser): The user object.
     """
     try:
+        # Import models dynamically to avoid AppRegistryNotReady errors
+        from users.models import UserProfile
+
         if hasattr(user, 'profile'):
             user.profile.save()
             logger.info(f"[USER] Profile updated for user: {user.email}")
@@ -123,6 +129,9 @@ def handle_user_deletion(user):
     """
     try:
         logger.info(f"[USER] Handling deletion for user: {user.email}")
+
+        # Import models dynamically to avoid AppRegistryNotReady errors
+        from users.models import UserProfile
 
         # Delete the UserProfile explicitly
         user.profile.delete()

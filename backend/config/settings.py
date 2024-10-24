@@ -9,45 +9,8 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
 # Initialize environment variables using django-environ
-env = environ.Env(
-    # Define default types and default values for environment variables
-    DEBUG=(bool, False),
-    DJANGO_SECRET_KEY=(str, ''),
-    ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
-
-    # PostgreSQL settings for Django ORM
-    POSTGRES_DB=(str, 'app_db'),
-    POSTGRES_USER=(str, 'app_user'),
-    POSTGRES_PASSWORD=(str, 'app_password'),
-    DB_HOST=(str, 'db'),
-    DB_PORT=(str, '5432'),
-
-    # MongoDB settings for apps using MongoEngine
-    MONGO_DB_NAME=(str, 'social_db'),
-    MONGO_HOST=(str, 'mongo'),  # Use Docker service name or localhost
-    MONGO_PORT=(int, 27017),
-    MONGO_USER=(str, ''),
-    MONGO_PASSWORD=(str, ''),
-    MONGO_AUTH_SOURCE=(str, 'admin'),
-
-    # Redis and other settings
-    CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000', 'http://127.0.0.1:3000']),
-    REDIS_HOST=(str, 'redis'),
-    REDIS_PORT=(int, 6379),
-    EMAIL_HOST=(str, 'smtp.gmail.com'),
-    EMAIL_PORT=(int, 587),
-    EMAIL_USE_TLS=(bool, True),
-    EMAIL_HOST_USER=(str, ''),
-    EMAIL_HOST_PASSWORD=(str, ''),
-    SENTRY_DSN=(str, ''),
-    CELERY_BROKER_URL=(str, ''),
-    CELERY_RESULT_BACKEND=(str, ''),
-    KAFKA_BROKER_URL=(str, 'localhost:9093'),
-    KAFKA_CONSUMER_GROUP_ID=(str, 'default_group'),
-)
-
-# Load environment variables from the .env file located in the project base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env()
 environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
 
 # Secret key used for cryptographic signing
@@ -56,10 +19,29 @@ if not SECRET_KEY:
     raise ImproperlyConfigured("The DJANGO_SECRET_KEY environment variable is not set.")
 
 # Debug mode, should be set to False in production
-DEBUG = env('DEBUG')
+DEBUG = env.bool('DEBUG', default=False)
 
 # List of allowed hosts that can make requests to this Django instance
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+
+
+# MongoDB Settings (this is what you mentioned)
+MONGO_DB_NAME = env('MONGO_DB_NAME', default='social_db')
+MONGO_HOST = env('MONGO_HOST', default='mongo')
+MONGO_PORT = env.int('MONGO_PORT', default=27017)
+MONGO_USER = env('MONGO_USER', default=None)
+MONGO_PASSWORD = env('MONGO_PASSWORD', default=None)
+MONGO_AUTH_SOURCE = env('MONGO_AUTH_SOURCE', default='admin')
+
+# MongoDB's connection settings for apps using MongoEngine
+connect(
+    db=MONGO_DB_NAME,
+    username=MONGO_USER,
+    password=MONGO_PASSWORD,
+    host=MONGO_HOST,
+    port=MONGO_PORT,
+    authentication_source=MONGO_AUTH_SOURCE,
+)
 
 
 # =====================
@@ -67,26 +49,25 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 # =====================
 
 # Kafka broker URL for event-driven architecture
-KAFKA_BROKER_URL = env('KAFKA_BROKER_URL')  # Kafka broker URL for communication
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='main_consumer_group')  # Kafka consumer group ID
+KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='localhost:9093')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='main_consumer_group')
 
 # Kafka topics for different events parsed from a comma-separated list
 KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
 KAFKA_TOPICS = dict(item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item)
 
-
+# =====================
 # Authentication Backends
+# =====================
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default email/password backend
     'social_core.backends.google.GoogleOAuth2',  # Google OAuth2 backend
     'social_core.backends.facebook.FacebookOAuth2',  # Facebook OAuth2 backend
 ]
 
-
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
-
 
 # Installed applications (including both PostgreSQL-backed apps and MongoDB-backed apps)
 INSTALLED_APPS = [
@@ -108,24 +89,24 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_celery_beat',
     'csp',
-    'django_elasticsearch_dsl',  # Elasticsearch support for searching content
+    'django_elasticsearch_dsl',
 
-    # Custom apps (Define here which apps use PostgreSQL and which use MongoDB)
-    'users.apps.UsersConfig',  # PostgreSQL
-    'albums.apps.AlbumsConfig',  # PostgreSQL
-    'stories.apps.StoriesConfig',  # MongoDB via MongoEngine
-    'tagging.apps.TaggingConfig',  # MongoDB via MongoEngine
-    'reactions.apps.ReactionsConfig',  # PostgreSQL
-    'core.apps.CoreConfig',  # Core utilities, often PostgreSQL
-    'notifications.apps.NotificationsConfig',  # Add notifications app (as an example)
-    'comments.apps.CommentsConfig',  # Add comments app if available
+    # Custom apps
+    'users.apps.UsersConfig',
+    'albums.apps.AlbumsConfig',
+    'stories.apps.StoriesConfig',
+    'tagging.apps.TaggingConfig',
+    'reactions.apps.ReactionsConfig',
+    'core.apps.CoreConfig',
+    'notifications.apps.NotificationsConfig',
+    'comments.apps.CommentsConfig',
     'friends.apps.FriendsConfig',
     'follows.apps.FollowsConfig',
     'messenger.apps.MessengerConfig',
-    'newsfeeds.apps.NewsfeedsConfig',
+    'newsfeed.apps.NewsfeedConfig',
     'pages.apps.PagesConfig',
     'social.apps.SocialConfig',
-    'kafka_app.apps.KafkaAppConfig',  # Kafka broker app
+    'kafka_app.apps.KafkaAppConfig',
 ]
 
 if DEBUG:
@@ -156,7 +137,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],  # List of directories to search for templates
-        'APP_DIRS': True,  # Automatically search app directories
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -177,7 +158,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(env('REDIS_HOST'), env('REDIS_PORT'))],
+            'hosts': [(env('REDIS_HOST', default='redis'), env.int('REDIS_PORT', default=6379))],
         },
     },
 }
@@ -199,22 +180,10 @@ DATABASES = {
     },
 }
 
-# MongoDB connection settings for apps using MongoEngine (like 'stories' and 'tagging')
-connect(
-    db=env('MONGO_DB_NAME'),
-    username=env('MONGO_USER') or None,
-    password=env('MONGO_PASSWORD') or None,
-    host=env('MONGO_HOST'),
-    port=int(env('MONGO_PORT')),
-    authentication_source=env('MONGO_AUTH_SOURCE'),
-)
-
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-     'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -223,7 +192,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
-USE_TZ = True  # Removed USE_L10N as it's deprecated in Django 5.x
+USE_TZ = True
 
 # Static and media file settings
 STATIC_URL = '/static/'
@@ -235,11 +204,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Custom user model
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# Django REST Framework configuration for API handling
+# Django REST Framework configuration
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-    'rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -256,7 +224,7 @@ REST_FRAMEWORK = {
     },
 }
 
-# Simple JWT configuration for authentication
+# Simple JWT configuration
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -265,13 +233,11 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-# Djoser configuration for user management APIs
+# Djoser configuration
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': True,
@@ -310,34 +276,31 @@ SPECTACULAR_SETTINGS = {
 # CORS settings to allow frontend origins
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
-# Email configuration for sending out notifications
+# Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env('EMAIL_PORT')
-EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+EMAIL_PORT = env.int('EMAIL_PORT')
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
-# Celery configuration for background task processing
-CELERY_BROKER_URL = env('CELERY_BROKER_URL',
-                        default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
-                            default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+# Celery configuration
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
-# Celery Beat Schedule for periodic tasks
+# Celery Beat Schedule
 CELERY_BEAT_SCHEDULE = {
     'consume-user-events-every-5-seconds': {
         'task': 'kafka_app.tasks.start_central_kafka_consumer',
-        'schedule': 5.0,  # every 5 seconds
+        'schedule': 5.0,
     },
-    # Add other scheduled tasks as needed
 }
 
-# Redis Caching configuration
+# Redis caching configuration
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -348,7 +311,7 @@ CACHES = {
     }
 }
 
-# Sentry integration for error tracking and monitoring
+# Sentry integration for error tracking
 SENTRY_DSN = env('SENTRY_DSN', default='')
 if SENTRY_DSN:
     sentry_sdk.init(
@@ -360,12 +323,9 @@ if SENTRY_DSN:
 
 # Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = (
-"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = (
-"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = (
-"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
@@ -398,7 +358,7 @@ DEBUG_TOOLBAR_CONFIG = {
     'INTERCEPT_REDIRECTS': False,
 }
 
-# Logging configuration to log to both console and file
+# Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -462,6 +422,7 @@ ELASTICSEARCH_DSL = {
         'hosts': 'localhost:9200'
     },
 }
+
 
 # from . import cron_jobs
 # CRONJOBS = cron_jobs.CRONJOBS

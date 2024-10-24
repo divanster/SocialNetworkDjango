@@ -1,5 +1,3 @@
-# Dockerfile (in backend folder)
-
 # Use a Debian-based image for better compatibility with confluent-kafka and MongoDB drivers
 FROM python:3.11-slim AS base
 
@@ -47,10 +45,6 @@ RUN useradd -m django-user && \
 # Copy application code to the Docker image
 COPY . /app
 
-# Copy wait-for-it.sh to /app directory and make it executable
-COPY wait-for-it.sh /app/wait-for-it.sh
-RUN chmod +x /app/wait-for-it.sh  # Ensure wait-for-it.sh script is executable
-
 # Ensure all files are owned by django-user for security purposes
 RUN chown -R django-user:django-user /app
 
@@ -64,5 +58,5 @@ USER django-user
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health/ || exit 1
 
-# Command to wait for Kafka to be ready and then start the application using Gunicorn
-CMD ["sh", "-c", "./wait-for-it.sh kafka:9093 -- gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"]
+# Command to start the application using Gunicorn
+CMD ["sh", "-c", "gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"]

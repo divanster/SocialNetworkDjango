@@ -1,16 +1,19 @@
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from django.conf import settings
-from .models import FriendRequest, Friendship
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 @shared_task
 def process_friend_event(friend_event_id, event_type, is_friendship=False):
     """
     Celery task to process friend events (friend requests or friendships) and send them to Kafka.
     """
+    # Import models inside the function to prevent AppRegistryNotReady errors
+    from .models import FriendRequest, Friendship
+
     producer = KafkaProducerClient()
 
     try:
@@ -50,6 +53,7 @@ def process_friend_event(friend_event_id, event_type, is_friendship=False):
         logger.info(f"Sent Kafka message for {event_type}: {message}")
 
     except (FriendRequest.DoesNotExist, Friendship.DoesNotExist) as e:
-        logger.error(f"Friend event with ID {friend_event_id} does not exist. Error: {e}")
+        logger.error(
+            f"Friend event with ID {friend_event_id} does not exist. Error: {e}")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")

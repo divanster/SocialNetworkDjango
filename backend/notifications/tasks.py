@@ -1,8 +1,5 @@
-# backend/notifications/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from .models import Notification
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,6 +13,9 @@ def process_notification_event_task(self, notification_id, event_type):
     producer = KafkaProducerClient()
 
     try:
+        # Dynamically import the Notification model
+        from notifications.models import Notification
+
         if event_type == 'deleted':
             # Prepare the message for deletion event
             message = {

@@ -3,7 +3,6 @@
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from django.conf import settings
-from .models import TaggedItem
 import logging
 import json
 
@@ -15,6 +14,8 @@ def send_tagging_event_to_kafka(tagged_item_id, event_type):
     """
     Celery task to send tagging events to Kafka.
     """
+    from .models import TaggedItem  # Import the model inside the task
+
     producer = KafkaProducerClient()
 
     try:

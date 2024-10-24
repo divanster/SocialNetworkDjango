@@ -1,8 +1,5 @@
-# backend/posts/tasks.py
-
 from celery import shared_task
 from kafka import KafkaProducer, KafkaConsumer
-from .models import Post
 import logging
 from django.conf import settings
 import json
@@ -16,6 +13,9 @@ def send_post_event_to_kafka(post_id, event_type):
     Celery task to send post events to Kafka.
     """
     try:
+        # Dynamically import the Post model
+        from social.models import Post
+
         # Initialize Kafka producer
         producer = KafkaProducer(
             bootstrap_servers=settings.KAFKA_BROKER_URL,
@@ -108,6 +108,9 @@ def process_new_post(post_id):
     such as indexing the post for search, sending notifications, etc.
     """
     try:
+        # Dynamically import the Post model
+        from social.models import Post
+
         # Initialize Kafka producer
         producer = KafkaProducer(
             bootstrap_servers=settings.KAFKA_BROKER_URL,
@@ -117,8 +120,7 @@ def process_new_post(post_id):
 
         post = Post.objects.get(id=post_id)
 
-        # Example processing logic - Sending post to Kafka for analytics or feed
-        # distribution
+        # Example processing logic - Sending post to Kafka for analytics or feed distribution
         message = {
             "post_id": post.id,
             "title": post.title,

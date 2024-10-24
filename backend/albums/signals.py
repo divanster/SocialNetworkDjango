@@ -1,39 +1,63 @@
 # backend/albums/signals.py
 
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from .models import Album, Photo
-from .tasks import process_album_event_task, process_photo_event_task
 import logging
+from mongoengine import signals  # Import signals from mongoengine for MongoDB models
+from .album_models import Album  # Correct import for the split models
+from .photo_models import Photo  # Correct import for the split models
+from .tasks import process_album_event_task, process_photo_event_task
 
 logger = logging.getLogger(__name__)
 
 
-@receiver(post_save, sender=Album)
-def album_created_or_updated(sender, instance, created, **kwargs):
+# Signals for the Album model
+def album_created_or_updated(sender, document, **kwargs):
+    """
+    Triggered when an Album document is created or updated.
+    """
+    created = kwargs.get('created', False)
     event_type = 'created' if created else 'updated'
-    process_album_event_task.delay(instance.id, event_type)
+    process_album_event_task.delay(str(document.id), event_type)
     logger.info(
-        f"[SIGNAL] Triggered Celery task for album {event_type} with ID {instance.id}")
+        f"[SIGNAL] Triggered Celery task for album {event_type} with ID {document.id}")
 
 
-@receiver(post_delete, sender=Album)
-def album_deleted(sender, instance, **kwargs):
-    process_album_event_task.delay(instance.id, 'deleted')
+signals.post_save.connect(album_created_or_updated, sender=Album)
+
+
+def album_deleted(sender, document, **kwargs):
+    """
+    Triggered when an Album document is deleted.
+    """
+    process_album_event_task.delay(str(document.id), 'deleted')
     logger.info(
-        f"[SIGNAL] Triggered Celery task for album deleted with ID {instance.id}")
+        f"[SIGNAL] Triggered Celery task for album deleted with ID {document.id}")
 
 
-@receiver(post_save, sender=Photo)
-def photo_created_or_updated(sender, instance, created, **kwargs):
+signals.post_delete.connect(album_deleted, sender=Album)
+
+
+# Signals for the Photo model
+def photo_created_or_updated(sender, document, **kwargs):
+    """
+    Triggered when a Photo document is created or updated.
+    """
+    created = kwargs.get('created', False)
     event_type = 'created' if created else 'updated'
-    process_photo_event_task.delay(instance.id, event_type)
+    process_photo_event_task.delay(str(document.id), event_type)
     logger.info(
-        f"[SIGNAL] Triggered Celery task for photo {event_type} with ID {instance.id}")
+        f"[SIGNAL] Triggered Celery task for photo {event_type} with ID {document.id}")
 
 
-@receiver(post_delete, sender=Photo)
-def photo_deleted(sender, instance, **kwargs):
-    process_photo_event_task.delay(instance.id, 'deleted')
+signals.post_save.connect(photo_created_or_updated, sender=Photo)
+
+
+def photo_deleted(sender, document, **kwargs):
+    """
+    Triggered when a Photo document is deleted.
+    """
+    process_photo_event_task.delay(str(document.id), 'deleted')
     logger.info(
-        f"[SIGNAL] Triggered Celery task for photo deleted with ID {instance.id}")
+        f"[SIGNAL] Triggered Celery task for photo deleted with ID {document.id}")
+
+
+signals.post_delete.connect(photo_deleted, sender=Photo)

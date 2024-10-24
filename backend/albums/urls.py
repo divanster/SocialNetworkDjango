@@ -7,9 +7,10 @@ app_name = 'albums'  # Adding an app name for namespacing
 
 # Create the DefaultRouter for automatically generated routes
 router = DefaultRouter()
-router.register(r'albums', AlbumViewSet, basename='album')
-router.register(r'photos', PhotoViewSet, basename='photo')
+router.register(r'albums', AlbumViewSet, basename='album')  # Register AlbumViewSet
+router.register(r'photos', PhotoViewSet, basename='photo')  # Register PhotoViewSet
 
+# Include the automatically generated routes
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', include(router.urls)),  # Include all of the routes managed by DefaultRouter
 ]

@@ -4,9 +4,6 @@
 from django.db import models
 import uuid
 import os
-from mongoengine import Document, DateTimeField as MongoDateTimeField, \
-    BooleanField as MongoBooleanField, UUIDField as MongoUUIDField
-from datetime import datetime
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
     PermissionsMixin
 from django.utils import timezone

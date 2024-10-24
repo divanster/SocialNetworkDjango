@@ -1,8 +1,5 @@
-# backend/reactions/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from .models import Reaction
 import logging
 from django.conf import settings
 
@@ -17,6 +14,9 @@ def send_reaction_event_to_kafka(reaction_id, event_type):
     producer = KafkaProducerClient()
 
     try:
+        # Dynamically import the Reaction model
+        from reactions.models import Reaction
+
         if event_type == 'deleted':
             # Create message for deleted events
             message = {

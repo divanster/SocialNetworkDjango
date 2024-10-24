@@ -1,14 +1,14 @@
 # backend/albums/serializers.py
 from rest_framework import serializers
-from .models import Album, Photo
+from albums.album_models import Album  # Import Album from album_models
+from albums.photo_models import Photo  # Import Photo from photo_models
 from tagging.serializers import TaggedItemSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-
 class PhotoSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)  # Allow sending ID for update
+    id = serializers.CharField(required=False)  # MongoEngine uses ObjectId which can be represented as a string.
 
     class Meta:
         model = Photo
@@ -29,22 +29,24 @@ class AlbumSerializer(serializers.ModelSerializer):
     class Meta:
         model = Album
         fields = [
-            'id', 'user', 'title', 'description', 'created_at', 'updated_at',
+            'id', 'user_id', 'title', 'description', 'created_at', 'updated_at',
             'photos', 'photos_upload', 'tags', 'tagged_user_ids'
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'tags']
+        read_only_fields = ['id', 'user_id', 'created_at', 'updated_at', 'tags']
 
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
         photos_data = validated_data.pop('photos_upload', [])
-        album = Album.objects.using('social_db').create(**validated_data)
+        album = Album(**validated_data)
+        album.save()  # Save using the default connection to MongoDB
 
         # Create tagged items for the new album
         self.create_tagged_items(album, tagged_user_ids)
 
         # Create photos for the album
         for photo_data in photos_data:
-            Photo.objects.using('social_db').create(album=album, **photo_data)
+            photo = Photo(album=album, **photo_data)
+            photo.save()
 
         return album
 
@@ -55,12 +57,12 @@ class AlbumSerializer(serializers.ModelSerializer):
 
         if tagged_user_ids is not None:
             # Remove all existing tags
-            instance.tags.using('social_db').all().delete()
+            instance.tags.all().delete()
             # Recreate tags with the provided user IDs
             self.create_tagged_items(album, tagged_user_ids)
 
         # Update existing photos or add new ones
-        existing_photos = {photo.id: photo for photo in instance.photos.all()}
+        existing_photos = {str(photo.id): photo for photo in instance.get_photos()}
 
         for photo_data in photos_data:
             photo_id = photo_data.get('id')
@@ -69,18 +71,19 @@ class AlbumSerializer(serializers.ModelSerializer):
                 photo = existing_photos[photo_id]
                 photo.image = photo_data.get('image', photo.image)
                 photo.description = photo_data.get('description', photo.description)
-                photo.save(using='social_db')
+                photo.save()
             elif not photo_id:
                 # Create new photo
-                Photo.objects.using('social_db').create(album=album, **photo_data)
+                new_photo = Photo(album=album, **photo_data)
+                new_photo.save()
 
         # Delete photos that were not included in the update request
         existing_photo_ids = set(existing_photos.keys())
-        updated_photo_ids = {photo_data.get('id') for photo_data in photos_data if
-                             'id' in photo_data}
-        Photo.objects.filter(album=album,
-                             id__in=(existing_photo_ids - updated_photo_ids)).using(
-            'social_db').delete()
+        updated_photo_ids = {photo_data.get('id') for photo_data in photos_data if photo_data.get('id')}
+        photos_to_delete = existing_photo_ids - updated_photo_ids
+
+        for photo_id in photos_to_delete:
+            existing_photos[photo_id].delete()
 
         return album
 
@@ -90,7 +93,7 @@ class AlbumSerializer(serializers.ModelSerializer):
         tagged_by = self.context['request'].user
         for user_id in tagged_user_ids:
             try:
-                TaggedItem.objects.using('social_db').create(
+                TaggedItem.objects.create(
                     content_object=album,
                     tagged_user_id=user_id,
                     tagged_by=tagged_by

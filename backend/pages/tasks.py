@@ -1,12 +1,10 @@
-# backend/pages/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from .models import Page
 import logging
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
 
 @shared_task
 def send_page_event_to_kafka(page_id, event_type):
@@ -16,6 +14,9 @@ def send_page_event_to_kafka(page_id, event_type):
     producer = KafkaProducerClient()
 
     try:
+        # Dynamically import the Page model
+        from pages.models import Page
+
         if event_type == 'deleted':
             # Prepare the message for deleted page event
             message = {

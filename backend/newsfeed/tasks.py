@@ -1,22 +1,30 @@
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
-from social.models import Post
-from comments.models import Comment
-from reactions.models import Reaction
-from albums.models import Album
-from stories.models import Story
 import logging
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 MODEL_MAP = {
-    'Post': Post,
-    'Comment': Comment,
-    'Reaction': Reaction,
-    'Album': Album,
-    'Story': Story,
+    'Post': 'social.models.Post',
+    'Comment': 'comments.models.Comment',
+    'Reaction': 'reactions.models.Reaction',
+    'Album': 'albums.models.Album',
+    'Story': 'stories.models.Story',
 }
+
+
+def _dynamic_import(model_path):
+    """
+    Dynamically import a model class based on its full path.
+    """
+    components = model_path.split('.')
+    module_path = '.'.join(components[:-1])
+    model_name = components[-1]
+
+    module = __import__(module_path, fromlist=[model_name])
+    return getattr(module, model_name)
+
 
 @shared_task
 def send_newsfeed_event_task(object_id, event_type, model_name):
@@ -26,9 +34,12 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
     producer = KafkaProducerClient()
 
     try:
-        model = MODEL_MAP.get(model_name)
-        if not model:
+        # Dynamically import the model
+        model_path = MODEL_MAP.get(model_name)
+        if not model_path:
             raise ValueError(f"Unknown model: {model_name}")
+
+        model = _dynamic_import(model_path)
 
         if event_type == 'deleted':
             # Create a message for deleted events with just the object ID and event type
@@ -48,7 +59,8 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
             }
 
         # Send the constructed message to the NEWSFEED_EVENTS Kafka topic
-        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS', 'default-newsfeed-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS',
+                                                'default-newsfeed-topic')
         producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for {model_name} {event_type}: {message}")
 
@@ -58,6 +70,7 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
         logger.error(f"Error sending Kafka message: {e}")
     finally:
         producer.close()
+
 
 def _get_instance_data(instance):
     """

@@ -3,11 +3,9 @@
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from django.conf import settings
-from .models import Follow
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 @shared_task(bind=True, max_retries=3)
 def process_follow_event_task(self, follow_id, event_type):
@@ -24,6 +22,7 @@ def process_follow_event_task(self, follow_id, event_type):
     Raises:
         self.retry: Retries the task in case of an exception.
     """
+    from .models import Follow  # Move model import inside the function to avoid AppRegistryNotReady error
     producer = KafkaProducerClient()
 
     try:

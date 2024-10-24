@@ -1,9 +1,6 @@
-# backend/stories/tasks.py
-
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 from django.conf import settings
-from .models import Story
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,9 +11,13 @@ def send_story_event_to_kafka(self, story_id, event_type):
     """
     Celery task to send story events to Kafka.
     """
+    # Initialize Kafka producer
     producer = KafkaProducerClient()
 
     try:
+        # Dynamically import the Story model to avoid AppRegistryNotReady errors
+        from stories.models import Story
+
         if event_type == 'deleted':
             message = {
                 "story_id": story_id,

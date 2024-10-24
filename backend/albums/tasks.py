@@ -1,27 +1,24 @@
-# backend/albums/tasks.py
-
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from kafka_app.producer import KafkaProducerClient
-from .models import Album, Photo
 import logging
 
 logger = logging.getLogger(__name__)
 
-
 @shared_task(bind=True, max_retries=5)
 def process_album_event_task(self, album_id, event_type):
+    from .album_models import Album  # Correct import for the split model
     producer = KafkaProducerClient()
     try:
-        album = Album.objects.get(id=album_id)
-        tagged_user_ids = list(album.tags.values_list('tagged_user_id', flat=True))
+        album = Album.objects.get(pk=album_id)  # Use MongoEngine querying
+        tagged_user_ids = [str(tag.user_id) for tag in album.tags]  # Adjust for MongoEngine field
 
         message = {
             'event': event_type,
-            'album': str(album.id),
+            'album': str(album.pk),
             'title': album.title,
             'description': album.description,
-            'tagged_user_ids': [str(user_id) for user_id in tagged_user_ids],
+            'tagged_user_ids': tagged_user_ids,
         }
 
         # Send message to Kafka
@@ -41,15 +38,16 @@ def process_album_event_task(self, album_id, event_type):
 
 @shared_task(bind=True, max_retries=5)
 def process_photo_event_task(self, photo_id, event_type):
+    from .photo_models import Photo  # Correct import for the split model
     producer = KafkaProducerClient()
     try:
-        photo = Photo.objects.get(id=photo_id)
+        photo = Photo.objects.get(pk=photo_id)  # Use MongoEngine querying
         message = {
             'event': event_type,
-            'photo_id': str(photo.id),
-            'album_id': str(photo.album.id),
+            'photo_id': str(photo.pk),
+            'album_id': str(photo.album.pk),  # Access album using MongoEngine reference field
             'description': photo.description,
-            'image_path': photo.image.url,
+            'image_path': str(photo.image),  # Assuming the `image` field is a reference in GridFS or similar
         }
 
         # Send message to Kafka
@@ -69,12 +67,13 @@ def process_photo_event_task(self, photo_id, event_type):
 
 @shared_task(bind=True, max_retries=5)
 def process_new_album(self, album_id):
+    from .album_models import Album  # Correct import for the split model
     """
     Celery task to process a newly created album.
     This could be used to send notifications, perform analytics, or any other async processing.
     """
     try:
-        album = Album.objects.get(id=album_id)
+        album = Album.objects.get(pk=album_id)  # Use MongoEngine querying
 
         # Perform post-processing tasks, e.g., analytics or notifications
         logger.info(
@@ -88,4 +87,4 @@ def process_new_album(self, album_id):
     except Exception as e:
         logger.error(f"[TASK] Error processing album with ID {album_id}: {e}")
         self.retry(exc=e, countdown=60 * (
-                    2 ** self.request.retries))  # Exponential backoff retry
+            2 ** self.request.retries))  # Exponential backoff retry
