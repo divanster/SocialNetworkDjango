@@ -23,18 +23,24 @@ class AlbumViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         album = self.get_object()
         if album.user != self.request.user:
-            logger.warning(f"Unauthorized update attempt by user {self.request.user.id} on album {album.id}")
-            raise permissions.PermissionDenied("You do not have permission to edit this album.")
+            logger.warning(
+                f"Unauthorized update attempt by user {self.request.user.id} on album {album.id}")
+            raise permissions.PermissionDenied(
+                "You do not have permission to edit this album.")
 
         updated_album = serializer.save()
-        logger.info(f"Album with ID {updated_album.id} updated by user {self.request.user.id}")
+        logger.info(
+            f"Album with ID {updated_album.id} updated by user {self.request.user.id}")
 
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
-            logger.warning(f"Unauthorized delete attempt by user {self.request.user.id} on album {instance.id}")
-            raise permissions.PermissionDenied("You do not have permission to delete this album.")
+            logger.warning(
+                f"Unauthorized delete attempt by user {self.request.user.id} on album {instance.id}")
+            raise permissions.PermissionDenied(
+                "You do not have permission to delete this album.")
 
-        logger.info(f"Album with ID {instance.id} deleted by user {self.request.user.id}")
+        logger.info(
+            f"Album with ID {instance.id} deleted by user {self.request.user.id}")
         instance.delete()
 
 
@@ -47,8 +53,34 @@ class PhotoViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         album = serializer.validated_data['album']
         if album.user != self.request.user:
-            logger.warning(f"Unauthorized photo creation attempt by user {self.request.user.id} on album {album.id}")
-            raise permissions.PermissionDenied("You do not have permission to add photos to this album.")
+            logger.warning(
+                f"Unauthorized photo creation attempt by user {self.request.user.id} on album {album.id}")
+            raise permissions.PermissionDenied(
+                "You do not have permission to add photos to this album.")
 
         photo = serializer.save()
-        logger.info(f"Photo created with ID {photo.id} in album {album.id} by user {self.request.user.id}")
+        logger.info(
+            f"Photo created with ID {photo.id} in album {album.id} by user {self.request.user.id}")
+
+    def perform_update(self, serializer):
+        photo = self.get_object()
+        if photo.album.user != self.request.user:
+            logger.warning(
+                f"Unauthorized update attempt by user {self.request.user.id} on photo {photo.id}")
+            raise permissions.PermissionDenied(
+                "You do not have permission to edit this photo.")
+
+        updated_photo = serializer.save()
+        logger.info(
+            f"Photo with ID {updated_photo.id} updated by user {self.request.user.id}")
+
+    def perform_destroy(self, instance):
+        if instance.album.user != self.request.user:
+            logger.warning(
+                f"Unauthorized delete attempt by user {self.request.user.id} on photo {instance.id}")
+            raise permissions.PermissionDenied(
+                "You do not have permission to delete this photo.")
+
+        logger.info(
+            f"Photo with ID {instance.id} deleted by user {self.request.user.id}")
+        instance.delete()

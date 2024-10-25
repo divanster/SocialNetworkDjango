@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 @receiver(post_save, sender=CustomUser)
 def handle_user_post_save(sender, instance, created, **kwargs):
     """
@@ -15,7 +16,8 @@ def handle_user_post_save(sender, instance, created, **kwargs):
     """
     event_type = 'new_user' if created else 'profile_update'
     process_user_event_task.delay(instance.id, event_type)
-    logger.info(f"Triggered Celery task for user {event_type} event with ID {instance.id}")
+    logger.info(
+        f"Triggered Celery task for user {event_type} event with ID {instance.id}")
 
 
 @receiver(post_delete, sender=CustomUser)

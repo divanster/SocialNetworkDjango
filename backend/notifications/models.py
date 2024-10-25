@@ -16,30 +16,41 @@ NOTIFICATION_TYPES = (
     # Add more as needed
 )
 
+
 class Notification(Document):
     """
     Notification model for storing notification events.
     Uses MongoDB through MongoEngine to handle high volume and flexible data efficiently.
     """
-    sender_id = IntField(required=True, help_text="ID of the user sending the notification")
-    sender_username = StringField(max_length=150, required=True, help_text="Username of the sender")
-    receiver_id = IntField(required=True, help_text="ID of the user receiving the notification")
-    receiver_username = StringField(max_length=150, required=True, help_text="Username of the receiver")
+    sender_id = IntField(required=True,
+                         help_text="ID of the user sending the notification")
+    sender_username = StringField(max_length=150, required=True,
+                                  help_text="Username of the sender")
+    receiver_id = IntField(required=True,
+                           help_text="ID of the user receiving the notification")
+    receiver_username = StringField(max_length=150, required=True,
+                                    help_text="Username of the receiver")
     notification_type = StringField(
-        max_length=21, choices=NOTIFICATION_TYPES, default='like', help_text="Type of notification"
+        max_length=21, choices=NOTIFICATION_TYPES, default='like',
+        help_text="Type of notification"
     )
     text = StringField(blank=True, help_text="Additional text for the notification")
-    is_read = BooleanField(default=False, help_text="Indicates whether the notification has been read")
-    content_type = StringField(max_length=100, null=True, blank=True, help_text="Content type related to the notification")
-    object_id = StringField(max_length=255, null=True, blank=True, help_text="Object ID related to the notification")
-    created_at = DateTimeField(default=datetime.utcnow, help_text="Timestamp when the notification was created")
+    is_read = BooleanField(default=False,
+                           help_text="Indicates whether the notification has been read")
+    content_type = StringField(max_length=100, null=True, blank=True,
+                               help_text="Content type related to the notification")
+    object_id = StringField(max_length=255, null=True, blank=True,
+                            help_text="Object ID related to the notification")
+    created_at = DateTimeField(default=datetime.utcnow,
+                               help_text="Timestamp when the notification was created")
 
     meta = {
         'collection': 'notifications',
         'ordering': ['-created_at'],
         'indexes': [
             'receiver_id',  # Index for efficient querying by receiver
-            ('sender_id', 'receiver_id'),  # Compound index for sender and receiver queries
+            ('sender_id', 'receiver_id'),
+            # Compound index for sender and receiver queries
         ],
     }
 

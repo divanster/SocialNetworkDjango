@@ -1,6 +1,8 @@
-from mongoengine import Document, StringField, IntField, ListField, EmbeddedDocument, \
-    EmbeddedDocumentField, EmbeddedDocumentListField, DateTimeField
-from core.models.base_models import MongoBaseModel, MongoUUIDModel, MongoSoftDeleteModel
+# backend/social/models.py
+
+from mongoengine import StringField, IntField, ListField, EmbeddedDocument, \
+    EmbeddedDocumentListField, DateTimeField
+from core.models.base_models import MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel
 from datetime import datetime
 from django.core.exceptions import ValidationError
 import uuid
@@ -55,9 +57,6 @@ class Post(MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel):
     Main Document for storing Posts.
     Utilizes MongoDB through MongoEngine for storing nested data and improving performance.
     """
-    post_id = StringField(primary_key=True, default=lambda: str(uuid.uuid4()),
-                          required=True,
-                          help_text="Unique ID for the post")
     title = StringField(max_length=255, required=True, help_text="Title of the post")
     content = StringField(help_text="Content of the post")
     author_id = IntField(required=True, help_text="ID of the author")

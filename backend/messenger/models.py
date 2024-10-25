@@ -3,6 +3,7 @@ from datetime import datetime
 
 from core.models.base_models import MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel
 
+
 class Message(MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel):
     """
     Stores the messages sent between users.
@@ -10,12 +11,16 @@ class Message(MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel):
     high-volume, document-based message data.
     """
     sender_id = IntField(required=True, help_text="ID of the sender")
-    sender_username = StringField(max_length=150, required=True, help_text="Username of the sender")
+    sender_username = StringField(max_length=150, required=True,
+                                  help_text="Username of the sender")
     receiver_id = IntField(null=True, blank=True, help_text="ID of the receiver")
-    receiver_username = StringField(max_length=150, null=True, blank=True, help_text="Username of the receiver")
+    receiver_username = StringField(max_length=150, null=True, blank=True,
+                                    help_text="Username of the receiver")
     content = StringField(required=True, help_text="Content of the message")
-    timestamp = DateTimeField(default=datetime.utcnow, help_text="Timestamp of when the message was sent")
-    is_read = BooleanField(default=False, help_text="Boolean indicating if the message was read")
+    timestamp = DateTimeField(default=datetime.utcnow,
+                              help_text="Timestamp of when the message was sent")
+    is_read = BooleanField(default=False,
+                           help_text="Boolean indicating if the message was read")
 
     meta = {
         'collection': 'messages',

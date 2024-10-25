@@ -11,12 +11,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 @receiver(post_save, sender=Post)
 def post_saved(sender, instance, created, **kwargs):
     # Trigger the Celery task to send the event to Kafka
     event_type = 'created' if created else 'updated'
     send_post_event_to_kafka.delay(instance.id, event_type)
-    logger.info(f"Triggered Celery task for post {event_type} event with ID {instance.id}")
+    logger.info(
+        f"Triggered Celery task for post {event_type} event with ID {instance.id}")
 
     # Send real-time update via Django Channels
     channel_layer = get_channel_layer()
@@ -30,6 +32,7 @@ def post_saved(sender, instance, created, **kwargs):
             'content': instance.content,
         }
     )
+
 
 @receiver(post_delete, sender=Post)
 def post_deleted(sender, instance, **kwargs):
@@ -49,6 +52,7 @@ def post_deleted(sender, instance, **kwargs):
             'content': instance.content,
         }
     )
+
 
 @receiver(post_save, sender=TaggedItem)
 def tagged_item_saved(sender, instance, created, **kwargs):

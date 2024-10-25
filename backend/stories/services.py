@@ -4,6 +4,7 @@ from .models import Story
 
 logger = logging.getLogger(__name__)
 
+
 def process_story_event(data):
     """
     Process a story-related event to handle updates, notifications, or any other business logic.
@@ -48,6 +49,7 @@ def process_story_event(data):
     except Exception as e:
         logger.error(f"[STORY] Error processing story event: {e}")
 
+
 def handle_story_creation(data):
     """
     Handle additional business logic during story creation, like notifications.
@@ -58,6 +60,7 @@ def handle_story_creation(data):
     # Placeholder for any custom logic when a story is created.
     logger.info(f"[STORY] Handling story creation for: {data}")
     # Add logic such as sending notifications or analytics tracking, etc.
+
 
 def update_story(story, data):
     """

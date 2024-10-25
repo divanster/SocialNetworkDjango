@@ -1,7 +1,7 @@
-# backend/albums/photo_models.py
-
-from mongoengine import Document, StringField, UUIDField, ListField, ReferenceField, DateTimeField, FileField
-from core.utils import get_mongo_client  # Import the utility function for MongoDB connection
+from mongoengine import Document, StringField, UUIDField, ListField, ReferenceField, \
+    DateTimeField, FileField
+from core.utils import \
+    get_mongo_client  # Import the utility function for MongoDB connection
 from django.conf import settings
 from datetime import datetime
 import uuid
@@ -13,13 +13,15 @@ db_client = get_mongo_client()  # Utilize the utility function
 db = db_client[settings.MONGO_DB_NAME]  # Get the database using Django settings
 fs = GridFS(db)
 
+
 class Photo(Document):
     """
     Represents a photo within an album.
     Stored as a separate document and referenced by the Album.
     """
     photo_id = UUIDField(binary=False, default=uuid.uuid4, required=True)
-    album = ReferenceField('Album', reverse_delete_rule=2)  # Reference to Album
+    album = ReferenceField('Album',
+                           reverse_delete_rule=2)  # Lazy reference to avoid circular import issues
     image = FileField(required=True, help_text="GridFS reference to the image file")
     description = StringField(default="", required=False)
     tags = ListField(StringField(), default=list)

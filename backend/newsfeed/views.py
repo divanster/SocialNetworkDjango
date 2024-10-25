@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
-from albums.models import Album
+from albums import album_models
 from stories.models import Story
 from .serializers import AggregatedFeedSerializer
 
@@ -29,7 +29,7 @@ class UserFeedView(GenericAPIView):
             .select_related('user', 'post')\
             .order_by('-created_at')
 
-        albums = Album.objects.filter(user=user)\
+        albums = album_models.objects.filter(user=user)\
             .select_related('user')\
             .prefetch_related('photos')\
             .order_by('-created_at')

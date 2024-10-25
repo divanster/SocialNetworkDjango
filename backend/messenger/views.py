@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -16,7 +17,8 @@ class MessageViewSet(viewsets.ModelViewSet):
         return Message.objects.filter(Q(receiver_id=user.id) | Q(sender_id=user.id))
 
     def perform_create(self, serializer):
-        instance = serializer.save(sender_id=self.request.user.id, sender_username=self.request.user.username)
+        instance = serializer.save(sender_id=self.request.user.id,
+                                   sender_username=self.request.user.username)
         logger.info(f"Message created: {instance}")
 
     def perform_update(self, serializer):
@@ -27,11 +29,13 @@ class MessageViewSet(viewsets.ModelViewSet):
         logger.info(f"Deleting message: {instance}")
         instance.delete()
 
+
 # Adding the missing MessagesCountView
 class MessagesCountView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
-        message_count = Message.objects.filter(Q(receiver_id=user.id) | Q(sender_id=user.id)).count()
+        message_count = Message.objects.filter(
+            Q(receiver_id=user.id) | Q(sender_id=user.id)).count()
         return response.Response({"message_count": message_count})

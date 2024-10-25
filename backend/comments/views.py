@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class CommentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing Comment CRUD operations.
@@ -54,7 +55,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         """
         instance = serializer.instance
         if instance.user != self.request.user:
-            logger.warning(f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {self.request.user.id}")
+            logger.warning(
+                f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {self.request.user.id}")
             raise PermissionDenied("You do not have permission to edit this comment.")
 
         updated_instance = serializer.save()
@@ -66,7 +68,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         Kafka task is triggered via signals.
         """
         if instance.user != self.request.user:
-            logger.warning(f"[VIEW] Unauthorized delete attempt on Comment ID {instance.id} by user {self.request.user.id}")
+            logger.warning(
+                f"[VIEW] Unauthorized delete attempt on Comment ID {instance.id} by user {self.request.user.id}")
             raise PermissionDenied("You do not have permission to delete this comment.")
 
         instance.delete()
@@ -81,7 +84,8 @@ class CommentViewSet(viewsets.ModelViewSet):
             self.perform_destroy(instance)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Comment.DoesNotExist:
-            logger.error(f"[VIEW] Attempted to delete non-existent Comment ID {kwargs.get('pk')}")
+            logger.error(
+                f"[VIEW] Attempted to delete non-existent Comment ID {kwargs.get('pk')}")
             raise NotFound("Comment not found.")
 
     def update(self, request, *args, **kwargs):
@@ -93,7 +97,8 @@ class CommentViewSet(viewsets.ModelViewSet):
 
         # Ensure the user trying to update the comment is the owner
         if instance.user != request.user:
-            logger.warning(f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {request.user.id}")
+            logger.warning(
+                f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {request.user.id}")
             raise PermissionDenied("You do not have permission to update this comment.")
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)

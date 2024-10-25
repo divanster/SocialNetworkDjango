@@ -1,9 +1,10 @@
 # backend/tagging/services.py
 import logging
 from .models import TaggedItem
-from notifications.services import process_notification_event
+from notifications.services import create_notification
 
 logger = logging.getLogger(__name__)
+
 
 def process_tagging_event(data):
     """
@@ -51,7 +52,8 @@ def process_tagging_event(data):
                 tagged_item_id=tagged_item_id,
                 tagged_user_id=tagged_user_id
             ).delete()
-            logger.info(f"[TAGGING] Deleted tag on item {tagged_item_id} for user {tagged_user_id}")
+            logger.info(
+                f"[TAGGING] Deleted tag on item {tagged_item_id} for user {tagged_user_id}")
 
         else:
             logger.warning(f"[TAGGING] Unknown event type: {event_type}")
@@ -82,8 +84,10 @@ def send_tag_notification(tagged_item):
         }
 
         # Call the notification processing service
-        process_notification_event(notification_data)
-        logger.info(f"[TAGGING] Sent notification for tag on {tagged_item.tagged_item_type} {tagged_item.tagged_item_id}")
+        create_notification(notification_data)
+        logger.info(
+            f"[TAGGING] Sent notification for tag on {tagged_item.tagged_item_type} {tagged_item.tagged_item_id}")
 
     except Exception as e:
-        logger.error(f"[TAGGING] Failed to send tag notification for {tagged_item}: {e}")
+        logger.error(
+            f"[TAGGING] Failed to send tag notification for {tagged_item}: {e}")

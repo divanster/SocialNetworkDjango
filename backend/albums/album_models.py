@@ -1,10 +1,8 @@
-# backend/albums/album_models.py
-
 from mongoengine import StringField, UUIDField, ListField, IntField
 from core.models.base_models import MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel
 from bson import BSON
 import os
-from .photo_models import Photo  # Import the Photo model from the same directory
+
 
 class Album(MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel):
     """
@@ -36,12 +34,16 @@ class Album(MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel):
         """
         if tags is None:
             tags = []
+        from albums.photo_models import \
+            Photo  # Import Photo within the method to avoid circular import
         photo = Photo(album=self, description=description, tags=tags)
 
         # Estimate document size before attempting to save image to GridFS
-        estimated_doc_size = BSON.encode(self.to_mongo()).__len__() + os.path.getsize(image_path)
+        estimated_doc_size = BSON.encode(self.to_mongo()).__len__() + os.path.getsize(
+            image_path)
         if estimated_doc_size >= 15 * 1024 * 1024:  # Check against 15MB (to leave some margin)
-            raise ValueError("Adding this photo will exceed the BSON document size limit.")
+            raise ValueError(
+                "Adding this photo will exceed the BSON document size limit.")
 
         # Save image to GridFS and save the photo document
         photo.save_image(image_path)
@@ -58,4 +60,6 @@ class Album(MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel):
         """
         Retrieve all photos related to this album.
         """
+        from albums.photo_models import \
+            Photo  # Import Photo within the method to avoid circular import
         return Photo.objects(album=self)

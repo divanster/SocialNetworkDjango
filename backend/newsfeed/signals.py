@@ -4,7 +4,7 @@ from django.dispatch import receiver
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
-from albums.models import Album
+from albums import album_models
 from stories.models import Story
 from .tasks import send_newsfeed_event_task
 
@@ -65,7 +65,7 @@ def handle_reaction_delete(sender, instance, **kwargs):
         f"Triggered Celery task for reaction deleted event with ID {instance.id}")
 
 
-@receiver(post_save, sender=Album)
+@receiver(post_save, sender=album_models)
 def handle_album_save(sender, instance, created, **kwargs):
     event_type = 'created' if created else 'updated'
     # Trigger Celery task to process album save event
@@ -74,7 +74,7 @@ def handle_album_save(sender, instance, created, **kwargs):
         f"Triggered Celery task for album {event_type} event with ID {instance.id}")
 
 
-@receiver(post_delete, sender=Album)
+@receiver(post_delete, sender=album_models)
 def handle_album_delete(sender, instance, **kwargs):
     # Trigger Celery task to process album delete event
     send_newsfeed_event_task.delay(instance.id, 'deleted', 'Album')

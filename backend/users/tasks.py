@@ -60,6 +60,74 @@ def process_user_event_task(user_id, event_type):
         producer.close()  # Close the Kafka producer properly
 
 
+@shared_task
+def send_welcome_email(user_id):
+    """
+    Celery task to send a welcome email to a new user.
+
+    Args:
+        user_id (int): The ID of the user to whom the email should be sent.
+    """
+    try:
+        # Import models dynamically to avoid AppRegistryNotReady errors
+        from users.models import CustomUser
+
+        user = CustomUser.objects.get(id=user_id)
+
+        # Prepare the notification data for the welcome email
+        notification_data = {
+            'sender_id': user.id,
+            'sender_username': 'System',  # You could use a system sender
+            'receiver_id': user.id,
+            'receiver_username': user.username,
+            'notification_type': 'welcome',
+            'text': f"Welcome to the platform, {user.username}!",
+        }
+
+        # Create a notification to trigger the welcome email
+        create_notification(notification_data)
+        logger.info(f"[TASK] Sent welcome email to user: {user.email}")
+
+    except CustomUser.DoesNotExist:
+        logger.error(f"User with ID {user_id} does not exist. Cannot send welcome email.")
+    except Exception as e:
+        logger.error(f"[TASK] Error sending welcome email to user {user_id}: {e}")
+
+
+@shared_task
+def send_profile_update_notification(user_id):
+    """
+    Celery task to send a notification when a user's profile is updated.
+
+    Args:
+        user_id (int): The ID of the user whose profile was updated.
+    """
+    try:
+        # Import models dynamically to avoid AppRegistryNotReady errors
+        from users.models import CustomUser
+
+        user = CustomUser.objects.get(id=user_id)
+
+        # Prepare the notification data for the profile update
+        notification_data = {
+            'sender_id': user.id,
+            'sender_username': user.username,
+            'receiver_id': user.id,
+            'receiver_username': user.username,
+            'notification_type': 'profile_update',
+            'text': f"Hello {user.username}, your profile has been updated successfully.",
+        }
+
+        # Create a notification to inform the user about the profile update
+        create_notification(notification_data)
+        logger.info(f"[TASK] Sent profile update notification to user: {user.email}")
+
+    except CustomUser.DoesNotExist:
+        logger.error(f"User with ID {user_id} does not exist. Cannot send profile update notification.")
+    except Exception as e:
+        logger.error(f"[TASK] Error sending profile update notification to user {user_id}: {e}")
+
+
 def handle_user_registration(user):
     """
     Handles logic related to new user registration.
@@ -76,15 +144,7 @@ def handle_user_registration(user):
         logger.info(f"[USER] UserProfile created for user: {user.email}")
 
         # Optionally, trigger a notification to welcome the user
-        notification_data = {
-            'sender_id': user.id,
-            'sender_username': user.username,
-            'receiver_id': user.id,
-            'receiver_username': user.username,
-            'notification_type': 'welcome',
-            'text': f"Welcome to the platform, {user.username}!",
-        }
-        create_notification(notification_data)
+        send_welcome_email.delay(user.id)  # Trigger the welcome email task
 
     except Exception as e:
         logger.error(f"[USER] Error handling user registration for {user.email}: {e}")
@@ -98,23 +158,12 @@ def handle_profile_update(user):
         user (CustomUser): The user object.
     """
     try:
-        # Import models dynamically to avoid AppRegistryNotReady errors
-        from users.models import UserProfile
-
         if hasattr(user, 'profile'):
             user.profile.save()
             logger.info(f"[USER] Profile updated for user: {user.email}")
 
-            # Optionally, notify the user about the profile update
-            notification_data = {
-                'sender_id': user.id,
-                'sender_username': user.username,
-                'receiver_id': user.id,
-                'receiver_username': user.username,
-                'notification_type': 'profile_update',
-                'text': f"{user.username} has updated their profile.",
-            }
-            create_notification(notification_data)
+            # Optionally, trigger a notification to inform about the profile update
+            send_profile_update_notification.delay(user.id)  # Trigger the profile update notification task
 
     except Exception as e:
         logger.error(f"[USER] Error handling profile update for {user.email}: {e}")
