@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'channels',
     'django_extensions',
     'drf_spectacular',
+    'drf_spectacular_sidecar',
     'django_celery_beat',
     'csp',
     'django_elasticsearch_dsl',
@@ -267,6 +268,7 @@ DJOSER = {
 # Spectacular configuration for OpenAPI documentation
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Social Network APIs',
+    'DESCRIPTION': 'API documentation for the Social Network project.',
     'VERSION': '1.0.0',
     'COMPONENT_SPLIT_REQUEST': True,
     'SECURITY': [{'BearerAuth': []}],
@@ -321,16 +323,17 @@ CACHES = {
     }
 }
 
-# Sentry integration for error tracking
-SENTRY_DSN = env('SENTRY_DSN', default='')
+# Fetch SENTRY_DSN from the environment variables
+SENTRY_DSN = os.getenv('SENTRY_DSN', default='')
+
+# Initialize Sentry if DSN is provided
 if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
-        traces_sample_rate=1.0,
-        send_default_pii=True
+        traces_sample_rate=1.0,  # Captures all transactions, reduce in production
+        send_default_pii=True  # Includes user data like IP, cookies
     )
-
 # Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'none'",)
 CSP_SCRIPT_SRC = (

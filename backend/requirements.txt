@@ -64,6 +64,7 @@ django-extensions==3.2.3                # Extra management commands and utilitie
 django-gravatar==0.1.0                  # Gravatar integration for Django
 drf-yasg==1.21.7                        # Yet Another Swagger Generator - API documentation for Django Rest Framework
 drf-spectacular==0.26.2                 # Another library for generating OpenAPI 3.0 specifications for Django Rest Framework
+drf-spectacular-sidecar==0.1.1
 gunicorn==22.0.0                        # Python WSGI HTTP Server for UNIX
 setuptools==74.1.2                      # Library for installing Python packages
 cloc==0.2.5                             # Utility for counting lines of code
@@ -113,4 +114,5 @@ rpds-py==0.19.0                         # Rust-based persistent data structures 
 packaging==24.1                         # Packaging utilities for Python
 
 # Sentry
-sentry-sdk==1.13.0
+sentry-sdk==2.17.0
+

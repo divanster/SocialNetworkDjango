@@ -1,5 +1,3 @@
-# backend/config/urls.py
-
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -55,12 +53,16 @@ urlpatterns += [
     path('api/v1/', include((api_v1_patterns, 'api_v1'), namespace='api_v1')),
 ]
 
+# Add a non-versioned path for Swagger UI (optional)
+urlpatterns += [
+    path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui-non-versioned'),
+]
+
 # Custom error handlers
 handler400 = 'config.views.custom_400_view'
 handler403 = 'config.views.custom_403_view'
 handler404 = 'config.views.custom_404_view'
 handler500 = 'config.views.custom_500_view'
-
 
 # Add debug toolbar and static/media URLs for development
 if settings.DEBUG:
