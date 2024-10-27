@@ -1,6 +1,6 @@
 from django.urls import re_path
-from .consumers import TaggingConsumer
+from kafka_app.consumer import KafkaConsumerApp
 
 websocket_urlpatterns = [
-    re_path(r'^ws/tagging/(?P<item_id>[0-9a-f-]+)/$', TaggingConsumer.as_asgi()),
+    re_path(r'^ws/tagging/(?P<item_id>[0-9a-f-]+)/$', KafkaConsumerApp.as_asgi()),
 ]

@@ -1,5 +1,3 @@
-# backend/notifications/views.py
-
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,7 +26,11 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Returns a specific notification by its ID.
         """
-        notification = get_object_or_404(Notification, id=pk, receiver_id=request.user.id)
+        try:
+            notification = Notification.objects.get(id=pk, receiver_id=request.user.id)
+        except Notification.DoesNotExist:
+            return Response({"detail": "Notification not found."}, status=404)
+
         serializer = NotificationSerializer(notification)
         return Response(serializer.data)
 
@@ -39,8 +41,7 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         notifications = Notification.objects.filter(receiver_id=request.user.id, is_read=False)
         count = notifications.count()
-        for notification in notifications:
-            notification.mark_as_read()
+        notifications.update(is_read=True)
         return Response({"message": f"{count} notifications marked as read."}, status=200)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
@@ -48,7 +49,11 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Marks a specific notification as read.
         """
-        notification = get_object_or_404(Notification, id=pk, receiver_id=request.user.id)
+        try:
+            notification = Notification.objects.get(id=pk, receiver_id=request.user.id)
+        except Notification.DoesNotExist:
+            return Response({"detail": "Notification not found."}, status=404)
+
         notification.mark_as_read()
         return Response({"message": f"Notification {pk} marked as read."}, status=200)
 

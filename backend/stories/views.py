@@ -7,7 +7,7 @@ from .serializers import StorySerializer
 
 
 class StoryViewSet(viewsets.ModelViewSet):
-    queryset = Story.objects.using('stories_db').all()
+    queryset = Story.objects.using('social_db').all()
     serializer_class = StorySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 

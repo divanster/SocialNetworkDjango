@@ -16,6 +16,7 @@ class Album(MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel):
     tags = ListField(StringField(), default=list)  # Store tags as a list of strings
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'albums',  # MongoDB collection name
         'ordering': ['-created_at'],  # Ordering albums by most recent
         'indexes': [

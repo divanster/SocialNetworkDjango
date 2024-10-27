@@ -15,6 +15,7 @@ class Page(MongoBaseModel):
     content = StringField(help_text="Content of the page")
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'pages',  # Collection name in MongoDB
         'ordering': ['-created_at'],  # Ordering pages by most recent
         'indexes': [

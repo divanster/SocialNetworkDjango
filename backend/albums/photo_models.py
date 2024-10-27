@@ -28,6 +28,7 @@ class Photo(Document):
     created_at = DateTimeField(default=datetime.utcnow)
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'photos',
         'indexes': ['album', 'created_at'],
     }

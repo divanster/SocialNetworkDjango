@@ -1,7 +1,6 @@
-# backend/follows/routing.py
 from django.urls import re_path
-from .consumers import FollowConsumer
+from kafka_app.consumer import KafkaConsumerApp
 
 websocket_urlpatterns = [
-    re_path(r'ws/follows/$', FollowConsumer.as_asgi()),
+    re_path(r'ws/follows/$', KafkaConsumerApp.as_asgi()),  # Update to use centralized consumer
 ]

@@ -23,6 +23,7 @@ class Message(MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel):
                            help_text="Boolean indicating if the message was read")
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'messages',
         'ordering': ['-timestamp'],
         'indexes': [

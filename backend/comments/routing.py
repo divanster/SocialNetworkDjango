@@ -1,7 +1,6 @@
-# backend/comments/routing.py
 from django.urls import re_path
-from .consumers import CommentConsumer
+from kafka_app.consumer import KafkaConsumerApp  # Import centralized Kafka consumer
 
 websocket_urlpatterns = [
-    re_path(r'ws/comments/$', CommentConsumer.as_asgi()),
+    re_path(r'ws/comments/$', KafkaConsumerApp.as_asgi()),  # Update to use centralized consumer
 ]

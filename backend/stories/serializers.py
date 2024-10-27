@@ -14,9 +14,11 @@ class StorySerializer(serializers.ModelSerializer):
         required=False
     )
     # New fields for media, is_active, and viewed_by
-    media_type = serializers.ChoiceField(choices=['image', 'video', 'text'], required=False)
+    media_type = serializers.ChoiceField(choices=['image', 'video', 'text'],
+                                         required=False)
     media_url = serializers.URLField(required=False, allow_null=True)
-    is_active = serializers.BooleanField(read_only=True)  # Only server can modify is_active
+    is_active = serializers.BooleanField(
+        read_only=True)  # Only server can modify is_active
     viewed_by = serializers.ListField(
         child=serializers.IntegerField(),
         read_only=True  # Viewed_by list should be managed internally, not by the user
@@ -26,14 +28,16 @@ class StorySerializer(serializers.ModelSerializer):
         model = Story
         fields = [
             'id', 'user_id', 'user_username', 'content', 'media_type', 'media_url',
-            'is_active', 'viewed_by', 'created_at', 'updated_at', 'tags', 'tagged_user_ids'
+            'is_active', 'viewed_by', 'created_at', 'updated_at', 'tags',
+            'tagged_user_ids'
         ]
-        read_only_fields = ['id', 'user_id', 'user_username', 'is_active', 'viewed_by', 'created_at', 'updated_at', 'tags']
+        read_only_fields = ['id', 'user_id', 'user_username', 'is_active', 'viewed_by',
+                            'created_at', 'updated_at', 'tags']
 
     def get_tags(self, obj):
         # Get all tags for this story
-        tags = TaggedItem.objects.using('tags_db').filter(tagged_item_type='Story',
-                                                          tagged_item_id=str(obj.id))
+        tags = TaggedItem.objects.using('social_db').filter(tagged_item_type='Story',
+                                                            tagged_item_id=str(obj.id))
         return [
             {
                 'tagged_user_id': tag.tagged_user_id,
@@ -44,7 +48,7 @@ class StorySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
-        story = Story.objects.using('stories_db').create(**validated_data)
+        story = Story.objects.using('social_db').create(**validated_data)
         self.create_tagged_items(story, tagged_user_ids)
         return story
 
@@ -54,8 +58,9 @@ class StorySerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
         if tagged_user_ids is not None:
             # Remove existing tags and add new ones
-            TaggedItem.objects.using('tags_db').filter(tagged_item_type='Story',
-                                                       tagged_item_id=str(instance.id)).delete()
+            TaggedItem.objects.using('social_db').filter(tagged_item_type='Story',
+                                                         tagged_item_id=str(
+                                                             instance.id)).delete()
             self.create_tagged_items(instance, tagged_user_ids)
         return instance
 
@@ -64,7 +69,7 @@ class StorySerializer(serializers.ModelSerializer):
         Create tagging entries for the story.
         """
         for user_id in tagged_user_ids:
-            TaggedItem.objects.using('tags_db').create(
+            TaggedItem.objects.using('social_db').create(
                 tagged_item_type='Story',
                 tagged_item_id=str(story.id),
                 tagged_user_id=user_id,
@@ -81,7 +86,7 @@ class StorySerializer(serializers.ModelSerializer):
         from django.contrib.auth import get_user_model
         User = get_user_model()
         try:
-            user = User.objects.using('users_db').get(id=user_id)
+            user = User.objects.using('social_db').get(id=user_id)
             return user.username
         except User.DoesNotExist:
             logger.warning(f"User with ID {user_id} not found when tagging story.")

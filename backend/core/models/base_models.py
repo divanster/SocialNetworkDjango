@@ -83,6 +83,7 @@ class MongoBaseModel(Document):
     updated_at = MongoDateTimeField(default=datetime.utcnow)
 
     meta = {
+        'db_alias': 'social_db',
         'abstract': True,
         'ordering': ['-created_at'],
     }

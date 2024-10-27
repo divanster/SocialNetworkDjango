@@ -70,6 +70,7 @@ class Post(MongoUUIDModel, MongoSoftDeleteModel, MongoBaseModel):
                                         help_text="List of ratings related to the post")
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'posts',
         'indexes': [
             'author_id',  # Index to allow efficient query of posts by author

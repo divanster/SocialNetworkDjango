@@ -1,10 +1,9 @@
-# backend/messenger/routing.py
 from django.urls import re_path
-from . import consumers
+from kafka_app.consumer import KafkaConsumerApp
 
 websocket_urlpatterns = [
-    re_path(r'ws/messenger/(?P<room_name>\w+)/$', consumers.ChatConsumer.as_asgi()),
-    re_path(r'ws/notifications/$', consumers.NotificationConsumer.as_asgi()),
-    re_path(r'ws/activity-status/$', consumers.ActivityStatusConsumer.as_asgi()),
-    re_path(r'ws/comments/$', consumers.CommentConsumer.as_asgi()),
+    re_path(r'ws/messenger/(?P<room_name>\w+)/$', KafkaConsumerApp.as_asgi()),
+    re_path(r'ws/notifications/$', KafkaConsumerApp.as_asgi()),
+    re_path(r'ws/activity-status/$', KafkaConsumerApp.as_asgi()),
+    re_path(r'ws/comments/$', KafkaConsumerApp.as_asgi()),
 ]

@@ -27,6 +27,7 @@ class Story(MongoBaseModel):
                           help_text="List of user IDs who have viewed this story")
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'stories',  # MongoDB collection name
         'ordering': ['-created_at'],  # Ordering stories by most recent
         'indexes': [

@@ -25,6 +25,7 @@ class Comment(MongoBaseModel):
                      help_text="List of tags associated with the comment")
 
     meta = {
+        'db_alias': 'social_db',
         'collection': 'comments',  # MongoDB collection name
         'indexes': [
             'user_id',

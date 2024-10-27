@@ -1,7 +1,7 @@
 # backend/newsfeed/routing.py
 from django.urls import re_path
-from .consumers import NewsfeedConsumer
+from .consumer import NewsfeedKafkaConsumer
 
 websocket_urlpatterns = [
-    re_path(r'ws/newsfeed/$', NewsfeedConsumer.as_asgi()),
+    re_path(r'ws/newsfeed/$', NewsfeedKafkaConsumer.as_asgi()),
 ]

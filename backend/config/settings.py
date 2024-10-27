@@ -24,25 +24,26 @@ DEBUG = env.bool('DEBUG', default=False)
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
+# =====================
+# MongoDB Settings
+# =====================
+MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'social_db')
+MONGO_HOST = os.getenv('MONGO_HOST', 'mongo')
+MONGO_PORT = int(os.getenv('MONGO_PORT', 27017))
 
-# MongoDB Settings (this is what you mentioned)
-MONGO_DB_NAME = env('MONGO_DB_NAME', default='social_db')
-MONGO_HOST = env('MONGO_HOST', default='mongo')
-MONGO_PORT = env.int('MONGO_PORT', default=27017)
-MONGO_USER = env('MONGO_USER', default=None)
-MONGO_PASSWORD = env('MONGO_PASSWORD', default=None)
-MONGO_AUTH_SOURCE = env('MONGO_AUTH_SOURCE', default='admin')
+# No authentication is needed, so we explicitly set them to None.
+MONGO_USER = None
+MONGO_PASSWORD = None
+MONGO_AUTH_SOURCE = None
 
-# MongoDB's connection settings for apps using MongoEngine
+mongo_host_url = f"mongodb://{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}"
+
+# Connect without authentication
 connect(
     db=MONGO_DB_NAME,
-    username=MONGO_USER,
-    password=MONGO_PASSWORD,
-    host=MONGO_HOST,
-    port=MONGO_PORT,
-    authentication_source=MONGO_AUTH_SOURCE,
+    host=mongo_host_url,
+    alias='social_db'
 )
-
 
 # =====================
 # Kafka Configuration
@@ -54,7 +55,8 @@ KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='main_consumer_
 
 # Kafka topics for different events parsed from a comma-separated list
 KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
-KAFKA_TOPICS = dict(item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item)
+KAFKA_TOPICS = dict(
+    item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item)
 
 # =====================
 # Authentication Backends
@@ -65,9 +67,11 @@ AUTHENTICATION_BACKENDS = [
     'social_core.backends.facebook.FacebookOAuth2',  # Facebook OAuth2 backend
 ]
 
+
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
+
 
 # Installed applications (including both PostgreSQL-backed apps and MongoDB-backed apps)
 INSTALLED_APPS = [
@@ -158,7 +162,8 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(env('REDIS_HOST', default='redis'), env.int('REDIS_PORT', default=6379))],
+            'hosts': [(env('REDIS_HOST', default='redis'),
+                       env.int('REDIS_PORT', default=6379))],
         },
     },
 }
@@ -182,8 +187,10 @@ DATABASES = {
 
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 8}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
@@ -207,7 +214,8 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+    'rest_framework_simplejwt.authentication.JWTAuthentication',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -285,8 +293,10 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
 # Celery configuration
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_BROKER_URL = env('CELERY_BROKER_URL',
+                        default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
+                            default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -323,9 +333,12 @@ if SENTRY_DSN:
 
 # Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_SCRIPT_SRC = (
+"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = (
+"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = (
+"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
@@ -422,7 +435,6 @@ ELASTICSEARCH_DSL = {
         'hosts': 'localhost:9200'
     },
 }
-
 
 # from . import cron_jobs
 # CRONJOBS = cron_jobs.CRONJOBS
