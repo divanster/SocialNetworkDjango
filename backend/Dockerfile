@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get install -y --no-install-recommends \
     libxml2 libxslt1-dev libxmlsec1-dev libxmlsec1-openssl \
     postgresql-client netcat-openbsd python3-dev \
-    default-libmysqlclient-dev graphviz libgraphviz-dev && \
+    default-libmysqlclient-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip to the latest version
@@ -30,7 +30,7 @@ COPY ./requirements.txt ./requirements.dev.txt /tmp/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
-    pip install --no-cache-dir confluent-kafka gunicorn whitenoise psycopg2-binary pygraphviz && \
+    pip install --no-cache-dir confluent-kafka gunicorn whitenoise psycopg2-binary && \
     if [ "$DEV" = "true" ]; then \
         echo "Installing dev requirements"; \
         pip install --no-cache-dir -r /tmp/requirements.dev.txt; \

@@ -27,18 +27,18 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 # =====================
 # MongoDB Settings
 # =====================
-MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'social_db')
-MONGO_HOST = os.getenv('MONGO_HOST', 'mongo')
-MONGO_PORT = int(os.getenv('MONGO_PORT', 27017))
+MONGO_DB_NAME = env('MONGO_DB_NAME')
+MONGO_HOST = env('MONGO_HOST')
+MONGO_PORT = env.int('MONGO_PORT')
+MONGO_USER = env('MONGO_USER', default=None)
+MONGO_PASSWORD = env('MONGO_PASSWORD', default=None)
+MONGO_AUTH_SOURCE = env('MONGO_AUTH_SOURCE', default='admin')
 
-# No authentication is needed, so we explicitly set them to None.
-MONGO_USER = None
-MONGO_PASSWORD = None
-MONGO_AUTH_SOURCE = None
+if MONGO_USER and MONGO_PASSWORD:
+    mongo_host_url = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}?authSource={MONGO_AUTH_SOURCE}"
+else:
+    mongo_host_url = f"mongodb://{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}"
 
-mongo_host_url = f"mongodb://{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}"
-
-# Connect without authentication
 connect(
     db=MONGO_DB_NAME,
     host=mongo_host_url,
@@ -50,7 +50,7 @@ connect(
 # =====================
 
 # Kafka broker URL for event-driven architecture
-KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='localhost:9093')
+KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='localhost:9092')
 KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='main_consumer_group')
 
 # Kafka topics for different events parsed from a comma-separated list
@@ -63,8 +63,8 @@ KAFKA_TOPICS = dict(
 # =====================
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Default email/password backend
-    'social_core.backends.google.GoogleOAuth2',  # Google OAuth2 backend
-    'social_core.backends.facebook.FacebookOAuth2',  # Facebook OAuth2 backend
+    # 'social_core.backends.google.GoogleOAuth2',
+    # 'social_core.backends.facebook.FacebookOAuth2',
 ]
 
 
@@ -169,6 +169,9 @@ CHANNEL_LAYERS = {
     },
 }
 
+REDIS_HOST = env('REDIS_HOST', default='redis')
+REDIS_PORT = env.int('REDIS_PORT', default=6379)
+
 # Database configuration using PostgreSQL for core functionalities
 DATABASES = {
     'default': {
@@ -214,23 +217,23 @@ AUTH_USER_MODEL = 'users.CustomUser'
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-    'rest_framework_simplejwt.authentication.JWTAuthentication',),
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    # 'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
+    'DEFAULT_AUTHENTICATION_CLASSES': (),
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.AllowAny',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-        'users.throttling.SignupThrottle',
-    ),
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',
-        'user': '1000/day',
-        'signup': '10/hour',
-    },
+    # 'DEFAULT_THROTTLE_CLASSES': (
+    #     'rest_framework.throttling.AnonRateThrottle',
+    #     'rest_framework.throttling.UserRateThrottle',
+    #     'users.throttling.SignupThrottle',
+    # ),
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'anon': '10000/day',
+    #     'user': '10000/day',
+    #     'signup': '10/hour',
+    # },
 }
 
 # Simple JWT configuration
@@ -270,6 +273,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Social Network APIs',
     'DESCRIPTION': 'API documentation for the Social Network project.',
     'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': True,  # This must be True to serve schema at /api/schema/
     'COMPONENT_SPLIT_REQUEST': True,
     'SECURITY': [{'BearerAuth': []}],
     'COMPONENTS': {
@@ -277,14 +281,18 @@ SPECTACULAR_SETTINGS = {
             'BearerAuth': {
                 'type': 'http',
                 'scheme': 'bearer',
-                'bearerFormat': 'JWT'
-            }
-        }
+                'bearerFormat': 'JWT',
+            },
+        },
     },
+    # Exclude specific views or URLs
+    'EXCLUDE_PATHS': ['/api/v1/complex-view/', '/api/v1/problematic-view/'],
 }
 
 # CORS settings to allow frontend origins
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS',
+                                default=['http://127.0.0.1:8000',
+                                         'http://localhost:8000'])
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -299,9 +307,10 @@ CELERY_BROKER_URL = env('CELERY_BROKER_URL',
                         default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
                             default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT', default=['json'])
+CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER', default='json')
+CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = 'UTC'
 
 # Celery Beat Schedule
@@ -337,11 +346,12 @@ if SENTRY_DSN:
 # Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'none'",)
 CSP_SCRIPT_SRC = (
-"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+    "'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_IMG_SRC = (
-"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+    "'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
 CSP_STYLE_SRC = (
-"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+    "'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net',
+    "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
@@ -395,13 +405,13 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG',  # Change level to DEBUG to get detailed messages in the console
             'filters': ['sanitize'],
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
         'file': {
-            'level': 'WARNING',
+            'level': 'DEBUG',  # Change to DEBUG to get more details in the file log
             'filters': ['sanitize'],
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
@@ -411,12 +421,12 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'WARNING',
+            'level': 'DEBUG',  # Set to DEBUG for detailed logging
             'propagate': True,
         },
         'channels': {
             'handlers': ['console', 'file'],
-            'level': 'WARNING',
+            'level': 'DEBUG',  # Set to DEBUG to capture details related to channels
             'propagate': True,
         },
         'core': {
@@ -432,10 +442,12 @@ LOGGING = {
     },
 }
 
-# Elasticsearch configuration
+# =====================
+# Elasticsearch Configuration
+# =====================
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'localhost:9200'
+        'hosts': env('ELASTICSEARCH_HOSTS', default='localhost:9200'),
     },
 }
 

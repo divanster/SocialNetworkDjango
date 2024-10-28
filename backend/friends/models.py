@@ -12,12 +12,11 @@ class FriendRequest(BaseModel):
         ACCEPTED = 'accepted', 'Accepted'
         REJECTED = 'rejected', 'Rejected'
 
-    sender_id = models.IntegerField()
-    sender_username = models.CharField(max_length=150)
-    receiver_id = models.IntegerField()
-    receiver_username = models.CharField(max_length=150)
-    status = models.CharField(max_length=10, choices=Status.choices,
-                              default=Status.PENDING)
+    sender_id = models.IntegerField(default=0)  # Default value to handle existing rows
+    sender_username = models.CharField(max_length=150, default="unknown")  # Default value to handle existing rows
+    receiver_id = models.IntegerField(default=0)  # Default value to handle existing rows
+    receiver_username = models.CharField(max_length=150, default="unknown")  # Default value to handle existing rows
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
 
     class Meta:
         unique_together = ('sender_id', 'receiver_id')
@@ -37,10 +36,10 @@ class FriendRequest(BaseModel):
 
 # Friendship model to manage active friendships
 class Friendship(BaseModel):
-    user1_id = models.IntegerField()
-    user1_username = models.CharField(max_length=150)
-    user2_id = models.IntegerField()
-    user2_username = models.CharField(max_length=150)
+    user1_id = models.IntegerField(default=0)  # Default value to handle existing rows
+    user1_username = models.CharField(max_length=150, default="unknown")  # Default value to handle existing rows
+    user2_id = models.IntegerField(default=0)  # Default value to handle existing rows
+    user2_username = models.CharField(max_length=150, default="unknown")  # Default value to handle existing rows
 
     class Meta:
         unique_together = ('user1_id', 'user2_id')
@@ -59,10 +58,10 @@ class Friendship(BaseModel):
 
 # Block model to manage blocking between users
 class Block(BaseModel):
-    blocker_id = models.IntegerField()
-    blocker_username = models.CharField(max_length=150)
-    blocked_id = models.IntegerField()
-    blocked_username = models.CharField(max_length=150)
+    blocker_id = models.IntegerField(default=0)  # Default value to handle existing rows
+    blocker_username = models.CharField(max_length=150, default="unknown")  # Default value to handle existing rows
+    blocked_id = models.IntegerField(default=0)  # Default value to handle existing rows
+    blocked_username = models.CharField(max_length=150, default="unknown")  # Default value to handle existing rows
 
     class Meta:
         unique_together = ('blocker_id', 'blocked_id')

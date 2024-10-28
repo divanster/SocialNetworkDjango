@@ -4,13 +4,7 @@ import os
 from mongoengine import Document, DateTimeField as MongoDateTimeField, \
     BooleanField as MongoBooleanField, UUIDField as MongoUUIDField
 from datetime import datetime
-from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
-                                        PermissionsMixin)
 from django.utils import timezone
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext as _
-from django.conf import settings
-from django.db.models.signals import pre_save, post_save
 
 
 # ===========================
@@ -27,6 +21,15 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to automatically update the `updated_at` field.
+        """
+        if not self._state.adding:
+            self.updated_at = timezone.now()
+        super().save(*args, **kwargs)
 
 
 class SoftDeleteModel(models.Model):
@@ -44,6 +47,12 @@ class SoftDeleteModel(models.Model):
         """
         self.is_deleted = True
         self.save()
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """
+        Permanently delete the object.
+        """
+        super().delete(using=using, keep_parents=keep_parents)
 
 
 class UUIDModel(models.Model):
@@ -113,6 +122,12 @@ class MongoSoftDeleteModel(Document):
         """
         self.is_deleted = True
         self.save()
+
+    def hard_delete(self):
+        """
+        Permanently delete the document from MongoDB.
+        """
+        super().delete()
 
 
 class MongoUUIDModel(Document):

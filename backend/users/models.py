@@ -7,11 +7,10 @@ import os
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
     PermissionsMixin
 from django.utils import timezone
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext as _
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from core.models.base_models import BaseModel, UUIDModel
 
 
 # Define CustomUserManager
@@ -78,7 +77,7 @@ def user_profile_picture_file_path(instance, filename):
 
 
 # Define UserProfile
-class UserProfile(models.Model):
+class UserProfile(UUIDModel, BaseModel):
     """
     UserProfile model that stores additional information about the user.
     """
@@ -108,15 +107,12 @@ class UserProfile(models.Model):
     last_name = models.CharField(max_length=30, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, default='N')
     date_of_birth = models.DateField(null=True, blank=True)
-
-    # ImageField to store profile picture, using the file path function
     profile_picture = models.ImageField(
         upload_to=user_profile_picture_file_path,
         null=True,
         blank=True,
         default='static/default_images/profile_picture.png'
     )
-
     bio = models.TextField(blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     town = models.CharField(max_length=100, blank=True, null=True)
@@ -130,28 +126,13 @@ class UserProfile(models.Model):
     def __str__(self):
         return f'{self.user.username} Profile'
 
-    @property
-    def profile_picture_url(self):
-        """
-        Returns the URL of the user's profile picture, falling back to a default image if none exists.
-        """
-        if self.profile_picture:
-            return self.profile_picture.url
-        return '/static/default_images/default_profile.jpg'
-
-    def clean(self):
-        """
-        Custom validation to ensure the date of birth is not set in the future.
-        """
-        if self.date_of_birth and self.date_of_birth > timezone.now().date():
-            raise ValidationError(_('Date of birth cannot be in the future.'))
-        super().clean()
-
-
-# Connect signals to automatically create or update UserProfile
+# Update the signal
 @receiver(post_save, sender=CustomUser)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
     else:
-        instance.profile.save()
+        if hasattr(instance, 'profile'):
+            instance.profile.save()
+        else:
+            UserProfile.objects.create(user=instance)

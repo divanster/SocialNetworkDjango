@@ -1,7 +1,8 @@
 from django.db import models
+from core.models.base_models import BaseModel, SoftDeleteModel, UUIDModel
 
 
-class Reaction(models.Model):
+class Reaction(BaseModel, SoftDeleteModel, UUIDModel):
     """
     Stores a reaction (emoji) made by a user on different types of items (e.g., Posts, Comments).
     Utilizes PostgreSQL for data consistency and relational query handling.
@@ -17,12 +18,11 @@ class Reaction(models.Model):
         ('angry', 'Angry'),
     ]
 
-    user_id = models.IntegerField(help_text="ID of the user who reacted")
-    user_username = models.CharField(max_length=150, help_text="Username of the user who reacted")
-    reacted_item_type = models.CharField(max_length=100, help_text="Type of the item reacted to (e.g., Post, Comment)")
-    reacted_item_id = models.CharField(max_length=255, help_text="ID of the item reacted to")
-    emoji = models.CharField(max_length=10, choices=EMOJI_CHOICES, help_text="Emoji used for the reaction")
-    created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when the reaction was made")
+    user_id = models.IntegerField(default=0, help_text="ID of the user who reacted")
+    user_username = models.CharField(max_length=150, default="unknown", help_text="Username of the user who reacted")
+    reacted_item_type = models.CharField(max_length=100, default="unknown", help_text="Type of the item reacted to (e.g., Post, Comment)")
+    reacted_item_id = models.CharField(max_length=255, default="0", help_text="ID of the item reacted to")
+    emoji = models.CharField(max_length=10, choices=EMOJI_CHOICES, default='like', help_text="Emoji used for the reaction")
 
     class Meta:
         unique_together = ('user_id', 'reacted_item_type', 'reacted_item_id', 'emoji')

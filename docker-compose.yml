@@ -89,12 +89,15 @@ services:
     ports:
       - "9092:9092"
     networks:
-      - kafka_network
+      kafka_network:
+        aliases:
+          - kafka
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 10
+    restart: always
 
   # Django Web Service (including ASGI for WebSockets)
   web:
@@ -139,7 +142,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A config worker --loglevel=info
+    command: sh -c "sleep 15 && celery -A config worker --loglevel=info"
     volumes:
       - ./backend:/app
     depends_on:
@@ -153,15 +156,17 @@ services:
         condition: service_healthy
     env_file:
       - ./backend/.env
+    restart: always
     networks:
       - backend_network
+      - kafka_network
 
   # Celery Beat for periodic task scheduling
   celery-beat:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A config beat --loglevel=info
+    command: sh -c "sleep 15 && celery -A config beat --loglevel=info"
     volumes:
       - ./backend:/app
     depends_on:
@@ -173,8 +178,10 @@ services:
         condition: service_healthy
     env_file:
       - ./backend/.env
+    restart: always
     networks:
       - backend_network
+      - kafka_network
 
   # Worker for background Django tasks using Channels
   worker:

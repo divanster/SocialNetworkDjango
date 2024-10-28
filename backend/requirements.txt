@@ -64,7 +64,7 @@ django-extensions==3.2.3                # Extra management commands and utilitie
 django-gravatar==0.1.0                  # Gravatar integration for Django
 drf-yasg==1.21.7                        # Yet Another Swagger Generator - API documentation for Django Rest Framework
 drf-spectacular==0.26.2                 # Another library for generating OpenAPI 3.0 specifications for Django Rest Framework
-drf-spectacular-sidecar==0.1.1
+drf-spectacular-sidecar>=0.1.1
 gunicorn==22.0.0                        # Python WSGI HTTP Server for UNIX
 setuptools==74.1.2                      # Library for installing Python packages
 cloc==0.2.5                             # Utility for counting lines of code
@@ -88,7 +88,7 @@ pytest-django==4.8.0                    # Django plugin for pytest
 pytest-asyncio==0.24.0                  # AsyncIO support for pytest
 
 # Graphs and Visualization
-pygraphviz==1.7                         # Graph visualization library
+#pygraphviz-1.14                        # Graph visualization library
 
 # Timezone and Date Utilities
 python-dateutil==2.9.0.post0            # Date and time parsing utility for Python
