@@ -1,4 +1,4 @@
-# Use a Debian-based image for better compatibility with confluent-kafka and MongoDB drivers
+# Use a Debian-based image for better compatibility with PostgreSQL and Kafka drivers
 FROM python:3.11-slim AS base
 
 # Set environment variables
@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip to the latest version
 RUN pip install --upgrade pip
 
-# Copy requirements files to temporary location
+# Copy requirements files to a temporary location
 COPY ./requirements.txt ./requirements.dev.txt /tmp/
 
 # Install Python dependencies

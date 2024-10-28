@@ -1,9 +1,6 @@
 from django.db import models
 import uuid
 import os
-from mongoengine import Document, DateTimeField as MongoDateTimeField, \
-    BooleanField as MongoBooleanField, UUIDField as MongoUUIDField
-from datetime import datetime
 from django.utils import timezone
 
 
@@ -77,65 +74,3 @@ class FilePathModel(models.Model):
 
     class Meta:
         abstract = True
-
-
-# ===========================
-# BaseModel for MongoEngine
-# ===========================
-
-class MongoBaseModel(Document):
-    """
-    Base model for MongoEngine-based models using MongoDB.
-    Includes created and updated timestamps.
-    """
-    created_at = MongoDateTimeField(default=datetime.utcnow)
-    updated_at = MongoDateTimeField(default=datetime.utcnow)
-
-    meta = {
-        'db_alias': 'social_db',
-        'abstract': True,
-        'ordering': ['-created_at'],
-    }
-
-    def save(self, *args, **kwargs):
-        """
-        Override save to update 'updated_at' field.
-        """
-        if self.pk:
-            self.updated_at = datetime.utcnow()
-        return super().save(*args, **kwargs)
-
-
-class MongoSoftDeleteModel(Document):
-    """
-    Base model to add soft delete capability for MongoEngine models.
-    """
-    is_deleted = MongoBooleanField(default=False)
-
-    meta = {
-        'abstract': True,
-    }
-
-    def soft_delete(self):
-        """
-        Soft delete by setting `is_deleted` to True.
-        """
-        self.is_deleted = True
-        self.save()
-
-    def hard_delete(self):
-        """
-        Permanently delete the document from MongoDB.
-        """
-        super().delete()
-
-
-class MongoUUIDModel(Document):
-    """
-    Base model to add UUID primary key for MongoEngine models.
-    """
-    id = MongoUUIDField(binary=False, primary_key=True, default=uuid.uuid4)
-
-    meta = {
-        'abstract': True,
-    }

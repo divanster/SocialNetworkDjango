@@ -1,43 +1,167 @@
-from mongoengine import StringField, IntField, DateTimeField, ListField, URLField, \
-    BooleanField
-from core.models.base_models import MongoBaseModel  # Import MongoBaseModel from core
-from datetime import datetime
+from django.db import models
+from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel
+from django.contrib.auth import get_user_model
+from tagging.models import TaggedItem
+import uuid
+import os
+
+User = get_user_model()
+
+# Helper function for generating file paths for post images
+def post_image_file_path(instance, filename):
+    """
+    Helper function to generate a file path for new post images.
+    """
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    return os.path.join('uploads/post/', filename)
 
 
-class Story(MongoBaseModel):
+class Post(UUIDModel, SoftDeleteModel, BaseModel):
+    """
+    Main model for storing Posts.
+    Utilizes PostgreSQL to store data with better consistency and relational integrity.
+    """
+    title = models.CharField(max_length=255, help_text="Title of the post")
+    content = models.TextField(help_text="Content of the post", blank=True)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='posts',
+        help_text="Author of the post"
+    )
+    tags = models.ManyToManyField(
+        TaggedItem,
+        blank=True,
+        related_name='posts',
+        help_text="Tags related to the post"
+    )
+
+    class Meta:
+        db_table = 'posts'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['author']),  # Index for efficient author-based querying
+            models.Index(fields=['title']),  # Index to speed up search by title
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def add_tag(self, tagged_user, tagged_by):
+        """
+        Adds a tag to this post.
+        """
+        TaggedItem.objects.create(
+            post=self,
+            tagged_user=tagged_user,
+            tagged_by=tagged_by
+        )
+
+    def get_tags(self):
+        """
+        Retrieves all tags related to this post.
+        """
+        return self.tags.all()
+
+
+class PostImage(models.Model):
+    """
+    Model to store image information related to a post.
+    """
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='images',
+        help_text="Post associated with this image"
+    )
+    image = models.ImageField(upload_to=post_image_file_path, help_text="Path to the image file")
+
+    class Meta:
+        db_table = 'post_images'
+        ordering = ['-post__created_at']
+
+    def __str__(self):
+        return f"Image for Post '{self.post.title}'"
+
+
+class Rating(models.Model):
+    """
+    Model for storing Ratings related to a Post.
+    """
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='ratings',
+        help_text="Post associated with this rating"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='ratings_given',
+        help_text="User who gave the rating"
+    )
+    value = models.PositiveSmallIntegerField(help_text="Rating value between 1 and 5")
+
+    class Meta:
+        db_table = 'ratings'
+        ordering = ['-post__created_at']
+        unique_together = ('post', 'user')  # A user can only rate a post once
+
+    def __str__(self):
+        return f"Rating {self.value} Stars by User '{self.user.username}'"
+
+
+class Story(UUIDModel, BaseModel):
     """
     A model representing a user's story.
     """
-    user_id = IntField(required=True, min_value=1,
-                       help_text="ID of the user who created the story")
-    user_username = StringField(max_length=150, required=True,
-                                help_text="Username of the user who created the story")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='stories',
+        help_text="User who created the story"
+    )
+    content = models.TextField(
+        help_text="Text content of the story. Keep it short and engaging.",
+        blank=True,
+        null=True
+    )
+    media_type = models.CharField(
+        max_length=10,
+        choices=[('image', 'Image'), ('video', 'Video'), ('text', 'Text')],
+        help_text="Type of the story content",
+        default='text'
+    )
+    media_url = models.URLField(
+        help_text="URL of the media for the story (if applicable)",
+        blank=True,
+        null=True
+    )
+    is_active = models.BooleanField(default=True, help_text="Is the story active or has it expired?")
+    viewed_by = models.ManyToManyField(
+        User,
+        related_name='viewed_stories',
+        blank=True,
+        help_text="Users who have viewed this story"
+    )
+    tags = models.ManyToManyField(
+        TaggedItem,
+        blank=True,
+        related_name='stories',
+        help_text="Tags related to the story"
+    )
 
-    # Fields for different types of story content
-    content = StringField(
-        help_text="Text content of the story. Keep it short and engaging.", null=True)
-    media_type = StringField(choices=('image', 'video', 'text'),
-                             help_text="Type of the story content", default="text")
-    media_url = URLField(help_text="URL of the media for the story (if applicable)",
-                         null=True)
-
-    is_active = BooleanField(default=True,
-                             help_text="Is the story active or has it expired?")
-    viewed_by = ListField(IntField(),
-                          help_text="List of user IDs who have viewed this story")
-
-    meta = {
-        'db_alias': 'social_db',
-        'collection': 'stories',  # MongoDB collection name
-        'ordering': ['-created_at'],  # Ordering stories by most recent
-        'indexes': [
-            'user_id',
-            'created_at'
-        ],
-    }
+    class Meta:
+        db_table = 'stories'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user']),  # Index for efficient user-based querying
+            models.Index(fields=['created_at']),  # Index for story ordering by date
+        ]
 
     def __str__(self):
-        return f"Story by {self.user_username} at {self.created_at}"
+        return f"Story by {self.user.username} at {self.created_at}"
 
     def deactivate_story(self):
         """
@@ -46,17 +170,24 @@ class Story(MongoBaseModel):
         self.is_active = False
         self.save()
 
-    def has_expired(self):
+    def add_tag(self, tagged_user, tagged_by):
         """
-        Check if the story has expired based on a time limit.
+        Adds a tag to this story.
         """
-        expiration_time = datetime.now() - self.created_at
-        return expiration_time.total_seconds() > 86400  # Example: 24 hours (24 * 60 * 60)
+        TaggedItem.objects.create(
+            story=self,
+            tagged_user=tagged_user,
+            tagged_by=tagged_by
+        )
 
-    def add_view(self, user_id):
+    def get_tags(self):
+        """
+        Retrieves all tags related to this story.
+        """
+        return self.tags.all()
+
+    def add_view(self, user):
         """
         Add a user to the list of those who have viewed the story.
         """
-        if user_id not in self.viewed_by:
-            self.viewed_by.append(user_id)
-            self.save()
+        self.viewed_by.add(user)

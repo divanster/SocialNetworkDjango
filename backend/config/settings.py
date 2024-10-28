@@ -4,7 +4,6 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 from django.core.exceptions import ImproperlyConfigured
-from mongoengine import connect  # Import MongoEngine for MongoDB
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -23,27 +22,6 @@ DEBUG = env.bool('DEBUG', default=False)
 
 # List of allowed hosts that can make requests to this Django instance
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
-
-# =====================
-# MongoDB Settings
-# =====================
-MONGO_DB_NAME = env('MONGO_DB_NAME')
-MONGO_HOST = env('MONGO_HOST')
-MONGO_PORT = env.int('MONGO_PORT')
-MONGO_USER = env('MONGO_USER', default=None)
-MONGO_PASSWORD = env('MONGO_PASSWORD', default=None)
-MONGO_AUTH_SOURCE = env('MONGO_AUTH_SOURCE', default='admin')
-
-if MONGO_USER and MONGO_PASSWORD:
-    mongo_host_url = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}?authSource={MONGO_AUTH_SOURCE}"
-else:
-    mongo_host_url = f"mongodb://{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}"
-
-connect(
-    db=MONGO_DB_NAME,
-    host=mongo_host_url,
-    alias='social_db'
-)
 
 # =====================
 # Kafka Configuration
@@ -67,13 +45,11 @@ AUTHENTICATION_BACKENDS = [
     # 'social_core.backends.facebook.FacebookOAuth2',
 ]
 
-
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
 
-
-# Installed applications (including both PostgreSQL-backed apps and MongoDB-backed apps)
+# Installed applications (including PostgreSQL-backed apps)
 INSTALLED_APPS = [
     # Django default apps
     'django.contrib.admin',
@@ -218,22 +194,11 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
-    # 'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.AllowAny',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    # 'DEFAULT_THROTTLE_CLASSES': (
-    #     'rest_framework.throttling.AnonRateThrottle',
-    #     'rest_framework.throttling.UserRateThrottle',
-    #     'users.throttling.SignupThrottle',
-    # ),
-    # 'DEFAULT_THROTTLE_RATES': {
-    #     'anon': '10000/day',
-    #     'user': '10000/day',
-    #     'signup': '10/hour',
-    # },
 }
 
 # Simple JWT configuration
@@ -273,7 +238,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Social Network APIs',
     'DESCRIPTION': 'API documentation for the Social Network project.',
     'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': True,  # This must be True to serve schema at /api/schema/
+    'SERVE_INCLUDE_SCHEMA': True,
     'COMPONENT_SPLIT_REQUEST': True,
     'SECURITY': [{'BearerAuth': []}],
     'COMPONENTS': {
@@ -285,14 +250,11 @@ SPECTACULAR_SETTINGS = {
             },
         },
     },
-    # Exclude specific views or URLs
     'EXCLUDE_PATHS': ['/api/v1/complex-view/', '/api/v1/problematic-view/'],
 }
 
 # CORS settings to allow frontend origins
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS',
-                                default=['http://127.0.0.1:8000',
-                                         'http://localhost:8000'])
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://127.0.0.1:8000', 'http://localhost:8000'])
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -303,10 +265,8 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
 # Celery configuration
-CELERY_BROKER_URL = env('CELERY_BROKER_URL',
-                        default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND',
-                            default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
 CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT', default=['json'])
 CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER', default='json')
 CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
@@ -340,18 +300,15 @@ if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
-        traces_sample_rate=1.0,  # Captures all transactions, reduce in production
-        send_default_pii=True  # Includes user data like IP, cookies
+        traces_sample_rate=1.0,
+        send_default_pii=True
     )
+
 # Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'none'",)
-CSP_SCRIPT_SRC = (
-    "'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = (
-    "'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = (
-    "'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net',
-    "'unsafe-inline'")
+CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
@@ -405,13 +362,13 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',  # Change level to DEBUG to get detailed messages in the console
+            'level': 'DEBUG',
             'filters': ['sanitize'],
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
         'file': {
-            'level': 'DEBUG',  # Change to DEBUG to get more details in the file log
+            'level': 'DEBUG',
             'filters': ['sanitize'],
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
@@ -421,12 +378,12 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',  # Set to DEBUG for detailed logging
+            'level': 'DEBUG',
             'propagate': True,
         },
         'channels': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',  # Set to DEBUG to capture details related to channels
+            'level': 'DEBUG',
             'propagate': True,
         },
         'core': {
@@ -441,6 +398,16 @@ LOGGING = {
         },
     },
 }
+
+# =====================
+# Elasticsearch Configuration
+# =====================
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': env('ELASTICSEARCH_HOSTS', default='localhost:9200'),
+    },
+}
+
 
 # =====================
 # Elasticsearch Configuration

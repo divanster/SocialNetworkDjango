@@ -1,7 +1,5 @@
-# backend/albums/serializers.py
 from rest_framework import serializers
-from albums.album_models import Album  # Import Album from album_models
-from albums.photo_models import Photo  # Import Photo from photo_models
+from albums.models import Album, Photo  # Updated import path
 from tagging.serializers import TaggedItemSerializer
 from django.contrib.auth import get_user_model
 
@@ -9,8 +7,6 @@ User = get_user_model()
 
 
 class PhotoSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(
-        required=False)  # MongoEngine uses ObjectId which can be represented as a string.
     tagged_user_ids = serializers.ListField(
         child=serializers.UUIDField(format='hex_verbose'),
         write_only=True,
@@ -20,14 +16,12 @@ class PhotoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Photo
-        fields = ['id', 'album', 'image', 'description', 'created_at', 'tags',
-                  'tagged_user_ids']
+        fields = ['id', 'album', 'image', 'description', 'created_at', 'tags', 'tagged_user_ids']
         read_only_fields = ['id', 'album', 'created_at', 'tags']
 
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
-        photo = Photo(**validated_data)
-        photo.save()
+        photo = Photo.objects.create(**validated_data)
 
         # Create tagged items for the new photo
         self.create_tagged_items(photo, tagged_user_ids)
@@ -82,8 +76,7 @@ class AlbumSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
         photos_data = validated_data.pop('photos_upload', [])
-        album = Album(**validated_data)
-        album.save()
+        album = Album.objects.create(**validated_data)
 
         # Create tagged items for the new album
         self.create_tagged_items(album, tagged_user_ids)
@@ -110,7 +103,7 @@ class AlbumSerializer(serializers.ModelSerializer):
             self.create_tagged_items(album, tagged_user_ids)
 
         # Update existing photos or add new ones
-        existing_photos = {str(photo.id): photo for photo in instance.get_photos()}
+        existing_photos = {str(photo.id): photo for photo in instance.photos.all()}
 
         for photo_data in photos_data:
             photo_id = photo_data.get('id')
@@ -128,8 +121,7 @@ class AlbumSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(photo_serializer.errors)
             elif not photo_id:
                 # Create new photo
-                photo_serializer = PhotoSerializer(data=photo_data,
-                                                   context=self.context)
+                photo_serializer = PhotoSerializer(data=photo_data, context=self.context)
                 if photo_serializer.is_valid():
                     photo_serializer.save(album=album)
                 else:
