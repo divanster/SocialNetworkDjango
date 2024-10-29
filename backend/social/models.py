@@ -1,11 +1,13 @@
 from django.db import models
 from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel
 from django.contrib.auth import get_user_model
-from tagging.models import TaggedItem
+from tagging.models import \
+    TaggedItem  # Adjusted import to use the relational tagging model
 import uuid
 import os
 
 User = get_user_model()
+
 
 # Helper function for generating file paths for post images
 def post_image_file_path(instance, filename):
@@ -16,6 +18,10 @@ def post_image_file_path(instance, filename):
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/post/', filename)
 
+
+# ===========================
+# Post Model
+# ===========================
 
 class Post(UUIDModel, SoftDeleteModel, BaseModel):
     """
@@ -41,7 +47,8 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         db_table = 'posts'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['author']),  # Index for efficient author-based querying
+            models.Index(fields=['author']),
+            # Index for efficient author-based querying
             models.Index(fields=['title']),  # Index to speed up search by title
         ]
 
@@ -59,6 +66,10 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         return 0
 
 
+# ===========================
+# PostImage Model
+# ===========================
+
 class PostImage(UUIDModel, BaseModel):
     """
     Model to store image information related to a post.
@@ -69,7 +80,8 @@ class PostImage(UUIDModel, BaseModel):
         related_name='images',
         help_text="Post associated with this image"
     )
-    image = models.ImageField(upload_to=post_image_file_path, help_text="Path to the image file")
+    image = models.ImageField(upload_to=post_image_file_path,
+                              help_text="Path to the image file")
 
     class Meta:
         db_table = 'post_images'
@@ -78,6 +90,10 @@ class PostImage(UUIDModel, BaseModel):
     def __str__(self):
         return f"Image for Post '{self.post.title}'"
 
+
+# ===========================
+# Rating Model
+# ===========================
 
 class Rating(UUIDModel, BaseModel):
     """
@@ -109,6 +125,10 @@ class Rating(UUIDModel, BaseModel):
         return f"Rating {self.value} Stars by User '{self.user.username}'"
 
 
+# ===========================
+# Story Model
+# ===========================
+
 class Story(UUIDModel, BaseModel):
     """
     A model representing a user's story.
@@ -135,7 +155,8 @@ class Story(UUIDModel, BaseModel):
         blank=True,
         null=True
     )
-    is_active = models.BooleanField(default=True, help_text="Is the story active or has it expired?")
+    is_active = models.BooleanField(default=True,
+                                    help_text="Is the story active or has it expired?")
     viewed_by = models.ManyToManyField(
         User,
         related_name='viewed_stories',
@@ -172,7 +193,7 @@ class Story(UUIDModel, BaseModel):
         Adds a tag to this story.
         """
         TaggedItem.objects.create(
-            story=self,
+            content_object=self,
             tagged_user=tagged_user,
             tagged_by=tagged_by
         )

@@ -16,7 +16,7 @@ class KafkaService:
         if cls._producer is None:
             try:
                 cls._producer = KafkaProducer(
-                    bootstrap_servers=settings.KAFKA_BROKER_URL,
+                    bootstrap_servers=[settings.KAFKA_BROKER_URL],
                     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
                     retries=5
                 )

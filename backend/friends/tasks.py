@@ -28,7 +28,7 @@ def process_friend_event(friend_event_id, event_type, is_friendship=False):
                 # Fetch Friendship instance and create a message
                 friendship = Friendship.objects.get(id=friend_event_id)
                 message = {
-                    "friendship_id": friendship.id,
+                    "friendship_id": str(friendship.id),
                     "user1_id": friendship.user1.id,
                     "user2_id": friendship.user2.id,
                     "created_at": str(friendship.created_at),
@@ -38,7 +38,7 @@ def process_friend_event(friend_event_id, event_type, is_friendship=False):
                 # Fetch FriendRequest instance and create a message
                 friend_request = FriendRequest.objects.get(id=friend_event_id)
                 message = {
-                    "friend_request_id": friend_request.id,
+                    "friend_request_id": str(friend_request.id),
                     "sender_id": friend_request.sender.id,
                     "receiver_id": friend_request.receiver.id,
                     "status": friend_request.status,

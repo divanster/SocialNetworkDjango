@@ -1,46 +1,51 @@
-from datetime import datetime
+# backend/comments/models.py
 
-from mongoengine import StringField, UUIDField, ListField, IntField
-import uuid
-from core.models.base_models import MongoBaseModel
+from django.db import models
+from django.utils import timezone
+from django.contrib.auth import get_user_model
+from core.models.base_models import BaseModel, UUIDModel
+
+# Get the custom User model
+User = get_user_model()
 
 
-class Comment(MongoBaseModel):
+class Comment(UUIDModel, BaseModel):
     """
     Represents a comment made by a user on a post.
-    Stored in MongoDB as a document.
-    Inherits from MongoBaseModel, which includes created_at and updated_at fields.
+    Stored in PostgreSQL as a relational model.
+    Inherits from UUIDModel (for primary key), and BaseModel (for created_at and updated_at fields).
     """
-    comment_id = UUIDField(binary=False, primary_key=True, default=uuid.uuid4,
-                           required=True)
-    user_id = IntField(required=True, help_text="ID of the user who made the comment")
-    user_username = StringField(max_length=150, required=True,
-                                help_text="Username of the user who made the comment")
-    post_id = UUIDField(binary=False, null=True, required=False,
-                        help_text="ID of the related post")
-    post_title = StringField(max_length=255, null=True, required=False,
-                             help_text="Title of the related post")
-    content = StringField(default='No content', help_text="Content of the comment")
-    tags = ListField(StringField(), default=list,
-                     help_text="List of tags associated with the comment")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        help_text="User who made the comment"
+    )
+    post = models.ForeignKey(
+        'social.Post',
+        on_delete=models.CASCADE,
+        related_name='comments',
+        null=True,
+        blank=True,
+        help_text="The post that the comment is associated with"
+    )
+    content = models.TextField(default='No content', help_text="Content of the comment")
+    tags = models.JSONField(default=list,
+                            help_text="List of tags associated with the comment")
 
-    meta = {
-        'db_alias': 'social_db',
-        'collection': 'comments',  # MongoDB collection name
-        'indexes': [
-            'user_id',
-            'post_id',
-            'created_at'
-        ],
-    }
+    class Meta:
+        db_table = 'comments'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'post', 'created_at']),
+        ]
 
     def __str__(self):
         return self.content[:20]
 
     def save(self, *args, **kwargs):
         """
-        Override save method to update 'updated_at' timestamp on every update.
+        Override save method to automatically update the `updated_at` field on every update.
         """
-        if self.pk:
-            self.updated_at = datetime.utcnow()
+        self.updated_at = timezone.now()  # Update the timestamp
         return super().save(*args, **kwargs)

@@ -27,10 +27,10 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Override the default queryset to allow filtering by the current user
-        if needed.
+        Override the default queryset to allow filtering by the post ID
+        provided in the request query parameters.
         """
-        queryset = Comment.objects.all()
+        queryset = super().get_queryset()
         post_id = self.request.query_params.get('post_id')
         if post_id:
             queryset = queryset.filter(post_id=post_id)
@@ -38,11 +38,11 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Overridden perform_create method to save comment.
+        Overridden perform_create method to save a new comment.
         Kafka task is triggered via signals.
         """
         if not self.request.user.is_authenticated:
-            logger.warning(f"[VIEW] Unauthorized comment creation attempt")
+            logger.warning("[VIEW] Unauthorized comment creation attempt")
             raise PermissionDenied("You need to be logged in to create a comment.")
 
         instance = serializer.save(user=self.request.user)
@@ -50,13 +50,14 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """
-        Overridden perform_update method to update comment.
+        Overridden perform_update method to ensure only the comment's owner can update.
         Kafka task is triggered via signals.
         """
         instance = serializer.instance
         if instance.user != self.request.user:
             logger.warning(
-                f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {self.request.user.id}")
+                f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {self.request.user.id}"
+            )
             raise PermissionDenied("You do not have permission to edit this comment.")
 
         updated_instance = serializer.save()
@@ -64,12 +65,13 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """
-        Overridden perform_destroy method to delete comment.
+        Overridden perform_destroy method to ensure only the comment's owner can delete.
         Kafka task is triggered via signals.
         """
         if instance.user != self.request.user:
             logger.warning(
-                f"[VIEW] Unauthorized delete attempt on Comment ID {instance.id} by user {self.request.user.id}")
+                f"[VIEW] Unauthorized delete attempt on Comment ID {instance.id} by user {self.request.user.id}"
+            )
             raise PermissionDenied("You do not have permission to delete this comment.")
 
         instance.delete()
@@ -77,7 +79,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """
-        Custom destroy method to handle not found comments explicitly.
+        Custom destroy method to handle explicit responses when a comment is not found.
         """
         try:
             instance = self.get_object()
@@ -85,12 +87,13 @@ class CommentViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Comment.DoesNotExist:
             logger.error(
-                f"[VIEW] Attempted to delete non-existent Comment ID {kwargs.get('pk')}")
+                f"[VIEW] Attempted to delete non-existent Comment ID {kwargs.get('pk')}"
+            )
             raise NotFound("Comment not found.")
 
     def update(self, request, *args, **kwargs):
         """
-        Custom update method to provide better response when trying to update.
+        Custom update method to ensure the correct response and permission handling.
         """
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -98,7 +101,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         # Ensure the user trying to update the comment is the owner
         if instance.user != request.user:
             logger.warning(
-                f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {request.user.id}")
+                f"[VIEW] Unauthorized update attempt on Comment ID {instance.id} by user {request.user.id}"
+            )
             raise PermissionDenied("You do not have permission to update this comment.")
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
