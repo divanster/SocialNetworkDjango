@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel
 from django.contrib.auth import get_user_model
@@ -26,7 +27,7 @@ def post_image_file_path(instance, filename):
 class Post(UUIDModel, SoftDeleteModel, BaseModel):
     """
     Main model for storing Posts.
-    Utilizes PostgreSQL to store data with better consistency and relational integrity.
+    Utilizes PostgreSQL for relational integrity.
     """
     title = models.CharField(max_length=255, help_text="Title of the post")
     content = models.TextField(help_text="Content of the post", blank=True, null=True)
@@ -36,20 +37,15 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         related_name='posts',
         help_text="Author of the post"
     )
-    tags = models.ManyToManyField(
-        TaggedItem,
-        blank=True,
-        related_name='posts',
-        help_text="Tags related to the post"
-    )
+    # Use GenericRelation to connect with TaggedItem
+    tags = GenericRelation(TaggedItem, related_query_name='posts')
 
     class Meta:
         db_table = 'posts'
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['author']),
-            # Index for efficient author-based querying
-            models.Index(fields=['title']),  # Index to speed up search by title
+            models.Index(fields=['title']),
         ]
 
     def __str__(self):
@@ -80,8 +76,10 @@ class PostImage(UUIDModel, BaseModel):
         related_name='images',
         help_text="Post associated with this image"
     )
-    image = models.ImageField(upload_to=post_image_file_path,
-                              help_text="Path to the image file")
+    image = models.ImageField(
+        upload_to=post_image_file_path,
+        help_text="Path to the image file"
+    )
 
     class Meta:
         db_table = 'post_images'
@@ -119,7 +117,7 @@ class Rating(UUIDModel, BaseModel):
     class Meta:
         db_table = 'ratings'
         ordering = ['-created_at']
-        unique_together = ('post', 'user')  # A user can only rate a post once
+        unique_together = ('post', 'user')
 
     def __str__(self):
         return f"Rating {self.value} Stars by User '{self.user.username}'"
@@ -146,7 +144,11 @@ class Story(UUIDModel, BaseModel):
     )
     media_type = models.CharField(
         max_length=10,
-        choices=[('image', 'Image'), ('video', 'Video'), ('text', 'Text')],
+        choices=[
+            ('image', 'Image'),
+            ('video', 'Video'),
+            ('text', 'Text')
+        ],
         help_text="Type of the story content",
         default='text'
     )
@@ -155,27 +157,25 @@ class Story(UUIDModel, BaseModel):
         blank=True,
         null=True
     )
-    is_active = models.BooleanField(default=True,
-                                    help_text="Is the story active or has it expired?")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Is the story active or has it expired?"
+    )
     viewed_by = models.ManyToManyField(
         User,
         related_name='viewed_stories',
         blank=True,
         help_text="Users who have viewed this story"
     )
-    tags = models.ManyToManyField(
-        TaggedItem,
-        blank=True,
-        related_name='stories',
-        help_text="Tags related to the story"
-    )
+    # Use GenericRelation to connect with TaggedItem
+    tags = GenericRelation(TaggedItem, related_query_name='stories')
 
     class Meta:
         db_table = 'stories'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['user']),  # Index for efficient user-based querying
-            models.Index(fields=['created_at']),  # Index for story ordering by date
+            models.Index(fields=['user']),
+            models.Index(fields=['created_at']),
         ]
 
     def __str__(self):
@@ -187,22 +187,6 @@ class Story(UUIDModel, BaseModel):
         """
         self.is_active = False
         self.save()
-
-    def add_tag(self, tagged_user, tagged_by):
-        """
-        Adds a tag to this story.
-        """
-        TaggedItem.objects.create(
-            content_object=self,
-            tagged_user=tagged_user,
-            tagged_by=tagged_by
-        )
-
-    def get_tags(self):
-        """
-        Retrieves all tags related to this story.
-        """
-        return self.tags.all()
 
     def add_view(self, user):
         """

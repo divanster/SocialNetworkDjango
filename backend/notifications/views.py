@@ -5,7 +5,6 @@ from rest_framework.decorators import action
 from .models import Notification
 from .serializers import NotificationSerializer, NotificationCountSerializer
 from django.shortcuts import get_object_or_404
-from mongoengine.queryset.visitor import Q
 
 
 class NotificationViewSet(viewsets.ViewSet):
@@ -18,7 +17,7 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Returns a list of notifications for the current user.
         """
-        notifications = Notification.objects.filter(receiver_id=request.user.id).order_by('-created_at')
+        notifications = Notification.objects.filter(receiver=request.user).order_by('-created_at')
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data)
 
@@ -26,11 +25,8 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Returns a specific notification by its ID.
         """
-        try:
-            notification = Notification.objects.get(id=pk, receiver_id=request.user.id)
-        except Notification.DoesNotExist:
-            return Response({"detail": "Notification not found."}, status=404)
-
+        # Get the notification for the current user by id.
+        notification = get_object_or_404(Notification, id=pk, receiver=request.user)
         serializer = NotificationSerializer(notification)
         return Response(serializer.data)
 
@@ -39,7 +35,7 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Marks all unread notifications as read for the logged-in user.
         """
-        notifications = Notification.objects.filter(receiver_id=request.user.id, is_read=False)
+        notifications = Notification.objects.filter(receiver=request.user, is_read=False)
         count = notifications.count()
         notifications.update(is_read=True)
         return Response({"message": f"{count} notifications marked as read."}, status=200)
@@ -49,11 +45,7 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Marks a specific notification as read.
         """
-        try:
-            notification = Notification.objects.get(id=pk, receiver_id=request.user.id)
-        except Notification.DoesNotExist:
-            return Response({"detail": "Notification not found."}, status=404)
-
+        notification = get_object_or_404(Notification, id=pk, receiver=request.user)
         notification.mark_as_read()
         return Response({"message": f"Notification {pk} marked as read."}, status=200)
 
@@ -62,7 +54,7 @@ class NotificationViewSet(viewsets.ViewSet):
         """
         Returns the count of unread notifications.
         """
-        count = Notification.objects.filter(receiver_id=request.user.id, is_read=False).count()
+        count = Notification.objects.filter(receiver=request.user, is_read=False).count()
         return Response({"count": count})
 
 
@@ -71,11 +63,15 @@ class NotificationsCountView(APIView):
     A view to return the count of unread notifications for a user.
     """
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = NotificationCountSerializer
 
     def get(self, request):
         """
         Get the number of unread notifications for the logged-in user.
         """
-        count = Notification.objects.filter(receiver_id=request.user.id, is_read=False).count()
-        return Response({'count': count})
+        # Query to get the count of unread notifications
+        count = Notification.objects.filter(receiver=request.user,
+                                            is_read=False).count()
+
+        # Use the serializer to return a consistent response structure
+        serializer = NotificationCountSerializer({'count': count})
+        return Response(serializer.data)

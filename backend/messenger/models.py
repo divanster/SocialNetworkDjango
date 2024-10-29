@@ -1,44 +1,46 @@
-from mongoengine import Document, StringField, IntField, DateTimeField, BooleanField
-from datetime import datetime
+# messenger/models.py
 
-from core.models.base_models import MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel
+from django.db import models
+from django.contrib.auth import get_user_model
+from core.models.base_models import UUIDModel, BaseModel
+
+User = get_user_model()
 
 
-class Message(MongoUUIDModel, MongoBaseModel, MongoSoftDeleteModel):
+class Message(UUIDModel, BaseModel):
     """
-    Stores the messages sent between users.
-    Uses MongoDB through MongoEngine to leverage high performance in handling
-    high-volume, document-based message data.
+    Stores messages sent between users using PostgreSQL.
     """
-    sender_id = IntField(required=True, help_text="ID of the sender")
-    sender_username = StringField(max_length=150, required=True,
-                                  help_text="Username of the sender")
-    receiver_id = IntField(null=True, blank=True, help_text="ID of the receiver")
-    receiver_username = StringField(max_length=150, null=True, blank=True,
-                                    help_text="Username of the receiver")
-    content = StringField(required=True, help_text="Content of the message")
-    timestamp = DateTimeField(default=datetime.utcnow,
-                              help_text="Timestamp of when the message was sent")
-    is_read = BooleanField(default=False,
-                           help_text="Boolean indicating if the message was read")
+    sender = models.ForeignKey(
+        User,
+        related_name='sent_messages',
+        on_delete=models.CASCADE,
+        help_text="User who sent the message"
+    )
+    receiver = models.ForeignKey(
+        User,
+        related_name='received_messages',
+        on_delete=models.CASCADE,
+        help_text="User who received the message"
+    )
+    content = models.TextField(help_text="Content of the message")
+    is_read = models.BooleanField(
+        default=False,
+        help_text="Indicates whether the message has been read"
+    )
 
-    meta = {
-        'db_alias': 'social_db',
-        'collection': 'messages',
-        'ordering': ['-timestamp'],
-        'indexes': [
-            {'fields': ['sender_id', 'receiver_id']},
-            {'fields': ['$content'], 'default_language': 'english'}
-        ],
-    }
+    class Meta:
+        db_table = 'messages'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['sender', 'receiver']),
+            models.Index(fields=['receiver', 'is_read']),
+        ]
 
     def __str__(self):
-        return f"{self.sender_username} -> {self.receiver_username}: {self.content[:20]}"
+        return f"From {self.sender.username} to {self.receiver.username}: {self.content[:20]}"
 
     def mark_as_read(self):
-        """
-        Helper method to mark the message as read.
-        """
         if not self.is_read:
             self.is_read = True
             self.save()

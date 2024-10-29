@@ -1,36 +1,25 @@
+# tagging/models.py
+
 from django.db import models
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from core.models.base_models import UUIDModel, BaseModel
 from django.contrib.auth import get_user_model
-from core.models.base_models import BaseModel, UUIDModel
-from albums.models import Album, Photo
 
 User = get_user_model()
 
 
 class TaggedItem(UUIDModel, BaseModel):
     """
-    Represents a tagging instance where a user is tagged in an album, photo, or any content.
-    Uses direct relationships with the Album, Photo, and User models.
+    Represents a tagging instance where a user is tagged in any content.
+    Uses GenericForeignKey to link to any model instance.
     """
+    # Generic foreign key to any content type
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.UUIDField()
+    content_object = GenericForeignKey('content_type', 'object_id')
 
-    # Relationships to define the tagged content
-    album = models.ForeignKey(
-        Album,
-        on_delete=models.CASCADE,
-        related_name='tagged_items',
-        null=True,
-        blank=True,
-        help_text="Album in which the user is tagged (optional)",
-    )
-    photo = models.ForeignKey(
-        Photo,
-        on_delete=models.CASCADE,
-        related_name='tagged_items',
-        null=True,
-        blank=True,
-        help_text="Photo in which the user is tagged (optional)",
-    )
-
-    # Fields to define information about the tagged user
+    # Information about the tagged user
     tagged_user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -38,7 +27,7 @@ class TaggedItem(UUIDModel, BaseModel):
         help_text="User being tagged"
     )
 
-    # Fields to define information about the tagging action
+    # Information about who tagged the user
     tagged_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -47,15 +36,10 @@ class TaggedItem(UUIDModel, BaseModel):
     )
 
     class Meta:
-        unique_together = ('album', 'photo', 'tagged_user')
+        unique_together = ('content_type', 'object_id', 'tagged_user')
         ordering = ['-created_at']
         verbose_name = 'Tagged Item'
         verbose_name_plural = 'Tagged Items'
 
     def __str__(self):
-        content = self.album if self.album else self.photo
-        content_type = "Album" if self.album else "Photo"
-        return (
-            f"{self.tagged_by.username} tagged {self.tagged_user.username} in "
-            f"{content_type} '{content}'"
-        )
+        return f"{self.tagged_by.username} tagged {self.tagged_user.username} in {self.content_object}"

@@ -28,7 +28,33 @@ def create_notification(data):
         # Ensure all required fields are present
         if not sender_id or not receiver_id or not notification_type:
             logger.warning(
-                "[NOTIFICATION] Missing required fields for notification creation.")
+                "[NOTIFICATION] Missing required fields for notification creation."
+            )
+            return
+
+        # Prevent self-notification
+        if sender_id == receiver_id:
+            logger.info(
+                f"[NOTIFICATION] Skipping notification creation since sender and "
+                f"receiver are the same: {sender_id}"
+            )
+            return
+
+        # Optionally, check if a similar notification already exists This is useful
+        # to avoid creating duplicate notifications for repetitive actions.
+        existing_notification = Notification.objects.filter(
+            sender_id=sender_id,
+            receiver_id=receiver_id,
+            notification_type=notification_type,
+            content_type=content_type,
+            object_id=object_id,
+            is_read=False  # Only check unread notifications
+        ).exists()
+
+        if existing_notification:
+            logger.info(
+                f"[NOTIFICATION] Duplicate notification detected for receiver {receiver_id}, type {notification_type}. Skipping creation."
+            )
             return
 
         # Create a new notification object
@@ -44,9 +70,11 @@ def create_notification(data):
         )
 
         logger.info(
-            f"[NOTIFICATION] Created notification for user {receiver_id} about {notification_type} event.")
+            f"[NOTIFICATION] Created notification for user {receiver_id} about {notification_type} event."
+        )
 
-        # Optionally, send a push notification to the user's mobile device or frontend app
+        # Optionally, send a push notification to the user's mobile device or
+        # frontend app
         send_push_notification(
             user_id=receiver_id,
             title="New Notification",
@@ -69,13 +97,17 @@ def send_push_notification(user_id, title, message, data=None):
         data (dict, optional): Additional data to send with the notification.
     """
     try:
-        # Here we would normally integrate with a push notification service like Firebase Cloud Messaging (FCM)
-        # or Apple Push Notification Service (APNS). For now, we will just log this action.
+        # Here we would normally integrate with a push notification service like
+        # Firebase Cloud Messaging (FCM) or Apple Push Notification Service (APNS).
+        # For now, we will just log this action.
 
-        # Example: push_service.send_notification(user_id=user_id, title=title, message=message, data=data)
+        # Example: push_service.send_notification(user_id=user_id, title=title,
+        # message=message, data=data)
 
         logger.info(
-            f"[PUSH NOTIFICATION] Sent push notification to user {user_id} with title '{title}' and message '{message}'.")
+            f"[PUSH NOTIFICATION] Sent push notification to user {user_id} with title '{title}' and message '{message}'."
+        )
     except Exception as e:
         logger.error(
-            f"[PUSH NOTIFICATION] Failed to send push notification to user {user_id}: {e}")
+            f"[PUSH NOTIFICATION] Failed to send push notification to user {user_id}: {e}"
+        )

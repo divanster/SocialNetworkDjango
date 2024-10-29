@@ -1,14 +1,18 @@
+# reactions/models.py
+
 from django.db import models
-from core.models.base_models import BaseModel, SoftDeleteModel, UUIDModel
+from django.contrib.auth import get_user_model
+from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+
+User = get_user_model()
 
 
-class Reaction(BaseModel, SoftDeleteModel, UUIDModel):
+class Reaction(UUIDModel, BaseModel, SoftDeleteModel):
     """
-    Stores a reaction (emoji) made by a user on different types of items (e.g., Posts, Comments).
-    Utilizes PostgreSQL for data consistency and relational query handling.
+    Stores a reaction (emoji) made by a user on different types of items.
     """
-
-    # Define available emoji choices for reactions
     EMOJI_CHOICES = [
         ('like', 'Like'),
         ('love', 'Love'),
@@ -18,17 +22,32 @@ class Reaction(BaseModel, SoftDeleteModel, UUIDModel):
         ('angry', 'Angry'),
     ]
 
-    user_id = models.IntegerField(default=0, help_text="ID of the user who reacted")
-    user_username = models.CharField(max_length=150, default="unknown", help_text="Username of the user who reacted")
-    reacted_item_type = models.CharField(max_length=100, default="unknown", help_text="Type of the item reacted to (e.g., Post, Comment)")
-    reacted_item_id = models.CharField(max_length=255, default="0", help_text="ID of the item reacted to")
-    emoji = models.CharField(max_length=10, choices=EMOJI_CHOICES, default='like', help_text="Emoji used for the reaction")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reactions',
+        help_text="User who reacted"
+    )
+    # Generic relation to any content type
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.UUIDField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    emoji = models.CharField(
+        max_length=10,
+        choices=EMOJI_CHOICES,
+        default='like',
+        help_text="Emoji used for the reaction"
+    )
 
     class Meta:
-        unique_together = ('user_id', 'reacted_item_type', 'reacted_item_id', 'emoji')
-        verbose_name = 'Reaction'
-        verbose_name_plural = 'Reactions'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'content_type', 'object_id', 'emoji'],
+                name='unique_user_content_reaction'
+            )
+        ]
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user_username} reacted with {self.emoji} on {self.reacted_item_type} {self.reacted_item_id}"
+        return f"{self.user.username} reacted with {self.emoji} on {self.content_object}"

@@ -6,8 +6,8 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def send_page_event_to_kafka(page_id, event_type):
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def send_page_event_to_kafka(self, page_id, event_type):
     """
     Celery task to send page events to Kafka.
     """
@@ -32,6 +32,8 @@ def send_page_event_to_kafka(page_id, event_type):
                 "content": page.content,
                 "created_at": str(page.created_at),
                 "event": event_type,
+                "user_id": page.user.id,
+                "user_username": page.user.username
             }
 
         # Send the constructed message to the PAGE_EVENTS Kafka topic
@@ -43,5 +45,6 @@ def send_page_event_to_kafka(page_id, event_type):
         logger.error(f"Page with ID {page_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
+        self.retry(exc=e, countdown=60)
     finally:
         producer.close()  # Ensure the producer is properly closed

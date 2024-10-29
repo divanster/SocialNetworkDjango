@@ -6,29 +6,53 @@ from django.contrib.contenttypes.models import ContentType
 
 
 class ReactionSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)
-    content_type = serializers.SlugRelatedField(
-        slug_field='model',
-        queryset=ContentType.objects.all()
-    )
-    object_id = serializers.UUIDField()
+    """
+    Serializer for the Reaction model.
+    Handles serialization and deserialization of data for creating, updating,
+    and displaying reactions.
+    """
+    # Represent content_type as a string instead of ContentType instance
+    content_type = serializers.CharField(write_only=True)
+    object_id = serializers.CharField()
 
     class Meta:
         model = Reaction
-        fields = ['id', 'user', 'content_type', 'object_id', 'emoji', 'created_at']
-        read_only_fields = ['id', 'user', 'created_at']
+        fields = ['id', 'user_id', 'user_username', 'content_type', 'object_id',
+                  'emoji', 'created_at']
+        read_only_fields = ['id', 'user_id', 'user_username', 'created_at']
 
     def validate_content_type(self, value):
-        # Ensure that the content_type is valid for reactions
-        # Add any custom validation if necessary
+        """
+        Validate that the provided content type exists.
+        """
+        if not ContentType.objects.filter(model=value.lower()).exists():
+            raise serializers.ValidationError("Invalid content type.")
         return value
 
     def create(self, validated_data):
-        user = self.context['request'].user
-        reaction, created = Reaction.objects.get_or_create(
-            user=user,
-            content_type=validated_data['content_type'],
-            object_id=validated_data['object_id'],
-            emoji=validated_data['emoji']
-        )
-        return reaction
+        """
+        Override the create method to handle content_type as a string.
+        """
+        # Convert the string content_type to a ContentType object
+        content_type_str = validated_data.pop('content_type')
+        try:
+            content_type = ContentType.objects.get(model=content_type_str.lower())
+        except ContentType.DoesNotExist:
+            raise serializers.ValidationError("Invalid content type provided.")
+
+        validated_data['content_type'] = content_type
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """
+        Override the update method to handle content_type changes.
+        """
+        content_type_str = validated_data.get('content_type', None)
+        if content_type_str:
+            try:
+                content_type = ContentType.objects.get(model=content_type_str.lower())
+                validated_data['content_type'] = content_type
+            except ContentType.DoesNotExist:
+                raise serializers.ValidationError("Invalid content type provided.")
+
+        return super().update(instance, validated_data)

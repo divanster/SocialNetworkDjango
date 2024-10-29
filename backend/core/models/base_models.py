@@ -20,13 +20,13 @@ class BaseModel(models.Model):
         abstract = True
         ordering = ['-created_at']
 
-    def save(self, *args, **kwargs):
-        """
-        Override save to automatically update the `updated_at` field.
-        """
-        if not self._state.adding:
-            self.updated_at = timezone.now()
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     """
+    #     Override save to automatically update the `updated_at` field.
+    #     """
+    #     if not self._state.adding:
+    #         self.updated_at = timezone.now()
+    #     super().save(*args, **kwargs)
 
 
 class SoftDeleteModel(models.Model):

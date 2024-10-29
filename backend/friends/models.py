@@ -46,15 +46,16 @@ class FriendRequest(BaseModel):
         return f"{self.sender.username} -> {self.receiver.username} ({self.status})"
 
     def accept(self):
-        """
-        Accept the friend request and create a Friendship.
-        """
         if self.status == self.Status.PENDING:
             self.status = self.Status.ACCEPTED
             self.save()
 
-            # Create Friendship
-            Friendship.objects.create(user1=self.sender, user2=self.receiver)
+            # Ensure users are ordered consistently
+            if str(self.sender.id) < str(self.receiver.id):
+                user1, user2 = self.sender, self.receiver
+            else:
+                user1, user2 = self.receiver, self.sender
+            Friendship.objects.create(user1=user1, user2=user2)
 
     def reject(self):
         """
