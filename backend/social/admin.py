@@ -1,7 +1,7 @@
 # social/admin.py
 
 from django.contrib import admin
-from .models import Post, PostImage, Rating, Story
+from .models import Post, PostImage, Rating
 
 
 class PostImageInline(admin.TabularInline):
