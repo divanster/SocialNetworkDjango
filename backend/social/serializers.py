@@ -1,94 +1,81 @@
+# backend/social/serializers.py
+
 from rest_framework import serializers
-from .models import Post, PostImage, Rating
-from tagging.serializers import TaggedItemSerializer
-from django.contrib.auth import get_user_model
+from social.models import Post
 from tagging.models import TaggedItem
 import logging
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-class PostImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PostImage
-        fields = ['id', 'image']
-
-
-class RatingSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)  # Display the username
-
-    class Meta:
-        model = Rating
-        fields = ['id', 'value', 'user']
-
-
 class PostSerializer(serializers.ModelSerializer):
-    images = PostImageSerializer(many=True, read_only=True)
-    ratings = RatingSerializer(many=True, read_only=True)
-    author = serializers.StringRelatedField(read_only=True)  # Display the author's name
-
-    # File upload handling
-    image_files = serializers.ListField(
-        child=serializers.ImageField(max_length=100000, allow_empty_file=True,
-                                     use_url=False),
-        write_only=True,
-        required=False,
-        allow_null=True,
-        allow_empty=True
-    )
-
-    # Handling tagged users
-    user_tags = TaggedItemSerializer(many=True, read_only=True,
-                                     source='tags')  # Fetch tagged items as user_tags
+    tags = serializers.SerializerMethodField()  # Fetching tags for display
     tagged_user_ids = serializers.ListField(
-        child=serializers.IntegerField(),
+        child=serializers.UUIDField(format='hex_verbose'),
         write_only=True,
-        required=False,
-        allow_null=True,
-        allow_empty=True
+        required=False
     )
 
     class Meta:
         model = Post
-        fields = [
-            'id', 'title', 'content', 'created_at', 'updated_at',
-            'author', 'images', 'ratings', 'image_files', 'user_tags', 'tagged_user_ids'
+        fields = ['id', 'title', 'content', 'author', 'visibility', 'created_at',
+                  'updated_at', 'tags', 'tagged_user_ids']
+        read_only_fields = ['id', 'author', 'created_at', 'updated_at', 'tags']
+
+    def get_tags(self, obj):
+        # Retrieve tags associated with the post
+        tags = TaggedItem.objects.filter(object_id=obj.id, content_type__model='post')
+        return [
+            {
+                'tagged_user_id': tag.tagged_user_id,
+                'tagged_user_username': tag.tagged_user.username if tag.tagged_user else None
+            }
+            for tag in tags
         ]
-        read_only_fields = ['id', 'author', 'created_at', 'updated_at', 'user_tags']
-
-    def validate_image_files(self, value):
-        if value:
-            return [v for v in value if v and hasattr(v, 'file')]
-        return value
-
-    def validate_tagged_user_ids(self, value):
-        if value:
-            return [int(v) for v in value if isinstance(v, int) or v.isdigit()]
-        return value
 
     def create(self, validated_data):
+        """
+        Create a post instance and create tagged items for tagged users.
+        """
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
-        image_files = validated_data.pop('image_files', [])
-
         post = Post.objects.create(**validated_data)
 
-        for image_file in image_files:
-            if image_file:
-                PostImage.objects.create(post=post, image=image_file)
-
+        # Create tagged items for the new post
         self.create_tagged_items(post, tagged_user_ids)
+        logger.info(
+            f"[SERIALIZER] Post with ID {post.id} created and tagged users added.")
+
+        return post
+
+    def update(self, instance, validated_data):
+        """
+        Update a post instance and handle updating tagged items.
+        """
+        tagged_user_ids = validated_data.pop('tagged_user_ids', None)
+        post = super().update(instance, validated_data)
+
+        if tagged_user_ids is not None:
+            # Remove all existing tags
+            instance.tags.all().delete()
+            # Recreate tags with the provided user IDs
+            self.create_tagged_items(post, tagged_user_ids)
+            logger.info(f"[SERIALIZER] Tags updated for post with ID {post.id}.")
+
         return post
 
     def create_tagged_items(self, post, tagged_user_ids):
+        """
+        Create tagging entries for the post.
+        """
+        tagged_by = self.context['request'].user
         for user_id in tagged_user_ids:
-            TaggedItem.objects.create(
-                content_object=post,
-                tagged_user_id=user_id,
-                tagged_by=self.context['request'].user
-            )
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context.update({'request': self.context['request']})
-        return context
+            try:
+                TaggedItem.objects.create(
+                    content_object=post,
+                    tagged_user_id=user_id,
+                    tagged_by=tagged_by
+                )
+                logger.info(f"[SERIALIZER] User {user_id} tagged in post {post.id}.")
+            except Exception as e:
+                logger.warning(
+                    f"[SERIALIZER] Failed to tag user {user_id} in post {post.id}: {e}")

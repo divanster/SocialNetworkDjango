@@ -50,11 +50,3 @@ class RatingAdmin(admin.ModelAdmin):
     search_fields = ('post__title', 'user__username',)
     list_filter = ('value', 'created_at',)
     date_hierarchy = 'created_at'
-
-
-@admin.register(Story)
-class StoryAdmin(admin.ModelAdmin):
-    list_display = ('user', 'media_type', 'is_active', 'created_at',)
-    search_fields = ('user__username', 'content',)
-    list_filter = ('media_type', 'is_active', 'created_at',)
-    date_hierarchy = 'created_at'

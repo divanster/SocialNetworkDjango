@@ -1,11 +1,11 @@
-# social/models.py
-
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
 from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel
 from tagging.models import TaggedItem
 from core.choices import VisibilityChoices  # Import visibility choices
+import uuid
+import os
 
 User = get_user_model()
 
@@ -81,3 +81,72 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         if ratings.exists():
             return sum(rating.value for rating in ratings) / ratings.count()
         return 0
+
+
+# ===========================
+# PostImage Model
+# ===========================
+
+def post_image_file_path(instance, filename):
+    """
+    Helper function to generate a file path for new post images.
+    """
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    return os.path.join('uploads/post/', filename)
+
+class PostImage(UUIDModel, BaseModel):
+    """
+    Model to store image information related to a post.
+    """
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='images',
+        help_text="Post associated with this image"
+    )
+    image = models.ImageField(
+        upload_to=post_image_file_path,
+        help_text="Path to the image file"
+    )
+
+    class Meta:
+        db_table = 'post_images'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Image for Post '{self.post.title}'"
+
+
+# ===========================
+# Rating Model
+# ===========================
+
+class Rating(UUIDModel, BaseModel):
+    """
+    Model for storing Ratings related to a Post.
+    """
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='ratings',
+        help_text="Post associated with this rating"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='ratings_given',
+        help_text="User who gave the rating"
+    )
+    value = models.PositiveSmallIntegerField(
+        help_text="Rating value between 1 and 5",
+        choices=[(i, i) for i in range(1, 6)]
+    )
+
+    class Meta:
+        db_table = 'ratings'
+        ordering = ['-created_at']
+        unique_together = ('post', 'user')
+
+    def __str__(self):
+        return f"Rating {self.value} Stars by User '{self.user.username}'"

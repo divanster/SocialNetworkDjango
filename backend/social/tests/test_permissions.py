@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
-from social.permissions import IsAuthorOrReadOnly
+from core.permissions import IsAuthorOrReadOnly
 from social.models import Post
 
 User = get_user_model()

@@ -4,48 +4,22 @@ from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 
-# Ensure that Django is set up before importing routing modules
+# Ensure that Django settings are properly set up before importing any routing modules
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-# Import routing modules from all apps after Django setup
-import messenger.routing
-import notifications.routing
-import comments.routing
-import follows.routing
-import reactions.routing
-import social.routing
-import users.routing
-import albums.routing
-import friends.routing
-import newsfeed.routing
-import pages.routing
-import stories.routing
-import tagging.routing
+# Import the centralized WebSocket routing module
+from websocket.routing import websocket_urlpatterns  # Updated import to centralized routing
 
-
-# Combine all WebSocket routing patterns
-websocket_urlpatterns = (
-    messenger.routing.websocket_urlpatterns +
-    notifications.routing.websocket_urlpatterns +
-    comments.routing.websocket_urlpatterns +
-    follows.routing.websocket_urlpatterns +
-    reactions.routing.websocket_urlpatterns +
-    social.routing.websocket_urlpatterns +
-    users.routing.websocket_urlpatterns +
-    albums.routing.websocket_urlpatterns +
-    friends.routing.websocket_urlpatterns +
-    newsfeed.routing.websocket_urlpatterns +
-    pages.routing.websocket_urlpatterns +
-    stories.routing.websocket_urlpatterns +
-    tagging.routing.websocket_urlpatterns
-)
-
+# Define the ASGI application that handles HTTP and WebSocket protocols
 application = ProtocolTypeRouter({
+    # HTTP requests will be handled using the default Django ASGI application
     "http": get_asgi_application(),
+
+    # WebSocket connections are handled through the centralized WebSocket routing
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            websocket_urlpatterns
+            websocket_urlpatterns  # Use centralized WebSocket routing
         )
     ),
 })

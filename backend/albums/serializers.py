@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from albums.models import Album, Photo  # Updated import path
+from albums.models import Album, Photo
 from tagging.serializers import TaggedItemSerializer
 from django.contrib.auth import get_user_model
+from core.choices import VisibilityChoices
 
 User = get_user_model()
 
@@ -16,11 +17,19 @@ class PhotoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Photo
-        fields = ['id', 'album', 'image', 'description', 'created_at', 'tags', 'tagged_user_ids']
-        read_only_fields = ['id', 'album', 'created_at', 'tags']
+        fields = ['id', 'album', 'image', 'description', 'created_at', 'tags',
+                  'tagged_user_ids']
+        read_only_fields = ['id', 'created_at', 'tags']
 
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
+        album = validated_data['album']
+
+        # Ensure the user can add photos to this album
+        if self.context['request'].user != album.user:
+            raise serializers.ValidationError(
+                "You do not have permission to add photos to this album.")
+
         photo = Photo.objects.create(**validated_data)
 
         # Create tagged items for the new photo
@@ -30,6 +39,12 @@ class PhotoSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
+
+        # Ensure the user can update this photo
+        if self.context['request'].user != instance.album.user:
+            raise serializers.ValidationError(
+                "You do not have permission to edit this photo.")
+
         photo = super().update(instance, validated_data)
 
         if tagged_user_ids is not None:
@@ -64,11 +79,13 @@ class AlbumSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    visibility = serializers.ChoiceField(choices=VisibilityChoices.choices)
 
     class Meta:
         model = Album
         fields = [
-            'id', 'user_id', 'title', 'description', 'created_at', 'updated_at',
+            'id', 'user_id', 'title', 'description', 'visibility', 'created_at',
+            'updated_at',
             'photos', 'photos_upload', 'tags', 'tagged_user_ids'
         ]
         read_only_fields = ['id', 'user_id', 'created_at', 'updated_at', 'tags']
@@ -94,6 +111,12 @@ class AlbumSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
         photos_data = validated_data.pop('photos_upload', [])
+
+        # Ensure the user can update this album
+        if self.context['request'].user != instance.user:
+            raise serializers.ValidationError(
+                "You do not have permission to edit this album.")
+
         album = super().update(instance, validated_data)
 
         if tagged_user_ids is not None:
@@ -121,7 +144,8 @@ class AlbumSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(photo_serializer.errors)
             elif not photo_id:
                 # Create new photo
-                photo_serializer = PhotoSerializer(data=photo_data, context=self.context)
+                photo_serializer = PhotoSerializer(data=photo_data,
+                                                   context=self.context)
                 if photo_serializer.is_valid():
                     photo_serializer.save(album=album)
                 else:
