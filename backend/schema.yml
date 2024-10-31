@@ -1,0 +1,4349 @@
+openapi: 3.0.3
+info:
+  title: Social Network APIs
+  version: 1.0.0
+  description: API documentation for the Social Network project.
+paths:
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/albums/albums/:
+    get:
+      operationId: v1_albums_albums_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlbumList'
+          description: ''
+    post:
+      operationId: v1_albums_albums_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlbumRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AlbumRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+          description: ''
+  /api/v1/albums/albums/{id}/:
+    get:
+      operationId: v1_albums_albums_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this album.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+          description: ''
+    put:
+      operationId: v1_albums_albums_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this album.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlbumRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AlbumRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+          description: ''
+    patch:
+      operationId: v1_albums_albums_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this album.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbumRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbumRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+          description: ''
+    delete:
+      operationId: v1_albums_albums_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this album.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/albums/photos/:
+    get:
+      operationId: v1_albums_photos_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPhotoList'
+          description: ''
+    post:
+      operationId: v1_albums_photos_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhotoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhotoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+          description: ''
+  /api/v1/albums/photos/{id}/:
+    get:
+      operationId: v1_albums_photos_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this photo.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+          description: ''
+    put:
+      operationId: v1_albums_photos_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this photo.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhotoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PhotoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+          description: ''
+    patch:
+      operationId: v1_albums_photos_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this photo.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPhotoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPhotoRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Photo'
+          description: ''
+    delete:
+      operationId: v1_albums_photos_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this photo.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/comments/comments/:
+    get:
+      operationId: v1_comments_comments_list
+      description: ViewSet for managing Comment CRUD operations.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCommentList'
+          description: ''
+    post:
+      operationId: v1_comments_comments_create
+      description: ViewSet for managing Comment CRUD operations.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+  /api/v1/comments/comments/{id}/:
+    get:
+      operationId: v1_comments_comments_retrieve
+      description: ViewSet for managing Comment CRUD operations.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this comment.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+    put:
+      operationId: v1_comments_comments_update
+      description: Custom update method to ensure the correct response and permission
+        handling.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this comment.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+    patch:
+      operationId: v1_comments_comments_partial_update
+      description: ViewSet for managing Comment CRUD operations.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this comment.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCommentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCommentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCommentRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+    delete:
+      operationId: v1_comments_comments_destroy
+      description: Custom destroy method to handle explicit responses when a comment
+        is not found.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this comment.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/follows/:
+    get:
+      operationId: v1_follows_list
+      description: ViewSet for managing Follow relationships between users.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFollowList'
+          description: ''
+    post:
+      operationId: v1_follows_create
+      description: ViewSet for managing Follow relationships between users.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FollowRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FollowRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FollowRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Follow'
+          description: ''
+  /api/v1/follows/{id}/:
+    get:
+      operationId: v1_follows_retrieve
+      description: ViewSet for managing Follow relationships between users.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Follow Relationship.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Follow'
+          description: ''
+    put:
+      operationId: v1_follows_update
+      description: ViewSet for managing Follow relationships between users.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Follow Relationship.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FollowRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FollowRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FollowRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Follow'
+          description: ''
+    patch:
+      operationId: v1_follows_partial_update
+      description: ViewSet for managing Follow relationships between users.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Follow Relationship.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFollowRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFollowRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFollowRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Follow'
+          description: ''
+    delete:
+      operationId: v1_follows_destroy
+      description: Custom destroy method to handle not found follow relationships
+        explicitly.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Follow Relationship.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/friends/friend-requests/:
+    get:
+      operationId: v1_friends_friend_requests_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFriendRequestList'
+          description: ''
+    post:
+      operationId: v1_friends_friend_requests_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendRequest'
+          description: ''
+  /api/v1/friends/friend-requests/{id}/:
+    get:
+      operationId: v1_friends_friend_requests_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Friend Request.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendRequest'
+          description: ''
+    put:
+      operationId: v1_friends_friend_requests_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Friend Request.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendRequest'
+          description: ''
+    patch:
+      operationId: v1_friends_friend_requests_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Friend Request.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendRequest'
+          description: ''
+    delete:
+      operationId: v1_friends_friend_requests_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Friend Request.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/friends/friendships/:
+    get:
+      operationId: v1_friends_friendships_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFriendshipList'
+          description: ''
+  /api/v1/friends/friendships/{id}/:
+    get:
+      operationId: v1_friends_friendships_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Friendship.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Friendship'
+          description: ''
+    delete:
+      operationId: v1_friends_friendships_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Friendship.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/friends/user-profiles/:
+    get:
+      operationId: v1_friends_user_profiles_list
+      description: ViewSet for managing user profiles.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserProfileList'
+          description: ''
+    post:
+      operationId: v1_friends_user_profiles_create
+      description: ViewSet for managing user profiles.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/friends/user-profiles/{id}/:
+    get:
+      operationId: v1_friends_user_profiles_retrieve
+      description: Retrieves a specific user profile by UUID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the user profile
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    put:
+      operationId: v1_friends_user_profiles_update
+      description: ViewSet for managing user profiles.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: v1_friends_user_profiles_partial_update
+      description: ViewSet for managing user profiles.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    delete:
+      operationId: v1_friends_user_profiles_destroy
+      description: ViewSet for managing user profiles.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/messenger/messages/:
+    get:
+      operationId: v1_messenger_messages_list
+      description: A viewset for viewing, creating, updating, and deleting Message
+        instances.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMessageList'
+          description: ''
+    post:
+      operationId: v1_messenger_messages_create
+      description: A viewset for viewing, creating, updating, and deleting Message
+        instances.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messenger/messages/{id}/:
+    get:
+      operationId: v1_messenger_messages_retrieve
+      description: Retrieve a specific message by its UUID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the message
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    put:
+      operationId: v1_messenger_messages_update
+      description: A viewset for viewing, creating, updating, and deleting Message
+        instances.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    patch:
+      operationId: v1_messenger_messages_partial_update
+      description: A viewset for viewing, creating, updating, and deleting Message
+        instances.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMessageRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    delete:
+      operationId: v1_messenger_messages_destroy
+      description: A viewset for viewing, creating, updating, and deleting Message
+        instances.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/messenger/messages/count/:
+    get:
+      operationId: v1_messenger_messages_count_retrieve
+      description: API View for getting the count of messages related to the authenticated
+        user.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesCount'
+          description: ''
+  /api/v1/newsfeed/:
+    get:
+      operationId: v1_newsfeed_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AggregatedFeed'
+          description: ''
+  /api/v1/notifications/notifications/{id}/:
+    get:
+      operationId: v1_notifications_notifications_retrieve
+      description: Returns a specific notification by its UUID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the notification
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/v1/notifications/notifications/{id}/mark_as_read/:
+    post:
+      operationId: v1_notifications_notifications_mark_as_read_create
+      description: Marks a specific notification as read.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the notification
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Notification marked as read.
+  /api/v1/notifications/notifications/count/:
+    get:
+      operationId: v1_notifications_notifications_count_retrieve
+      description: Returns the count of unread notifications.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationCount'
+          description: ''
+  /api/v1/notifications/notifications/mark_all_as_read/:
+    post:
+      operationId: v1_notifications_notifications_mark_all_as_read_create
+      description: Marks all unread notifications as read for the logged-in user.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotificationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: All unread notifications marked as read.
+  /api/v1/notifications/notifications/unread_count/:
+    get:
+      operationId: v1_notifications_notifications_unread_count_retrieve
+      description: Returns the count of unread notifications.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationCount'
+          description: ''
+  /api/v1/pages/:
+    get:
+      operationId: v1_pages_list
+      description: A ViewSet for viewing, editing, and deleting pages.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPageList'
+          description: ''
+    post:
+      operationId: v1_pages_create
+      description: A ViewSet for viewing, editing, and deleting pages.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+          description: ''
+  /api/v1/pages/{id}/:
+    get:
+      operationId: v1_pages_retrieve
+      description: A ViewSet for viewing, editing, and deleting pages.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this page.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+          description: ''
+    put:
+      operationId: v1_pages_update
+      description: A ViewSet for viewing, editing, and deleting pages.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this page.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+          description: ''
+    patch:
+      operationId: v1_pages_partial_update
+      description: A ViewSet for viewing, editing, and deleting pages.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this page.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPageRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+          description: ''
+    delete:
+      operationId: v1_pages_destroy
+      description: A ViewSet for viewing, editing, and deleting pages.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this page.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/pages/my_pages/:
+    get:
+      operationId: v1_pages_my_pages_retrieve
+      description: Custom action to get pages belonging to the currently authenticated
+        user.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+          description: ''
+  /api/v1/reactions/:
+    get:
+      operationId: v1_reactions_list
+      description: A viewset for viewing and editing Reaction instances.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReactionList'
+          description: ''
+    post:
+      operationId: v1_reactions_create
+      description: A viewset for viewing and editing Reaction instances.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReactionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReactionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReactionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
+          description: ''
+  /api/v1/reactions/{id}/:
+    get:
+      operationId: v1_reactions_retrieve
+      description: A viewset for viewing and editing Reaction instances.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this reaction.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reaction'
+          description: ''
+    delete:
+      operationId: v1_reactions_destroy
+      description: A viewset for viewing and editing Reaction instances.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this reaction.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/reactions/remove_reaction/:
+    delete:
+      operationId: v1_reactions_remove_reaction_destroy
+      description: Custom action to remove a reaction for the logged-in user.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/social/:
+    get:
+      operationId: v1_social_list
+      description: A viewset for viewing, creating, and managing posts.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPostList'
+          description: ''
+    post:
+      operationId: v1_social_create
+      description: A viewset for viewing, creating, and managing posts.
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+          description: ''
+  /api/v1/social/{id}/:
+    get:
+      operationId: v1_social_retrieve
+      description: A viewset for viewing, creating, and managing posts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this post.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+          description: ''
+    put:
+      operationId: v1_social_update
+      description: A viewset for viewing, creating, and managing posts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this post.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PostRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+          description: ''
+    patch:
+      operationId: v1_social_partial_update
+      description: A viewset for viewing, creating, and managing posts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this post.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPostRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPostRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+          description: ''
+    delete:
+      operationId: v1_social_destroy
+      description: A viewset for viewing, creating, and managing posts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this post.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/stories/:
+    get:
+      operationId: v1_stories_list
+      description: |-
+        A viewset for viewing, creating, and managing stories.
+        Stories can be visible to everyone (public), to friends of the author (friends-only),
+        or only to the author (private).
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStoryList'
+          description: ''
+    post:
+      operationId: v1_stories_create
+      description: |-
+        A viewset for viewing, creating, and managing stories.
+        Stories can be visible to everyone (public), to friends of the author (friends-only),
+        or only to the author (private).
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StoryRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Story'
+          description: ''
+  /api/v1/stories/{id}/:
+    get:
+      operationId: v1_stories_retrieve
+      description: |-
+        A viewset for viewing, creating, and managing stories.
+        Stories can be visible to everyone (public), to friends of the author (friends-only),
+        or only to the author (private).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this story.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Story'
+          description: ''
+    put:
+      operationId: v1_stories_update
+      description: |-
+        A viewset for viewing, creating, and managing stories.
+        Stories can be visible to everyone (public), to friends of the author (friends-only),
+        or only to the author (private).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this story.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StoryRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Story'
+          description: ''
+    patch:
+      operationId: v1_stories_partial_update
+      description: |-
+        A viewset for viewing, creating, and managing stories.
+        Stories can be visible to everyone (public), to friends of the author (friends-only),
+        or only to the author (private).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this story.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStoryRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Story'
+          description: ''
+    delete:
+      operationId: v1_stories_destroy
+      description: |-
+        A viewset for viewing, creating, and managing stories.
+        Stories can be visible to everyone (public), to friends of the author (friends-only),
+        or only to the author (private).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this story.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/tagging/:
+    get:
+      operationId: v1_tagging_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTaggedItemList'
+          description: ''
+    post:
+      operationId: v1_tagging_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaggedItemRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaggedItemRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaggedItemRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaggedItem'
+          description: ''
+  /api/v1/tagging/{id}/:
+    get:
+      operationId: v1_tagging_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tagged Item.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaggedItem'
+          description: ''
+    put:
+      operationId: v1_tagging_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tagged Item.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaggedItemRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaggedItemRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaggedItemRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaggedItem'
+          description: ''
+    patch:
+      operationId: v1_tagging_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tagged Item.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaggedItemRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaggedItemRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaggedItemRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaggedItem'
+          description: ''
+    delete:
+      operationId: v1_tagging_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tagged Item.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/token/:
+    post:
+      operationId: v1_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/token/blacklist/:
+    post:
+      operationId: v1_token_blacklist_create
+      description: |-
+        Takes a token and blacklists it. Must be used with the
+        `rest_framework_simplejwt.token_blacklist` app installed.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/token/refresh/:
+    post:
+      operationId: v1_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/users/:
+    get:
+      operationId: v1_users_list
+      description: ViewSet for managing custom user data.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomUserList'
+          description: ''
+    post:
+      operationId: v1_users_create
+      description: ViewSet for managing custom user data.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: v1_users_retrieve
+      description: Retrieves a specific user by UUID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this custom user.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the user
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+    put:
+      operationId: v1_users_update
+      description: ViewSet for managing custom user data.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this custom user.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+    patch:
+      operationId: v1_users_partial_update
+      description: ViewSet for managing custom user data.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this custom user.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomUserRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+    delete:
+      operationId: v1_users_destroy
+      description: ViewSet for managing custom user data.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this custom user.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/jwt/jwt/create/:
+    post:
+      operationId: v1_users_jwt_jwt_create_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/users/jwt/jwt/refresh/:
+    post:
+      operationId: v1_users_jwt_jwt_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/users/jwt/jwt/verify/:
+    post:
+      operationId: v1_users_jwt_jwt_verify_create
+      description: |-
+        Takes a token and indicates if it is valid.  This view provides no
+        information about a token's fitness for a particular use.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/me/:
+    get:
+      operationId: v1_users_me_retrieve
+      description: |-
+        Handles the `me` endpoint for the authenticated user.
+        Supports `GET`, `PUT`, and `PATCH` methods.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+    put:
+      operationId: v1_users_me_update
+      description: |-
+        Handles the `me` endpoint for the authenticated user.
+        Supports `GET`, `PUT`, and `PATCH` methods.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+    patch:
+      operationId: v1_users_me_partial_update
+      description: |-
+        Handles the `me` endpoint for the authenticated user.
+        Supports `GET`, `PUT`, and `PATCH` methods.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomUserRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+  /api/v1/users/profile/:
+    get:
+      operationId: v1_users_profile_list
+      description: ViewSet for managing user profiles.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserProfileList'
+          description: ''
+    post:
+      operationId: v1_users_profile_create
+      description: ViewSet for managing user profiles.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/users/profile/{id}/:
+    get:
+      operationId: v1_users_profile_retrieve
+      description: Retrieves a specific user profile by UUID.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: string
+          format: uuid
+        description: UUID of the user profile
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    put:
+      operationId: v1_users_profile_update
+      description: ViewSet for managing user profiles.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: v1_users_profile_partial_update
+      description: ViewSet for managing user profiles.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    delete:
+      operationId: v1_users_profile_destroy
+      description: ViewSet for managing user profiles.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/signup/:
+    post:
+      operationId: v1_users_signup_create
+      description: API view for signing up new users.
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomUserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomUser'
+          description: ''
+components:
+  schemas:
+    AggregatedFeed:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reaction'
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/Album'
+        stories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Story'
+        tagged_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaggedItem'
+        friend_requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/FriendRequest'
+        friendships:
+          type: array
+          items:
+            $ref: '#/components/schemas/Friendship'
+      required:
+      - albums
+      - comments
+      - friend_requests
+      - friendships
+      - posts
+      - reactions
+      - stories
+      - tagged_items
+    Album:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: integer
+          description: User who owns the album
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaggedItem'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - photos
+      - tags
+      - title
+      - updated_at
+      - user_id
+      - visibility
+    AlbumRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        photos_upload:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhotoRequest'
+          writeOnly: true
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+      required:
+      - title
+      - visibility
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/CustomUser'
+          readOnly: true
+        content:
+          type: string
+          description: Content of the comment
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaggedItem'
+          readOnly: true
+      required:
+      - content
+      - content_type
+      - created_at
+      - id
+      - object_id
+      - tags
+      - updated_at
+      - user
+    CommentRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          description: Content of the comment
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: List of user UUIDs to tag in the comment.
+      required:
+      - content
+      - content_type
+      - object_id
+    CustomUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        username:
+          type: string
+          maxLength: 150
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+      required:
+      - email
+      - id
+      - username
+    CustomUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password2:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Confirm Password
+        profile:
+          $ref: '#/components/schemas/UserProfileRequest'
+      required:
+      - email
+      - username
+    EmojiEnum:
+      enum:
+      - like
+      - love
+      - haha
+      - wow
+      - sad
+      - angry
+      type: string
+    Follow:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        follower:
+          type: integer
+        followed:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - followed
+      - follower
+      - id
+    FollowRequest:
+      type: object
+      properties:
+        follower:
+          type: integer
+        followed:
+          type: integer
+      required:
+      - followed
+      - follower
+    FriendRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        sender_id:
+          type: integer
+          readOnly: true
+        receiver_id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - receiver_id
+      - sender_id
+      - status
+    Friendship:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user1_id:
+          type: integer
+          readOnly: true
+        user2_id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - user1_id
+      - user2_id
+    GenderEnum:
+      enum:
+      - M
+      - F
+      - N
+      type: string
+    MediaTypeEnum:
+      enum:
+      - image
+      - video
+      - text
+      type: string
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sender:
+          type: integer
+          readOnly: true
+          description: User who sent the message
+        receiver:
+          type: integer
+          description: User who received the message
+        sender_name:
+          type: string
+          readOnly: true
+        receiver_name:
+          type: string
+          readOnly: true
+        content:
+          type: string
+          description: Content of the message
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_read:
+          type: boolean
+          description: Indicates whether the message has been read
+      required:
+      - content
+      - created_at
+      - id
+      - receiver
+      - receiver_name
+      - sender
+      - sender_name
+    MessageRequest:
+      type: object
+      properties:
+        receiver:
+          type: integer
+          description: User who received the message
+        content:
+          type: string
+          minLength: 1
+          description: Content of the message
+        is_read:
+          type: boolean
+          description: Indicates whether the message has been read
+      required:
+      - content
+      - receiver
+    MessagesCount:
+      type: object
+      description: Serializer for counting the number of messages.
+      properties:
+        count:
+          type: integer
+      required:
+      - count
+    Notification:
+      type: object
+      description: |-
+        Serializer for the Notification model.
+        Converts Django ORM model fields into a format suitable for JSON APIs.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sender_id:
+          type: integer
+          description: User sending the notification
+          readOnly: true
+        sender_username:
+          type: string
+          readOnly: true
+        receiver_id:
+          type: integer
+          description: User receiving the notification
+          readOnly: true
+        receiver_username:
+          type: string
+          readOnly: true
+        notification_type:
+          $ref: '#/components/schemas/NotificationTypeEnum'
+        text:
+          type: string
+          description: Additional text for the notification
+        is_read:
+          type: boolean
+          description: Indicates whether the notification has been read
+        content_type:
+          type: integer
+          nullable: true
+          description: Content type of the related object
+        object_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the related object
+        content_object_url:
+          type: string
+          format: uri
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_object_url
+      - created_at
+      - id
+      - notification_type
+      - receiver_id
+      - receiver_username
+      - sender_id
+      - sender_username
+    NotificationCount:
+      type: object
+      description: |-
+        Serializer for notification count.
+        Used to serialize the count of unread notifications for the user.
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          description: The number of unread notifications.
+      required:
+      - count
+    NotificationRequest:
+      type: object
+      description: |-
+        Serializer for the Notification model.
+        Converts Django ORM model fields into a format suitable for JSON APIs.
+      properties:
+        notification_type:
+          $ref: '#/components/schemas/NotificationTypeEnum'
+        text:
+          type: string
+          description: Additional text for the notification
+        is_read:
+          type: boolean
+          description: Indicates whether the notification has been read
+        content_type:
+          type: integer
+          nullable: true
+          description: Content type of the related object
+        object_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the related object
+      required:
+      - notification_type
+    NotificationTypeEnum:
+      enum:
+      - like
+      - comment
+      - follow
+      - tag
+      - friend_request
+      - message
+      - reaction
+      - accepted_request
+      - post
+      - update
+      type: string
+    Page:
+      type: object
+      description: |-
+        Serializer for the Page model.
+        It handles conversion from Python objects (Django model instances)
+        to JSON format suitable for use in APIs, and vice versa.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: User who created the page
+        user_username:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          description: Title of the page
+          maxLength: 255
+        content:
+          type: string
+          description: Content of the page
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - title
+      - updated_at
+      - user
+      - user_username
+    PageRequest:
+      type: object
+      description: |-
+        Serializer for the Page model.
+        It handles conversion from Python objects (Django model instances)
+        to JSON format suitable for use in APIs, and vice versa.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          description: Title of the page
+          maxLength: 255
+        content:
+          type: string
+          description: Content of the page
+      required:
+      - title
+    PaginatedAlbumList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Album'
+    PaginatedCommentList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+    PaginatedCustomUserList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomUser'
+    PaginatedFollowList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Follow'
+    PaginatedFriendRequestList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FriendRequest'
+    PaginatedFriendshipList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Friendship'
+    PaginatedMessageList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+    PaginatedPageList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Page'
+    PaginatedPhotoList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+    PaginatedPostList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+    PaginatedReactionList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reaction'
+    PaginatedStoryList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Story'
+    PaginatedTaggedItemList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaggedItem'
+    PaginatedUserProfileList:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+    PatchedAlbumRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        photos_upload:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhotoRequest'
+          writeOnly: true
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+    PatchedCommentRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          description: Content of the comment
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+          description: List of user UUIDs to tag in the comment.
+    PatchedCustomUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password2:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Confirm Password
+        profile:
+          $ref: '#/components/schemas/UserProfileRequest'
+    PatchedFollowRequest:
+      type: object
+      properties:
+        follower:
+          type: integer
+        followed:
+          type: integer
+    PatchedMessageRequest:
+      type: object
+      properties:
+        receiver:
+          type: integer
+          description: User who received the message
+        content:
+          type: string
+          minLength: 1
+          description: Content of the message
+        is_read:
+          type: boolean
+          description: Indicates whether the message has been read
+    PatchedPageRequest:
+      type: object
+      description: |-
+        Serializer for the Page model.
+        It handles conversion from Python objects (Django model instances)
+        to JSON format suitable for use in APIs, and vice versa.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          description: Title of the page
+          maxLength: 255
+        content:
+          type: string
+          description: Content of the page
+    PatchedPhotoRequest:
+      type: object
+      properties:
+        album:
+          type: string
+          format: uuid
+          description: Album to which this photo belongs
+        image:
+          type: string
+          format: binary
+        description:
+          type: string
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+    PatchedPostRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          description: Title of the post
+          maxLength: 255
+        content:
+          type: string
+          nullable: true
+          description: Content of the post
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          description: Visibility of the post
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+    PatchedStoryRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          nullable: true
+          description: Text content of the story. Can be short and engaging.
+        media_type:
+          allOf:
+          - $ref: '#/components/schemas/MediaTypeEnum'
+          description: Type of media content
+        media_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL of the media associated with the story
+          maxLength: 200
+        tagged_user_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
+          description: IDs of users to tag in the story
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          description: Story visibility setting
+    PatchedTaggedItemRequest:
+      type: object
+      properties:
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+    PatchedUserProfileRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 30
+        last_name:
+          type: string
+          maxLength: 30
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        profile_picture:
+          type: string
+          format: binary
+          nullable: true
+        bio:
+          type: string
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        town:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        relationship_status:
+          $ref: '#/components/schemas/RelationshipStatusEnum'
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+    Photo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        album:
+          type: string
+          format: uuid
+          description: Album to which this photo belongs
+        image:
+          type: string
+          format: uri
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaggedItem'
+          readOnly: true
+      required:
+      - album
+      - created_at
+      - id
+      - image
+      - tags
+    PhotoRequest:
+      type: object
+      properties:
+        album:
+          type: string
+          format: uuid
+          description: Album to which this photo belongs
+        image:
+          type: string
+          format: binary
+        description:
+          type: string
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+      required:
+      - album
+      - image
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          description: Title of the post
+          maxLength: 255
+        content:
+          type: string
+          nullable: true
+          description: Content of the post
+        author:
+          type: integer
+          readOnly: true
+          description: Author of the post
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          description: Visibility of the post
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        tags:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
+      required:
+      - author
+      - created_at
+      - id
+      - tags
+      - title
+      - updated_at
+    PostRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          description: Title of the post
+          maxLength: 255
+        content:
+          type: string
+          nullable: true
+          description: Content of the post
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          description: Visibility of the post
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+      required:
+      - title
+    Reaction:
+      type: object
+      description: |-
+        Serializer for the Reaction model.
+        Handles serialization and deserialization of data for creating, updating,
+        and displaying reactions.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: User who reacted
+        user_username:
+          type: string
+          readOnly: true
+        object_id:
+          type: string
+        emoji:
+          allOf:
+          - $ref: '#/components/schemas/EmojiEnum'
+          description: Emoji used for the reaction
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - object_id
+      - user
+      - user_username
+    ReactionRequest:
+      type: object
+      description: |-
+        Serializer for the Reaction model.
+        Handles serialization and deserialization of data for creating, updating,
+        and displaying reactions.
+      properties:
+        content_type:
+          type: string
+          writeOnly: true
+          minLength: 1
+        object_id:
+          type: string
+          minLength: 1
+        emoji:
+          allOf:
+          - $ref: '#/components/schemas/EmojiEnum'
+          description: Emoji used for the reaction
+      required:
+      - content_type
+      - object_id
+    RelationshipStatusEnum:
+      enum:
+      - S
+      - M
+      - D
+      - W
+      - P
+      - C
+      type: string
+    StatusEnum:
+      enum:
+      - pending
+      - accepted
+      - rejected
+      type: string
+    Story:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: User who created the story
+        user_name:
+          type: string
+          readOnly: true
+          description: Username of the story author
+        content:
+          type: string
+          nullable: true
+          description: Text content of the story. Can be short and engaging.
+        media_type:
+          allOf:
+          - $ref: '#/components/schemas/MediaTypeEnum'
+          description: Type of media content
+        media_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL of the media associated with the story
+          maxLength: 200
+        is_active:
+          type: boolean
+          readOnly: true
+          description: Indicates whether the story is active (visible to others)
+        viewed_by:
+          type: array
+          items:
+            type: integer
+          readOnly: true
+          description: Users who have viewed the story
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        tags:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          description: Story visibility setting
+      required:
+      - created_at
+      - id
+      - is_active
+      - tags
+      - updated_at
+      - user
+      - user_name
+      - viewed_by
+    StoryRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          nullable: true
+          description: Text content of the story. Can be short and engaging.
+        media_type:
+          allOf:
+          - $ref: '#/components/schemas/MediaTypeEnum'
+          description: Type of media content
+        media_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL of the media associated with the story
+          maxLength: 200
+        tagged_user_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
+          description: IDs of users to tag in the story
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          description: Story visibility setting
+    TaggedItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tagged_user:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        tagged_by:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+        content_object:
+          type: string
+          readOnly: true
+      required:
+      - content_object
+      - content_type
+      - id
+      - object_id
+      - tagged_by
+      - tagged_user
+    TaggedItemRequest:
+      type: object
+      properties:
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          format: uuid
+      required:
+      - content_type
+      - object_id
+    TokenBlacklistRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    TokenVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - token
+    UserProfile:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 30
+        last_name:
+          type: string
+          maxLength: 30
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        profile_picture:
+          type: string
+          format: uri
+          nullable: true
+        bio:
+          type: string
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        town:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        relationship_status:
+          $ref: '#/components/schemas/RelationshipStatusEnum'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaggedItem'
+          readOnly: true
+      required:
+      - tags
+    UserProfileRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 30
+        last_name:
+          type: string
+          maxLength: 30
+        gender:
+          $ref: '#/components/schemas/GenderEnum'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        profile_picture:
+          type: string
+          format: binary
+          nullable: true
+        bio:
+          type: string
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        town:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        relationship_status:
+          $ref: '#/components/schemas/RelationshipStatusEnum'
+        tagged_user_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          writeOnly: true
+    VisibilityEnum:
+      enum:
+      - public
+      - friends
+      - private
+      type: string
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -1,8 +1,7 @@
-# backend/reactions/serializers.py
-
 from rest_framework import serializers
 from .models import Reaction
 from django.contrib.contenttypes.models import ContentType
+from drf_spectacular.utils import extend_schema_field
 
 
 class ReactionSerializer(serializers.ModelSerializer):
@@ -14,12 +13,16 @@ class ReactionSerializer(serializers.ModelSerializer):
     # Represent content_type as a string instead of ContentType instance
     content_type = serializers.CharField(write_only=True)
     object_id = serializers.CharField()
+    user_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Reaction
-        fields = ['id', 'user_id', 'user_username', 'content_type', 'object_id',
-                  'emoji', 'created_at']
-        read_only_fields = ['id', 'user_id', 'user_username', 'created_at']
+        fields = ['id', 'user', 'user_username', 'content_type', 'object_id', 'emoji', 'created_at']
+        read_only_fields = ['id', 'user', 'user_username', 'created_at']
+
+    @extend_schema_field(serializers.CharField)
+    def get_user_username(self, obj):
+        return obj.user.username
 
     def validate_content_type(self, value):
         """

@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import Comment
 from tagging.serializers import TaggedItemSerializer
 from django.contrib.auth import get_user_model
-
+from drf_spectacular.utils import extend_schema_field
+from users.serializers import CustomUserSerializer
 User = get_user_model()
 
 
@@ -15,14 +16,20 @@ class CommentSerializer(serializers.ModelSerializer):
         required=False,
         help_text="List of user UUIDs to tag in the comment."
     )
+    user = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
         fields = [
-            'id', 'user', 'post_id', 'content', 'created_at', 'updated_at', 'tags',
+            'id', 'user', 'content', 'content_type', 'object_id', 'created_at',
+            'updated_at', 'tags',
             'tagged_user_ids'
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'tags']
+
+    @extend_schema_field(CustomUserSerializer)  # Adding the schema field annotation
+    def get_user(self, obj) -> dict:
+        return CustomUserSerializer(obj.user).data
 
     def create(self, validated_data):
         # Extract `tagged_user_ids` from the validated data

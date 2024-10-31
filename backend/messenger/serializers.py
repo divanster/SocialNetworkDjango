@@ -4,7 +4,6 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-
 class MessageSerializer(serializers.ModelSerializer):
     # Use related field to directly reference usernames
     sender_name = serializers.StringRelatedField(source='sender', read_only=True)
@@ -17,7 +16,7 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'sender', 'sender_name', 'receiver_name', 'created_at']
 
 
-class MessageCountSerializer(serializers.Serializer):
+class MessagesCountSerializer(serializers.Serializer):
     """
     Serializer for counting the number of messages.
     """

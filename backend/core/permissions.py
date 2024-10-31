@@ -1,9 +1,16 @@
 # backend/social/permissions.py
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
 
 
-class IsAuthorOrReadOnly(BasePermission):
+class IsAuthorOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to only allow authors of an object to edit or delete it.
+    """
+
     def has_object_permission(self, request, view, obj):
-        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        # Read-only permissions are allowed for any request
+        if request.method in permissions.SAFE_METHODS:
             return True
-        return obj.author == request.user
+
+        # Write permissions are only allowed to the author of the story
+        return obj.user == request.user

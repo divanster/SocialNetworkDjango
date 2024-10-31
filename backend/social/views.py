@@ -1,7 +1,7 @@
-# backend/social/views.py
 from core.choices import VisibilityChoices
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Post
 from .serializers import PostSerializer
 from .tasks import process_new_post  # Import the Celery task
@@ -11,10 +11,6 @@ from core.permissions import IsAuthorOrReadOnly
 class PostViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing, creating, and managing posts.
-    The posts are filtered based on their visibility:
-    - Public posts can be seen by everyone.
-    - Friend-only posts can be seen by the author's friends.
-    - Private posts can only be seen by the author.
     """
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
@@ -31,9 +27,11 @@ class PostViewSet(viewsets.ModelViewSet):
             return Post.objects.visible_to_user(user).order_by('-created_at')
         else:
             # If the user is not authenticated, they can only see public posts
-            return Post.objects.filter(visibility=VisibilityChoices.PUBLIC).order_by(
-                '-created_at')
+            return Post.objects.filter(visibility=VisibilityChoices.PUBLIC).order_by('-created_at')
 
+    @extend_schema(
+        responses=PostSerializer
+    )
     def perform_create(self, serializer):
         """
         Save the post with the author set to the current user,
@@ -41,8 +39,14 @@ class PostViewSet(viewsets.ModelViewSet):
         """
         post = serializer.save(author=self.request.user)
         # Trigger the Celery task after the post is created
-        process_new_post.delay(post.id)  # Execute the task asynchronously
+        process_new_post.delay(post.id)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("pk", type=int, description="ID of the post")
+        ],
+        responses=PostSerializer
+    )
     def perform_update(self, serializer):
         """
         Update the post and handle authorization to make sure
@@ -55,6 +59,12 @@ class PostViewSet(viewsets.ModelViewSet):
 
         serializer.save()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("pk", type=int, description="ID of the post")
+        ],
+        responses={"204": "Post deleted successfully."}
+    )
     def perform_destroy(self, instance):
         """
         Delete the post and ensure that only the author can delete their post.

@@ -1,5 +1,3 @@
-# notifications/models.py
-
 from django.db import models
 from django.contrib.auth import get_user_model
 from core.models.base_models import UUIDModel, BaseModel
@@ -7,7 +5,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 User = get_user_model()
-
 
 class Notification(UUIDModel, BaseModel):
     """
@@ -82,9 +79,3 @@ class Notification(UUIDModel, BaseModel):
         if not self.is_read:
             self.is_read = True
             self.save()
-
-    def get_content_object_url(self):
-        if self.content_object:
-            # Assuming each content object has a `get_absolute_url` method
-            return self.content_object.get_absolute_url()
-        return None

@@ -2,7 +2,6 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .models import TaggedItem
 
-
 class TaggedItemSerializer(serializers.ModelSerializer):
     tagged_user = serializers.SerializerMethodField()
     tagged_by = serializers.SerializerMethodField()
@@ -24,5 +23,5 @@ class TaggedItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TaggedItem
-        fields = ['id', 'tagged_user', 'tagged_by', 'content_type', 'object_id',
-                  'content_object', 'timestamp']
+        fields = ['id', 'tagged_user', 'tagged_by', 'content_type', 'object_id', 'content_object']
+        # Removed 'timestamp' from fields list since it is not in the model

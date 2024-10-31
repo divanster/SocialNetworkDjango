@@ -1,11 +1,8 @@
-# messenger/models.py
-
 from django.db import models
 from django.contrib.auth import get_user_model
 from core.models.base_models import UUIDModel, BaseModel
 
 User = get_user_model()
-
 
 class Message(UUIDModel, BaseModel):
     """

@@ -1,11 +1,11 @@
-# backend/stories/views.py
-from datetime import datetime
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Story
 from .serializers import StorySerializer
 from core.permissions import IsAuthorOrReadOnly  # Use globally available permission
+import logging
 
+logger = logging.getLogger(__name__)
 
 class StoryViewSet(viewsets.ModelViewSet):
     """
@@ -31,26 +31,20 @@ class StoryViewSet(viewsets.ModelViewSet):
         """
         Save the story with the author set to the current user.
         """
-        serializer.save(user=self.request.user, created_at=datetime.now())
+        serializer.save(user=self.request.user)
+        logger.info(f"Story created by user {self.request.user.username} with ID {serializer.instance.id}")
 
     def perform_update(self, serializer):
         """
-        Update the story and handle authorization to make sure
-        that only the author can edit their story.
+        Update the story instance.
         """
-        story = self.get_object()
-        if story.user != self.request.user:
-            raise permissions.PermissionDenied(
-                "You do not have permission to edit this story.")
-
         serializer.save()
+        logger.info(f"Story updated by user {self.request.user.username} with ID {serializer.instance.id}")
 
     def perform_destroy(self, instance):
         """
-        Delete the story and ensure that only the author can delete their story.
+        Delete the story instance.
         """
-        if instance.user != self.request.user:
-            raise permissions.PermissionDenied(
-                "You do not have permission to delete this story.")
-
         instance.delete()
+        logger.info(f"Story deleted by user {self.request.user.username} with ID {instance.id}")
+

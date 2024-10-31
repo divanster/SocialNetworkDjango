@@ -90,8 +90,8 @@ INSTALLED_APPS = [
     'kafka_app.apps.KafkaAppConfig',
 ]
 
-if DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
+# if DEBUG:
+#     INSTALLED_APPS += ['debug_toolbar']
 
 # Middleware configuration
 MIDDLEWARE = [
@@ -107,8 +107,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-if DEBUG:
-    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+# if DEBUG:
+#     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 # Root URL configuration
 ROOT_URLCONF = 'config.urls'
@@ -194,7 +194,9 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': (),
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication'
+                                       '.JWTAuthentication',
+                                       ),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.AllowAny',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -250,7 +252,7 @@ SPECTACULAR_SETTINGS = {
             },
         },
     },
-    'EXCLUDE_PATHS': ['/api/v1/complex-view/', '/api/v1/problematic-view/'],
+    'EXCLUDE_PATHS': [],
 }
 
 # CORS settings to allow frontend origins
@@ -277,7 +279,7 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULE = {
     'consume-user-events-every-5-seconds': {
         'task': 'kafka_app.tasks.start_central_kafka_consumer',
-        'schedule': 5.0,
+        'schedule': 30.0,
     },
 }
 

@@ -1,5 +1,3 @@
-# stories/models.py
-
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
@@ -8,6 +6,7 @@ from tagging.models import TaggedItem
 from core.choices import VisibilityChoices  # Import visibility choices
 
 User = get_user_model()
+
 
 def get_friends(user):
     from friends.models import Friendship
@@ -21,12 +20,14 @@ def get_friends(user):
     friend_ids.discard(user.id)
     return User.objects.filter(id__in=friend_ids)
 
+
 class StoryQuerySet(models.QuerySet):
     def visible_to_user(self, user):
         if user.is_anonymous:
             return self.filter(visibility=VisibilityChoices.PUBLIC, is_active=True)
         else:
-            public_stories = self.filter(visibility=VisibilityChoices.PUBLIC, is_active=True)
+            public_stories = self.filter(visibility=VisibilityChoices.PUBLIC,
+                                         is_active=True)
             friends_stories = self.filter(
                 visibility=VisibilityChoices.FRIENDS,
                 user__in=get_friends(user),
@@ -35,6 +36,7 @@ class StoryQuerySet(models.QuerySet):
             own_stories = self.filter(user=user)
             return public_stories | friends_stories | own_stories
 
+
 class StoryManager(models.Manager):
     def get_queryset(self):
         return StoryQuerySet(self.model, using=self._db)
@@ -42,10 +44,8 @@ class StoryManager(models.Manager):
     def visible_to_user(self, user):
         return self.get_queryset().visible_to_user(user)
 
+
 class Story(UUIDModel, BaseModel):
-    """
-    Represents a user's story with visibility settings.
-    """
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
