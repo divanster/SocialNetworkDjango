@@ -1,11 +1,10 @@
 # backend/kafka_app/consumer.py
-
 import os
 import logging
 import json
+from datetime import time
+
 from kafka.errors import KafkaError
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 
 # Set up Django settings (this MUST be done before importing any Django models or services)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
@@ -22,7 +21,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import BaseKafkaConsumer to avoid code duplication
-from .base_consumer import BaseKafkaConsumer
+from kafka_app.base_consumer import BaseKafkaConsumer
+
+# Now import the services and models after setting up Django
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from albums.services import process_album_event
+
 
 # Now import the services and models after setting up Django
 from albums.services import process_album_event
@@ -74,28 +79,34 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         }
 
     def consume_messages(self):
-        """
-        Consume messages from Kafka topics.
-        """
-        try:
-            logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
-            for message in self.consumer:
-                # Close old connections to prevent database issues with long-running tasks
-                close_old_connections()
+        while True:
+            try:
+                logger.info(
+                    f"Started consuming messages from topics: {', '.join(self.topics)}")
+                for message in self.consumer:
+                    close_old_connections()
 
-                try:
-                    logger.info(f"Received message: {message.value}")
-                    message_data = json.loads(message.value)
-                    self.process_message(message_data)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to decode JSON message: {e}")
-                except Exception as e:
-                    logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
-        except KafkaError as e:
-            logger.error(f"Kafka consumer error: {e}", exc_info=True)
-        finally:
-            self.consumer.close()
-            logger.info("Kafka consumer closed.")
+                    if not message.value:
+                        logger.warning(
+                            f"Received an empty message from topic {message.topic}, skipping.")
+                        continue
+
+                    try:
+                        logger.info(f"Received message: {message.value}")
+                        message_data = message.value
+                        self.process_message(message_data)
+                    except Exception as e:
+                        logger.error(f"Failed to process message {message.value}: {e}",
+                                     exc_info=True)
+            except KafkaError as e:
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
+                             exc_info=True)
+                time.sleep(10)
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}", exc_info=True)
+                time.sleep(10)
+            finally:
+                self.close()
 
     def process_message(self, message):
         """

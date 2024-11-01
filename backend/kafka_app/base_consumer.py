@@ -5,17 +5,21 @@ import time
 import logging
 import json
 import django
-from kafka.errors import KafkaError
+from kafka.errors import KafkaError, NoBrokersAvailable, KafkaTimeoutError
 from kafka import KafkaConsumer
 from django.conf import settings
 from django.db import close_old_connections
 
+# Setting up the logger for the consumer
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 class BaseKafkaConsumer:
     def __init__(self, topics, group_id):
         """
         Initialize the Base Kafka Consumer with topic and group ID.
+
         Args:
             topics (list[str]): List of topics to subscribe to.
             group_id (str): Kafka consumer group ID.
@@ -31,7 +35,8 @@ class BaseKafkaConsumer:
         Set up the Django environment. Required to access Django services and models.
         """
         try:
-            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+            if not os.getenv('DJANGO_SETTINGS_MODULE'):
+                os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
             django.setup()
             logger.info("Django setup completed successfully.")
         except Exception as e:
@@ -45,6 +50,7 @@ class BaseKafkaConsumer:
         """
         retries = 0
         max_retries = getattr(settings, 'KAFKA_MAX_RETRIES', 5)
+        wait_time = 5  # Seconds to wait between retries
 
         while retries < max_retries or max_retries == -1:
             try:
@@ -54,41 +60,59 @@ class BaseKafkaConsumer:
                     group_id=self.group_id,
                     auto_offset_reset='earliest',
                     enable_auto_commit=True,
-                    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+                    value_deserializer=lambda x: json.loads(x.decode('utf-8')) if x else None,
+                    session_timeout_ms=60000,
+                    heartbeat_interval_ms=10000,
+                    max_poll_interval_ms=300000
                 )
                 logger.info(f"Connected to Kafka topics: {', '.join(self.topics)}")
                 return consumer
-            except KafkaError as e:
-                logger.error(f"Failed to connect to Kafka: {e}. Retrying in 5 seconds...")
+            except (NoBrokersAvailable, KafkaTimeoutError, KafkaError) as e:
+                logger.error(
+                    f"Failed to connect to Kafka: {e}. Retrying in {wait_time} seconds... ({retries}/{max_retries})"
+                )
                 retries += 1
-                time.sleep(5)
+                time.sleep(wait_time)
 
         logger.error("Max retries exceeded. Could not connect to Kafka.")
         raise RuntimeError("Unable to connect to Kafka broker.")
 
     def consume_messages(self):
-        """
-        Consume messages from Kafka topics.
-        """
-        try:
-            logger.info(f"Starting to consume messages from topics: {', '.join(self.topics)}")
-            for message in self.consumer:
-                # Close old DB connections to prevent issues with long-running consumers
-                close_old_connections()
+        while True:
+            try:
+                logger.info(
+                    f"Started consuming messages from topics: {', '.join(self.topics)}")
+                for message in self.consumer:
+                    close_old_connections()
 
-                logger.info(f"Received message from topic {message.topic}: {message.value}")
-                try:
-                    self.process_message(message.value)
-                except Exception as e:
-                    logger.error(f"Failed to process message: {e}", exc_info=True)
-        except KafkaError as e:
-            logger.error(f"Kafka consumer error: {e}", exc_info=True)
-        finally:
-            self.close()
+                    if not message.value:
+                        logger.warning(
+                            f"Received an empty message from topic {message.topic}, skipping.")
+                        continue
+
+                    try:
+                        logger.info(f"Received message: {message.value}")
+                        message_data = json.loads(message.value)
+                        self.process_message(message_data)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to decode JSON message: {e}")
+                    except Exception as e:
+                        logger.error(f"Failed to process message {message.value}: {e}",
+                                     exc_info=True)
+
+            except KafkaError as e:
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
+                             exc_info=True)
+                time.sleep(10)
+            finally:
+                self.close()
 
     def process_message(self, message):
         """
         Placeholder for processing messages. Must be implemented by subclasses.
+
+        Args:
+            message (dict): The message to process.
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
@@ -98,5 +122,9 @@ class BaseKafkaConsumer:
         """
         if self.consumer:
             logger.info("Closing Kafka consumer...")
-            self.consumer.close()
-            logger.info("Kafka consumer closed.")
+            try:
+                self.consumer.close()
+                logger.info("Kafka consumer closed.")
+            except KafkaError as e:
+                logger.error(f"Error occurred while closing the Kafka consumer: {e}",
+                             exc_info=True)

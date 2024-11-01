@@ -1,3 +1,5 @@
+# backend/config/settings.py
+
 import os
 import sys
 from pathlib import Path
@@ -21,20 +23,21 @@ if not SECRET_KEY:
 DEBUG = env.bool('DEBUG', default=False)
 
 # List of allowed hosts that can make requests to this Django instance
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'web', 'backend'])
 
 # =====================
 # Kafka Configuration
 # =====================
 
 # Kafka broker URL for event-driven architecture
-KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='localhost:9092')
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='main_consumer_group')
+KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='centralized_consumer_group')
 
 # Kafka topics for different events parsed from a comma-separated list
 KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
 KAFKA_TOPICS = dict(
-    item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item)
+    item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item
+)
 
 # =====================
 # Authentication Backends
@@ -88,10 +91,8 @@ INSTALLED_APPS = [
     'pages.apps.PagesConfig',
     'social.apps.SocialConfig',
     'kafka_app.apps.KafkaAppConfig',
+    'websocket',  # WebSocket-related app
 ]
-
-# if DEBUG:
-#     INSTALLED_APPS += ['debug_toolbar']
 
 # Middleware configuration
 MIDDLEWARE = [
@@ -107,9 +108,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# if DEBUG:
-#     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
-
 # Root URL configuration
 ROOT_URLCONF = 'config.urls'
 
@@ -117,12 +115,12 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # List of directories to search for templates
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],  # Ensure templates directory is included
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',
+                'django.template.context_processors.request',  # Required by DRF and django-admin
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -139,8 +137,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(env('REDIS_HOST', default='redis'),
-                       env.int('REDIS_PORT', default=6379))],
+            'hosts': [(env('REDIS_HOST', default='redis'), env.int('REDIS_PORT', default=6379))],
         },
     },
 }
@@ -155,8 +152,8 @@ DATABASES = {
         'NAME': env('POSTGRES_DB'),
         'USER': env('POSTGRES_USER'),
         'PASSWORD': env('POSTGRES_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
+        'HOST': env('DB_HOST', default='db'),
+        'PORT': env('DB_PORT', default='5432'),
         'CONN_MAX_AGE': 600,
         'TEST': {
             'NAME': 'test_' + env('POSTGRES_DB'),
@@ -168,11 +165,18 @@ DATABASES = {
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-     'OPTIONS': {'min_length': 8}},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8}
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'
+    },
 ]
 
 # Internationalization settings
@@ -194,18 +198,23 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework configuration
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication'
-                                       '.JWTAuthentication',
-                                       ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.AllowAny',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        # Enable Browsable API if DEBUG is True
+        'rest_framework.renderers.BrowsableAPIRenderer' if DEBUG else 'rest_framework.renderers.JSONRenderer',
+    ),
 }
 
 # Simple JWT configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),  # Extended for development
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -241,6 +250,8 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API documentation for the Social Network project.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': True,
+    'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest',
+    'SWAGGER_UI_FAVICON_HREF': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest/favicon-32x32.png',
     'COMPONENT_SPLIT_REQUEST': True,
     'SECURITY': [{'BearerAuth': []}],
     'COMPONENTS': {
@@ -256,38 +267,33 @@ SPECTACULAR_SETTINGS = {
 }
 
 # CORS settings to allow frontend origins
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://127.0.0.1:8000', 'http://localhost:8000'])
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
+    'http://127.0.0.1:3000', 'http://localhost:3000', 'http://frontend:3000'
+])
+CORS_ALLOW_CREDENTIALS = True
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env.int('EMAIL_PORT')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
 # Celery configuration
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/0')
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT', default=['json'])
 CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER', default='json')
 CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = 'UTC'
 
-# Celery Beat Schedule
-CELERY_BEAT_SCHEDULE = {
-    'consume-user-events-every-5-seconds': {
-        'task': 'kafka_app.tasks.start_central_kafka_consumer',
-        'schedule': 30.0,
-    },
-}
-
 # Redis caching configuration
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f'redis://{env("REDIS_HOST")}:{env("REDIS_PORT")}/1',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -295,7 +301,7 @@ CACHES = {
 }
 
 # Fetch SENTRY_DSN from the environment variables
-SENTRY_DSN = os.getenv('SENTRY_DSN', default='')
+SENTRY_DSN = env('SENTRY_DSN', default='')
 
 # Initialize Sentry if DSN is provided
 if SENTRY_DSN:
@@ -307,7 +313,7 @@ if SENTRY_DSN:
     )
 
 # Content Security Policy (CSP) settings
-CSP_DEFAULT_SRC = ("'none'",)
+CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
 CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
@@ -335,6 +341,7 @@ if not DEBUG:
 INTERNAL_IPS = [
     '127.0.0.1',
     'localhost',
+    'web',
 ]
 
 # Django Debug Toolbar configuration
@@ -364,13 +371,13 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',  # Adjusted from DEBUG to INFO
             'filters': ['sanitize'],
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
         'file': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'filters': ['sanitize'],
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'debug.log'),
@@ -380,22 +387,22 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
         'channels': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
         'core': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
         'kafka_app': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
     },
@@ -411,14 +418,6 @@ ELASTICSEARCH_DSL = {
 }
 
 
-# =====================
-# Elasticsearch Configuration
-# =====================
-ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': env('ELASTICSEARCH_HOSTS', default='localhost:9200'),
-    },
-}
 
 # from . import cron_jobs
 # CRONJOBS = cron_jobs.CRONJOBS

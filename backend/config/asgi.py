@@ -1,15 +1,23 @@
+# File: backend/config/asgi.py
+
 import os
 import django
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
+import logging
 
-# Ensure that Django settings are properly set up before importing any routing modules
+# Set up the Django settings environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+# Set up Django for Channels and other services
 django.setup()
 
 # Import the centralized WebSocket routing module
-from websocket.routing import websocket_urlpatterns  # Updated import to centralized routing
+from websocket.routing import websocket_urlpatterns  # Updated import for centralized routing
+
+# Configure logging for tracking ASGI events and debugging
+logger = logging.getLogger(__name__)
 
 # Define the ASGI application that handles HTTP and WebSocket protocols
 application = ProtocolTypeRouter({
@@ -19,7 +27,9 @@ application = ProtocolTypeRouter({
     # WebSocket connections are handled through the centralized WebSocket routing
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            websocket_urlpatterns  # Use centralized WebSocket routing
+            websocket_urlpatterns  # Use centralized WebSocket routing from `websocket.routing`
         )
     ),
 })
+
+logger.info("ASGI application setup completed successfully.")

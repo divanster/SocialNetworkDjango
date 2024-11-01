@@ -1,4 +1,4 @@
-version: '3.8'  # Explicitly set the version to ensure compatibility with Docker features
+version: '3.8'
 
 services:
   # PostgreSQL for SQL models in Django
@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -43,7 +43,7 @@ services:
     networks:
       - kafka_network
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181"]
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -52,7 +52,8 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -68,9 +69,7 @@ services:
     ports:
       - "9092:9092"
     networks:
-      kafka_network:
-        aliases:
-          - kafka
+      - kafka_network
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
       interval: 30s
@@ -78,19 +77,19 @@ services:
       retries: 10
     restart: always
 
-  # Django Web Service (including ASGI for WebSockets)
+  # Django Web Service (ASGI)
   web:
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "
-      sleep 10 &&
+      sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict -- 
+      ./wait-for-it.sh redis:6379 --timeout=60 --strict -- 
+      ./wait-for-it.sh kafka:9092 --timeout=60 --strict -- 
       python /app/manage.py wait_for_db &&
       python /app/manage.py migrate --noinput &&
       python /app/manage.py collectstatic --noinput &&
-      gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application
-      "
+      daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./backend:/app
       - ./vol/web:/vol/web
@@ -104,7 +103,7 @@ services:
       kafka:
         condition: service_healthy
     env_file:
-      - ./backend/.env  # Includes the Sentry DSN, PostgreSQL, and Redis configurations
+      - ./backend/.env
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 30s
@@ -114,12 +113,14 @@ services:
       - backend_network
       - kafka_network
 
-  # Celery Worker for asynchronous task processing
+  # Celery Worker for task processing
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "sleep 15 && celery -A config worker --loglevel=info"
+    command: sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict -- 
+      ./wait-for-it.sh redis:6379 --timeout=60 --strict -- 
+      celery -A config worker --loglevel=info -Ofair --concurrency=2 --max-tasks-per-child=10"
     volumes:
       - ./backend:/app
     depends_on:
@@ -127,21 +128,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
     env_file:
       - ./backend/.env
     restart: always
     networks:
       - backend_network
-      - kafka_network
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery worker' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  # Celery Beat for periodic task scheduling
+  # Celery Beat for scheduling tasks
   celery-beat:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "sleep 15 && celery -A config beat --loglevel=info"
+    command: sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict -- 
+      ./wait-for-it.sh redis:6379 --timeout=60 --strict -- 
+      celery -A config beat --loglevel=info"
     volumes:
       - ./backend:/app
     depends_on:
@@ -154,28 +159,26 @@ services:
     restart: always
     networks:
       - backend_network
-      - kafka_network
 
-  # Worker for background Django tasks using Channels
-  worker:
+  # Kafka Consumer Service
+  kafka-consumer:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: python /app/manage.py runworker default --verbosity 2
+    command: sh -c "cd /app/backend/kafka_app && python consumer.py"
     volumes:
       - ./backend:/app
-      - ./vol/web:/vol/web
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
       kafka:
-        condition: service_healthy
-      web:
         condition: service_healthy
     env_file:
       - ./backend/.env
+    healthcheck:
+      test: [ "CMD-SHELL", "test -f /app/backend/kafka_app/consumer.py || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
     networks:
       - backend_network
       - kafka_network
@@ -188,7 +191,7 @@ services:
       args:
         CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
         NODE_OPTIONS: ${NODE_OPTIONS:-"--openssl-legacy-provider"}
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-"http://localhost:8000"}
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-"http://web:8000"}
     volumes:
       - ./frontend:/app
     ports:
@@ -197,6 +200,10 @@ services:
       - ./frontend/.env
     networks:
       - frontend_network
+      - backend_network
+    depends_on:
+      web:
+        condition: service_healthy
 
 # Volumes for data persistence
 volumes:
