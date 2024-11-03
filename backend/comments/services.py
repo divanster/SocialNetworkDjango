@@ -38,7 +38,8 @@ def notify_user_about_comment(comment):
     try:
         # Access related fields to get the post and author details.
         post = comment.post
-        post_author = post.author  # Assuming `post` has a ForeignKey to `User` model named `author`.
+        post_author = post.author  # Assuming `post` has a ForeignKey to `User` model
+        # named `author`.
 
         # Create a notification for the post author.
         create_notification(
