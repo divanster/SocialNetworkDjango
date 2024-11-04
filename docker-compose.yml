@@ -11,10 +11,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 10
     networks:
       - backend_network
 
@@ -40,42 +40,58 @@ services:
     volumes:
       - zookeeper_data:/var/lib/zookeeper/data
       - zookeeper_datalog:/var/lib/zookeeper/log
-    networks:
-      - kafka_network
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc localhost 2181 || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 10
+    restart: always
+    networks:
+      - kafka_network
 
   # Kafka broker for event handling
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     depends_on:
-      zookeeper:
-        condition: service_healthy
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: 60000
     volumes:
       - kafka_data:/var/lib/kafka/data
     ports:
       - "9092:9092"
-    networks:
-      - kafka_network
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 60s
+      timeout: 20s
       retries: 10
     restart: always
+    networks:
+      - kafka_network
+
+  # Elasticsearch service
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    environment:
+      - discovery.type=single-node
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep '\"status\":\"green\"' || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend_network
+
 
   # Django Web Service (ASGI)
   web:
@@ -83,9 +99,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: >
-      sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict -- 
-      ./wait-for-it.sh redis:6379 --timeout=60 --strict -- 
-      ./wait-for-it.sh kafka:9092 --timeout=60 --strict -- 
+      sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict &&
+      ./wait-for-it.sh redis:6379 --timeout=60 --strict &&
+      ./wait-for-it.sh kafka:9092 --timeout=60 --strict &&
+      ./wait-for-it.sh elasticsearch:9200 --timeout=60 --strict &&
       python /app/manage.py wait_for_db &&
       python /app/manage.py migrate --noinput &&
       python /app/manage.py collectstatic --noinput &&
@@ -101,6 +118,8 @@ services:
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
     env_file:
       - ./backend/.env
@@ -118,9 +137,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict -- 
-      ./wait-for-it.sh redis:6379 --timeout=60 --strict -- 
-      celery -A config worker --loglevel=info -Ofair --concurrency=2 --max-tasks-per-child=10"
+    command: sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict &&
+      ./wait-for-it.sh redis:6379 --timeout=60 --strict &&
+      celery -A config worker --loglevel=info"
     volumes:
       - ./backend:/app
     depends_on:
@@ -131,32 +150,11 @@ services:
     env_file:
       - ./backend/.env
     restart: always
-    networks:
-      - backend_network
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'celery worker' || exit 1"]
+      test: [ "CMD-SHELL", "celery -A config inspect ping || exit 1" ]
       interval: 30s
       timeout: 10s
-      retries: 5
-
-  # Celery Beat for scheduling tasks
-  celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict -- 
-      ./wait-for-it.sh redis:6379 --timeout=60 --strict -- 
-      celery -A config beat --loglevel=info"
-    volumes:
-      - ./backend:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    env_file:
-      - ./backend/.env
-    restart: always
+      retries: 3
     networks:
       - backend_network
 
@@ -165,7 +163,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "cd /app/backend/kafka_app && python consumer.py"
+    command: sh -c "cd /app/kafka_app && python consumer.py"
     volumes:
       - ./backend:/app
     depends_on:
@@ -174,7 +172,7 @@ services:
     env_file:
       - ./backend/.env
     healthcheck:
-      test: [ "CMD-SHELL", "test -f /app/backend/kafka_app/consumer.py || exit 1" ]
+      test: [ "CMD-SHELL", "test -f /app/kafka_app/consumer.py || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -195,15 +193,20 @@ services:
     volumes:
       - ./frontend:/app
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - ./frontend/.env
-    networks:
-      - frontend_network
-      - backend_network
     depends_on:
       web:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - frontend_network
+      - backend_network
 
 # Volumes for data persistence
 volumes:
@@ -212,6 +215,7 @@ volumes:
   zookeeper_data:
   zookeeper_datalog:
   kafka_data:
+  elasticsearch_data:
 
 # Networks for inter-service communication
 networks:

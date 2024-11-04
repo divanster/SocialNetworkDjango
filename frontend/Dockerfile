@@ -1,22 +1,13 @@
-# frontend/Dockerfile
-
 # Stage 1: Build the React application
 FROM node:20 AS build
 
-# Declare build arguments
-ARG CHOKIDAR_USEPOLLING
-ARG NODE_OPTIONS
-ARG REACT_APP_API_URL
-
-# Set environment variables from build arguments
-ENV CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING}
-ENV NODE_OPTIONS=${NODE_OPTIONS}
-ENV REACT_APP_API_URL=${REACT_APP_API_URL}
-
-# Set the working directory
+# Set environment variables and working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Set environment variable to fix OpenSSL issue
+ENV NODE_OPTIONS="--openssl-legacy-provider"
+
+# Copy package.json and package-lock.json for dependency installation
 COPY package*.json ./
 
 # Install dependencies
@@ -25,20 +16,20 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Build the application
+# Build the React application
 RUN npm run build
 
 # Stage 2: Serve the React application using Nginx
 FROM nginx:alpine
 
-# Copy the build output to Nginx's HTML directory
+# Copy build files from Stage 1 to the Nginx HTML folder
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Optional: Remove the default Nginx configuration and use a custom one
+# Optional: Use a custom Nginx configuration
 # COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80 for Nginx
+# Expose port 80
 EXPOSE 80
 
-# Start Nginx
+# Start Nginx server
 CMD ["nginx", "-g", "daemon off;"]
