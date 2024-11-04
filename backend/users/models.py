@@ -11,6 +11,7 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from core.models.base_models import BaseModel, UUIDModel
+from setuptools.config._validate_pyproject.error_reporting import ValidationError
 
 
 # Define CustomUserManager
@@ -126,13 +127,10 @@ class UserProfile(UUIDModel, BaseModel):
     def __str__(self):
         return f'{self.user.username} Profile'
 
-# Update the signal
-@receiver(post_save, sender=CustomUser)
-def create_or_update_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-    else:
-        if hasattr(instance, 'profile'):
-            instance.profile.save()
-        else:
-            UserProfile.objects.create(user=instance)
+    def clean(self):
+        """
+        Custom validation for UserProfile fields.
+        Ensures that the date_of_birth is not set in the future.
+        """
+        if self.date_of_birth and self.date_of_birth > timezone.now().date():
+            raise ValidationError("Date of birth cannot be in the future.")

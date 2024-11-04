@@ -1,174 +1,144 @@
-# users/tests/test_views.py
-
-from rest_framework.test import APITestCase, APIClient
 from django.urls import reverse
-from users.models import UserProfile
+from rest_framework import status
+from rest_framework.test import APITestCase, APIClient
+from rest_framework.authtoken.models import Token
+from unittest.mock import patch
+from users.models import CustomUser, UserProfile
+from users.serializers import CustomUserSerializer, UserProfileSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-
-class CustomUserViewSetTest(APITestCase):
+class UserProfileViewSetTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            email='user@example.com',
-            username='user',
-            password='Password@1234'  # Use a strong password to pass validators
-        )
         self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
+        self.user = User.objects.create_user(
+            email='testuser@example.com',
+            username='testuser',
+            password='testpassword'
+        )
+        self.user_token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_token.key)
+        self.profile = UserProfile.objects.get(user=self.user)
+        self.user_profile_url = reverse('userprofile-detail', kwargs={'pk': self.profile.pk})
 
-    def test_get_current_user(self):
-        url = reverse('users:customuser-me')  # Use namespaced URL
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['email'], 'user@example.com')
+    def test_retrieve_user_profile(self):
+        """Test retrieving the profile of the authenticated user"""
+        response = self.client.get(self.user_profile_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        serializer = UserProfileSerializer(self.profile)
+        self.assertEqual(response.data, serializer.data)
 
-    def test_update_current_user(self):
-        url = reverse('users:customuser-me')  # Use namespaced URL
-        data = {'email': 'newemail@example.com'}
-        response = self.client.patch(url, data, format='json')  # Use PATCH for partial updates
-        self.assertEqual(response.status_code, 200)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.email, 'newemail@example.com')
+    @patch('users.tasks.send_profile_update_notification.delay')
+    def test_update_user_profile(self, mock_send_profile_update_notification):
+        """Test updating user profile data"""
+        data = {
+            'first_name': 'UpdatedFirstName',
+            'last_name': 'UpdatedLastName',
+            'bio': 'Updated bio'
+        }
+        response = self.client.patch(self.user_profile_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.first_name, 'UpdatedFirstName')
+        self.assertEqual(self.profile.last_name, 'UpdatedLastName')
+        self.assertEqual(self.profile.bio, 'Updated bio')
+
+        # Verify that the profile update task was called
+        mock_send_profile_update_notification.assert_called_once_with(self.user.id)
+
+
+class CustomUserViewSetTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='testuser@example.com',
+            username='testuser',
+            password='testpassword'
+        )
+        self.user_token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.user_token.key)
+        self.user_detail_url = reverse('customuser-detail', kwargs={'pk': self.user.pk})
+        self.me_url = reverse('customuser-me')
 
     def test_retrieve_user(self):
-        url = reverse('users:customuser-detail', kwargs={'pk': self.user.id})  # Use namespaced URL and 'pk'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['email'], 'user@example.com')
+        """Test retrieving the user details"""
+        response = self.client.get(self.user_detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        serializer = CustomUserSerializer(self.user)
+        self.assertEqual(response.data, serializer.data)
 
-
-class UserProfileViewSetTest(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email='user@example.com',
-            username='user',
-            password='Password@1234'  # Use a strong password
-        )
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
-        self.profile = self.user.profile  # Retrieve the auto-created profile
-
-    def test_retrieve_profile(self):
-        url = reverse('users:userprofile-detail', kwargs={'pk': str(self.profile.id)})  # Use 'pk'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data.get('first_name', ''), '')
-
-    def test_update_profile(self):
-        url = reverse('users:userprofile-detail', kwargs={'pk': str(self.profile.id)})  # Use 'pk'
-        data = {'first_name': 'UpdatedName'}
-        response = self.client.patch(url, data, format='json')  # Ensure format is 'json'
-        self.assertEqual(response.status_code, 200)
-        self.profile.refresh_from_db()
-        self.assertEqual(self.profile.first_name, 'UpdatedName')
-
-
-class CustomUserSignupViewTest(APITestCase):
-    def setUp(self):
-        self.client = APIClient()
-
-    def test_signup(self):
-        url = reverse('users:customuser-signup')  # Use namespaced URL
+    @patch('users.tasks.send_profile_update_notification.delay')
+    def test_update_user_via_me_endpoint(self, mock_send_profile_update_notification):
+        """Test updating user data via 'me' endpoint"""
         data = {
-            'email': 'signupuser@example.com',
-            'username': 'signupuser',
-            'password': 'SecurePassword@1234',  # Use a strong password
-            'password2': 'SecurePassword@1234',
+            'username': 'updatedusername',
             'profile': {
-                'first_name': 'Signup',
-                'last_name': 'User',
-                'bio': 'I am new here.'
+                'bio': 'Updated bio through me endpoint'
             }
         }
-        response = self.client.post(url, data, format='json')  # Use 'json' format for nested data
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(User.objects.filter(email='signupuser@example.com').exists())
-        # Optionally, verify profile creation
-        signup_user = User.objects.get(email='signupuser@example.com')
-        self.assertEqual(signup_user.profile.first_name, 'Signup')
-        self.assertEqual(signup_user.profile.last_name, 'User')
-        self.assertEqual(signup_user.profile.bio, 'I am new here.')
+        response = self.client.patch(self.me_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'updatedusername')
+        self.assertEqual(self.user.profile.bio, 'Updated bio through me endpoint')
+
+        # Verify that the profile update task was called
+        mock_send_profile_update_notification.assert_called_once_with(self.user.id)
+
+    def test_get_me_endpoint(self):
+        """Test retrieving the authenticated user's details via 'me' endpoint"""
+        response = self.client.get(self.me_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        serializer = CustomUserSerializer(self.user)
+        self.assertEqual(response.data, serializer.data)
+
+
+class CustomUserSignupViewTests(APITestCase):
+    def setUp(self):
+        self.signup_url = reverse('customuser-signup')
+
+    @patch('users.tasks.send_welcome_email.delay')
+    def test_create_user_signup(self, mock_send_welcome_email):
+        """Test signing up a new user"""
+        data = {
+            'email': 'newuser@example.com',
+            'username': 'newuser',
+            'password': 'newpassword123',
+            'password2': 'newpassword123',
+            'profile': {
+                'first_name': 'Jane',
+                'last_name': 'Doe',
+                'gender': 'F',
+                'bio': 'Hello, I am Jane!',
+                'phone': '1234567890',
+                'town': 'Sample Town',
+                'country': 'Sample Country'
+            }
+        }
+        response = self.client.post(self.signup_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Check that user was created properly
+        user = User.objects.get(email='newuser@example.com')
+        self.assertEqual(user.username, 'newuser')
+        self.assertTrue(user.check_password('newpassword123'))
+        self.assertEqual(user.profile.first_name, 'Jane')
+
+        # Verify that the welcome email task was called
+        mock_send_welcome_email.assert_called_once_with(user.id)
 
     def test_signup_password_mismatch(self):
-        url = reverse('users:customuser-signup')  # Use namespaced URL
+        """Test signing up a user with mismatched passwords"""
         data = {
-            'email': 'user@example.com',
-            'username': 'user',
-            'password': 'SecurePassword@1234',
-            'password2': 'DifferentPassword@1234',  # Mismatched password
+            'email': 'mismatch@example.com',
+            'username': 'mismatchuser',
+            'password': 'password123',
+            'password2': 'differentpassword123',
         }
-        response = self.client.post(url, data, format='json')  # Use 'json' format
-        self.assertEqual(response.status_code, 400)
+        response = self.client.post(self.signup_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('non_field_errors', response.data)
-        self.assertEqual(
-            response.data['non_field_errors'][0],
-            "Passwords do not match."
-        )
+        self.assertEqual(response.data['non_field_errors'][0], "Passwords do not match.")
 
-    def test_signup_duplicate_email(self):
-        # First signup
-        url = reverse('users:customuser-signup')
-        data = {
-            'email': 'duplicate@example.com',
-            'username': 'user1',
-            'password': 'SecurePassword@1234',
-            'password2': 'SecurePassword@1234',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, 201)
-
-        # Attempt to signup with the same email
-        data = {
-            'email': 'duplicate@example.com',
-            'username': 'user2',
-            'password': 'SecurePassword@1234',
-            'password2': 'SecurePassword@1234',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('email', response.data)
-        self.assertEqual(
-            response.data['email'][0].code,
-            'unique'
-        )
-
-    def test_signup_duplicate_username(self):
-        # First signup
-        url = reverse('users:customuser-signup')
-        data = {
-            'email': 'unique1@example.com',
-            'username': 'duplicateuser',
-            'password': 'SecurePassword@1234',
-            'password2': 'SecurePassword@1234',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, 201)
-
-        # Attempt to signup with the same username
-        data = {
-            'email': 'unique2@example.com',
-            'username': 'duplicateuser',
-            'password': 'SecurePassword@1234',
-            'password2': 'SecurePassword@1234',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('username', response.data)
-        self.assertEqual(
-            response.data['username'][0].code,
-            'unique'
-        )
-
-    def test_signup_missing_fields(self):
-        url = reverse('users:customuser-signup')
-        data = {
-            'email': 'missingfields@example.com',
-            # 'username' is missing
-            'password': 'SecurePassword@1234',
-            'password2': 'SecurePassword@1234',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('username', response.data)

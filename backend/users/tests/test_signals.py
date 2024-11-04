@@ -1,124 +1,128 @@
-# backend/users/tests/test_signals.py
-
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
-from unittest.mock import patch, MagicMock
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from users.models import UserProfile
-from users.signals import handle_user_post_save
+from unittest.mock import patch
 import logging
-
-# Configure logging for the test
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
+# Configure logging for testing
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-@override_settings(
-    CHANNEL_LAYERS={
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
-    }
-)
+
 class UserSignalsTests(TestCase):
-    def setUp(self):
-        # Get the in-memory channel layer
-        self.channel_layer = get_channel_layer()
-        # Ensure the channel layer is cleared before each test
-        async_to_sync(self.channel_layer.flush)()
-
-    def test_user_profile_created_on_new_user(self):
+    @patch('users.signals.process_user_event_task.delay')
+    def test_user_profile_created_on_new_user(self, mock_process_user_event_task):
+        """Test that UserProfile is created and Celery task is triggered on new user
+        creation."""
         user = User.objects.create_user(
             email='testuser@example.com',
             username='testuser',
             password='testpassword'
         )
+
         # Check that UserProfile is created
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
-        profile = UserProfile.objects.get(user=user)
-        self.assertEqual(profile.user, user)
-        # Check that message was sent to the channel layer
-        received_messages = async_to_sync(self.channel_layer.receive_group)('users')
-        event = received_messages[0]
-        self.assertEqual(event['type'], 'new_user')
-        self.assertEqual(event['user']['username'], 'testuser')
 
-    def test_user_profile_updated_on_existing_user(self):
-        # Create user and profile first
+        # Check that Celery task is triggered
+        mock_process_user_event_task.assert_called_once_with(user.id, 'new_user')
+
+    @patch('users.signals.process_user_event_task.delay')
+    def test_user_profile_updated_on_existing_user(self, mock_process_user_event_task):
+        """Test that Celery task is triggered when updating an existing user."""
         user = User.objects.create_user(
             email='existinguser@example.com',
             username='existinguser',
             password='password123'
         )
-        profile = UserProfile.objects.get(user=user)
-        # Clear the channel layer
-        async_to_sync(self.channel_layer.flush)()
-        # Update user
+
+        # Update user information
         user.username = 'updateduser'
         user.save()
-        # Check that UserProfile exists
-        self.assertTrue(UserProfile.objects.filter(user=user).exists())
-        # Check that message was sent to the channel layer
-        received_messages = async_to_sync(self.channel_layer.receive_group)('users')
-        event = received_messages[0]
-        self.assertEqual(event['type'], 'update_user')
-        self.assertEqual(event['user']['username'], 'updateduser')
 
-    def test_user_profile_created_if_missing_on_existing_user(self):
-        # Create user without creating profile
+        # Check that UserProfile still exists
+        self.assertTrue(UserProfile.objects.filter(user=user).exists())
+
+        # Check that Celery task is triggered for profile update
+        mock_process_user_event_task.assert_called_once_with(user.id, 'profile_update')
+
+    @patch('users.signals.process_user_event_task.delay')
+    def test_user_profile_created_if_missing_on_existing_user(self,
+                                                              mock_process_user_event_task):
+        """Test that UserProfile is re-created if it is missing and user is updated."""
         user = User.objects.create_user(
             email='noprofuser@example.com',
             username='noprofuser',
             password='password123'
         )
-        UserProfile.objects.filter(
-            user=user).delete()  # Delete the profile to simulate missing profile
-        # Clear the channel layer
-        async_to_sync(self.channel_layer.flush)()
-        # Update user
+
+        # Delete the profile to simulate a missing profile scenario
+        UserProfile.objects.filter(user=user).delete()
+        self.assertFalse(UserProfile.objects.filter(user=user).exists())
+
+        # Update user, which should trigger profile creation via the signal
         user.username = 'noprofuser_updated'
         user.save()
+
         # Check that UserProfile is re-created
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
-        profile = UserProfile.objects.get(user=user)
-        self.assertEqual(profile.user, user)
-        # Check that message was sent to the channel layer
-        received_messages = async_to_sync(self.channel_layer.receive_group)('users')
-        event = received_messages[0]
-        self.assertEqual(event['type'], 'update_user')
-        self.assertEqual(event['user']['username'], 'noprofuser_updated')
 
-    def test_channel_layer_not_available(self):
-        # Mock get_channel_layer to return None
-        with patch('users.signals.get_channel_layer', return_value=None):
-            user = User.objects.create_user(
-                email='nochannel@example.com',
-                username='nochannel',
-                password='password123'
-            )
-            # Check that UserProfile is created
-            self.assertTrue(UserProfile.objects.filter(user=user).exists())
-            # Since channel layer is None, no message should be sent
-            received_messages = async_to_sync(self.channel_layer.receive_group)('users')
-            self.assertEqual(received_messages, [])
+        # Check that Celery task is triggered for profile update
+        mock_process_user_event_task.assert_called_once_with(user.id, 'profile_update')
 
-    def test_exception_handling_in_signal(self):
-        # Simulate an exception when creating UserProfile
+    @patch('users.signals.process_user_event_task.delay')
+    def test_user_deletion_triggers_celery_task(self, mock_process_user_event_task):
+        """Test that deleting a user triggers the Celery task for user deletion."""
+        user = User.objects.create_user(
+            email='deleteuser@example.com',
+            username='deleteuser',
+            password='password123'
+        )
+
+        user_id = user.id
+        user.delete()
+
+        # Check that Celery task is triggered for user deletion
+        mock_process_user_event_task.assert_called_once_with(user_id, 'deleted_user')
+
+    @patch('users.signals.process_user_event_task.delay')
+    def test_user_profile_creation_error_handling(self, mock_process_user_event_task):
+        """Test error handling during UserProfile creation."""
         with patch('users.signals.UserProfile.objects.create',
                    side_effect=Exception('Test Exception')):
-            with self.assertLogs('users', level='ERROR') as cm:
+            with self.assertLogs('users', level='INFO') as cm:
                 User.objects.create_user(
                     email='erroruser@example.com',
                     username='erroruser',
                     password='password123'
                 )
+
+                # Ensure the expected error log is present
                 self.assertIn(
-                    'Error creating UserProfile for user erroruser: Test Exception',
-                    cm.output[0])
-            # Ensure UserProfile is not created
+                    "ERROR:users:Error creating UserProfile for user "
+                    "erroruser@example.com: Test Exception",
+                    cm.output
+                )
+
+            # Ensure that UserProfile was not created due to the exception
             self.assertFalse(
                 UserProfile.objects.filter(user__username='erroruser').exists())
+
+    @patch('users.signals.process_user_event_task.delay')
+    def test_signal_triggers_on_user_update(self, mock_process_user_event_task):
+        """Test that updating user email or other details triggers Celery task"""
+        user = User.objects.create_user(
+            email='emailtest@example.com',
+            username='emailtest',
+            password='password123'
+        )
+
+        # Update email
+        user.email = 'updatedemail@example.com'
+        user.save()
+
+        # Verify that the profile update Celery task is triggered
+        mock_process_user_event_task.assert_called_once_with(user.id, 'profile_update')
+
+

@@ -2,28 +2,34 @@
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from users.models import CustomUser
-from users.tasks import process_user_event_task
+from users.models import CustomUser, UserProfile
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=CustomUser)
-def handle_user_post_save(sender, instance, created, **kwargs):
+def create_user_profile(sender, instance, created, **kwargs):
     """
-    Signal handler to trigger a Celery task for handling user events.
+    Signal to create a UserProfile when a CustomUser is first created.
     """
-    event_type = 'new_user' if created else 'profile_update'
-    process_user_event_task.delay(instance.id, event_type)
-    logger.info(
-        f"Triggered Celery task for user {event_type} event with ID {instance.id}")
+    if created:
+        profile, created = UserProfile.objects.get_or_create(user=instance)
+        if created:
+            logger.info(f"UserProfile created for new user with ID {instance.id}")
+        else:
+            logger.info(f"UserProfile already existed for user with ID {instance.id}")
 
 
 @receiver(post_delete, sender=CustomUser)
-def handle_user_post_delete(sender, instance, **kwargs):
+def delete_user_profile(sender, instance, **kwargs):
     """
-    Signal handler to trigger a Celery task for handling user deletion events.
+    Signal to delete the UserProfile when a CustomUser instance is deleted.
     """
-    process_user_event_task.delay(instance.id, 'deleted_user')
-    logger.info(f"Triggered Celery task for deleted user with ID {instance.id}")
+    try:
+        if hasattr(instance, 'profile'):
+            instance.profile.delete()
+            logger.info(f"UserProfile deleted for user with ID {instance.id}")
+    except UserProfile.DoesNotExist:
+        logger.warning(
+            f"Attempted to delete UserProfile for user ID {instance.id}, but it did not exist.")
