@@ -190,17 +190,15 @@ services:
         CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
         NODE_OPTIONS: ${NODE_OPTIONS:-"--openssl-legacy-provider"}
         REACT_APP_API_URL: ${REACT_APP_API_URL:-"http://web:8000"}
-    volumes:
-      - ./frontend:/app
     ports:
-      - "3001:3000"
+      - "3001:80"  # Forward port 3001 to port 80 of the Nginx server
     env_file:
       - ./frontend/.env
     depends_on:
       web:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:3000 || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:80 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
