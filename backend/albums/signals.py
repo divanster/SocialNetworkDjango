@@ -92,3 +92,9 @@ def photo_deleted(sender, instance, **kwargs):
 
     process_photo_event_task.delay(str(instance.pk), 'deleted')
     logger.info(f"[SIGNAL] Triggered Celery task for photo deleted with ID {instance.pk}")
+
+
+@receiver(post_delete, sender=Album)
+def cascade_delete_photos(sender, instance, **kwargs):
+    # Soft delete all related photos when an album is deleted
+    instance.photos.update(is_deleted=True)

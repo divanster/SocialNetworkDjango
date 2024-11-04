@@ -47,10 +47,15 @@ class FriendRequest(BaseModel):
 
     def accept(self):
         if self.status == self.Status.PENDING:
+            # Ensure neither user is blocked
+            if Block.objects.filter(models.Q(blocker=self.sender, blocked=self.receiver) |
+                                    models.Q(blocker=self.receiver, blocked=self.sender)).exists():
+                raise ValidationError("Cannot accept a friend request involving "
+                                      "blocked users.")
+
             self.status = self.Status.ACCEPTED
             self.save()
 
-            # Ensure users are ordered consistently
             if str(self.sender.id) < str(self.receiver.id):
                 user1, user2 = self.sender, self.receiver
             else:
@@ -58,9 +63,6 @@ class FriendRequest(BaseModel):
             Friendship.objects.create(user1=user1, user2=user2)
 
     def reject(self):
-        """
-        Reject the friend request.
-        """
         if self.status == self.Status.PENDING:
             self.status = self.Status.REJECTED
             self.save()
@@ -104,7 +106,9 @@ class Block(BaseModel):
     blocked = models.ForeignKey(
         User,
         related_name='blocked_by',
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        null=True,  # Add this to handle existing rows without this field
+        blank=True
     )
 
     class Meta:

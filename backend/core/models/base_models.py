@@ -8,6 +8,11 @@ from django.utils import timezone
 # BaseModel for Django ORM
 # ===========================
 
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+
 class BaseModel(models.Model):
     """
     Base model for Django-based models using PostgreSQL.
@@ -20,35 +25,21 @@ class BaseModel(models.Model):
         abstract = True
         ordering = ['-created_at']
 
-    # def save(self, *args, **kwargs):
-    #     """
-    #     Override save to automatically update the `updated_at` field.
-    #     """
-    #     if not self._state.adding:
-    #         self.updated_at = timezone.now()
-    #     super().save(*args, **kwargs)
-
 
 class SoftDeleteModel(models.Model):
-    """
-    Base model to add soft delete capability for Django ORM models.
-    """
     is_deleted = models.BooleanField(default=False)
+
+    objects = SoftDeleteManager()  # Use custom manager for filtering non-deleted items.
+    all_objects = models.Manager()  # Include all objects, including soft-deleted ones.
 
     class Meta:
         abstract = True
 
     def delete(self, using=None, keep_parents=False):
-        """
-        Soft delete by setting `is_deleted` to True.
-        """
         self.is_deleted = True
         self.save()
 
     def hard_delete(self, using=None, keep_parents=False):
-        """
-        Permanently delete the object.
-        """
         super().delete(using=using, keep_parents=keep_parents)
 
 

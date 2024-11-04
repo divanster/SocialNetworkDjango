@@ -17,21 +17,20 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='TaggedItem',
+            name='Comment',
             fields=[
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('object_id', models.UUIDField()),
+                ('content', models.TextField(help_text='Content of the comment')),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
-                ('tagged_by', models.ForeignKey(help_text='User who tagged another user', on_delete=django.db.models.deletion.CASCADE, related_name='tags_created', to=settings.AUTH_USER_MODEL)),
-                ('tagged_user', models.ForeignKey(help_text='User being tagged', on_delete=django.db.models.deletion.CASCADE, related_name='tags_received', to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(help_text='User who made the comment', on_delete=django.db.models.deletion.CASCADE, related_name='comments', to=settings.AUTH_USER_MODEL)),
             ],
             options={
-                'verbose_name': 'Tagged Item',
-                'verbose_name_plural': 'Tagged Items',
+                'db_table': 'comments',
                 'ordering': ['-created_at'],
-                'unique_together': {('content_type', 'object_id', 'tagged_user')},
+                'indexes': [models.Index(fields=['user', 'created_at'], name='comments_user_id_88f50c_idx')],
             },
         ),
     ]
