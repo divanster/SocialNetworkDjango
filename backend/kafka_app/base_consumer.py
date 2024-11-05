@@ -1,5 +1,3 @@
-# backend/kafka_app/base_consumer.py
-
 import os
 import time
 import logging
@@ -9,10 +7,17 @@ from kafka.errors import KafkaError, NoBrokersAvailable, KafkaTimeoutError
 from kafka import KafkaConsumer
 from django.conf import settings
 from django.db import close_old_connections
+import random
 
 # Setting up the logger for the consumer
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def get_backoff_time(retries):
+    base = 2
+    jitter = random.uniform(0.5, 1.5)
+    return min(60, base ** retries) * jitter
 
 
 class BaseKafkaConsumer:
@@ -50,7 +55,6 @@ class BaseKafkaConsumer:
         """
         retries = 0
         max_retries = getattr(settings, 'KAFKA_MAX_RETRIES', 5)
-        wait_time = 5  # Seconds to wait between retries
 
         while retries < max_retries or max_retries == -1:
             try:
@@ -68,6 +72,7 @@ class BaseKafkaConsumer:
                 logger.info(f"Connected to Kafka topics: {', '.join(self.topics)}")
                 return consumer
             except (NoBrokersAvailable, KafkaTimeoutError, KafkaError) as e:
+                wait_time = get_backoff_time(retries)
                 logger.error(
                     f"Failed to connect to Kafka: {e}. Retrying in {wait_time} seconds... ({retries}/{max_retries})"
                 )
@@ -80,14 +85,12 @@ class BaseKafkaConsumer:
     def consume_messages(self):
         while True:
             try:
-                logger.info(
-                    f"Started consuming messages from topics: {', '.join(self.topics)}")
+                logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
                 for message in self.consumer:
                     close_old_connections()
 
                     if not message.value:
-                        logger.warning(
-                            f"Received an empty message from topic {message.topic}, skipping.")
+                        logger.warning(f"Received an empty message from topic {message.topic}, skipping.")
                         continue
 
                     try:
@@ -97,12 +100,10 @@ class BaseKafkaConsumer:
                     except json.JSONDecodeError as e:
                         logger.error(f"Failed to decode JSON message: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to process message {message.value}: {e}",
-                                     exc_info=True)
+                        logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
 
             except KafkaError as e:
-                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
-                             exc_info=True)
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
                 time.sleep(10)
             finally:
                 self.close()
@@ -126,5 +127,4 @@ class BaseKafkaConsumer:
                 self.consumer.close()
                 logger.info("Kafka consumer closed.")
             except KafkaError as e:
-                logger.error(f"Error occurred while closing the Kafka consumer: {e}",
-                             exc_info=True)
+                logger.error(f"Error occurred while closing the Kafka consumer: {e}", exc_info=True)

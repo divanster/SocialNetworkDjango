@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip to the latest version
-RUN pip install --upgrade pip
+# Downgrade pip to avoid strict metadata parsing issues
+RUN pip install --upgrade pip==23.0
 
 # Copy requirements files to a temporary location
 COPY ./requirements.txt ./requirements.dev.txt /tmp/

@@ -1,8 +1,10 @@
-# backend/kafka_app/consumer.py
 import os
 import logging
 import json
+import signal
+import time
 from datetime import time
+from pydantic import BaseModel, ValidationError
 
 from kafka.errors import KafkaError
 
@@ -11,6 +13,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 # Now initialize Django
 import django
+
 django.setup()
 
 from django.db import close_old_connections
@@ -27,10 +30,6 @@ from kafka_app.base_consumer import BaseKafkaConsumer
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from albums.services import process_album_event
-
-
-# Now import the services and models after setting up Django
-from albums.services import process_album_event
 from comments.services import process_comment_event
 from follows.services import process_follow_event
 from friends.services import process_friend_event
@@ -45,11 +44,21 @@ from users.services import process_user_event
 from notifications.services import create_notification
 
 
+# Define the Pydantic model for message validation
+class EventData(BaseModel):
+    event_type: str
+    data: dict
+
+    class Config:
+        min_anystr_length = 1
+
+
 class KafkaConsumerApp(BaseKafkaConsumer):
     """
     Kafka Consumer Application to handle different topics and event types.
     Inherits from BaseKafkaConsumer to reuse core Kafka setup and consumption logic.
     """
+
     def __init__(self):
         # Initialize the base Kafka consumer with all the topics
         topics = list(settings.KAFKA_TOPICS.values())
@@ -93,8 +102,10 @@ class KafkaConsumerApp(BaseKafkaConsumer):
 
                     try:
                         logger.info(f"Received message: {message.value}")
-                        message_data = message.value
+                        message_data = json.loads(message.value)
                         self.process_message(message_data)
+                    except ValidationError as e:
+                        logger.error(f"Validation error: {e}")
                     except Exception as e:
                         logger.error(f"Failed to process message {message.value}: {e}",
                                      exc_info=True)
@@ -112,14 +123,24 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         """
         Process incoming Kafka messages.
         """
-        event_type = message.get('event_type')
+        try:
+            # Validate incoming message using Pydantic model
+            event_data = EventData.parse_obj(message)
+        except ValidationError as e:
+            logger.error(f"Validation error: {e}")
+            return
+
+        # Extract event type and get the handler
+        event_type = event_data.event_type
         handler = self.handlers.get(event_type)
 
+        # Handle the event using the appropriate handler method
         if handler:
             try:
-                handler(message.get('data'))
+                handler(event_data.data)
             except Exception as e:
-                logger.error(f"Error processing event '{event_type}': {e}", exc_info=True)
+                logger.error(f"Error processing event '{event_type}': {e}",
+                             exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
 
@@ -135,104 +156,74 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             }
         )
 
-    # Handlers for different event types
+    # Handlers for different event types (e.g. album, comments, etc.)
     def handle_album_event(self, data):
-        """
-        Handle album-related events.
-        """
         process_album_event(data)
         create_notification(data)
         self.send_to_websocket_group("albums_group", f"New album created: {data}")
 
     def handle_comment_event(self, data):
-        """
-        Handle comment-related events.
-        """
         process_comment_event(data)
         create_notification(data)
         self.send_to_websocket_group("comments_group", f"New comment posted: {data}")
 
     def handle_follow_event(self, data):
-        """
-        Handle follow-related events.
-        """
         process_follow_event(data)
         create_notification(data)
         self.send_to_websocket_group("follows_group", f"New follow event: {data}")
 
     def handle_friend_event(self, data):
-        """
-        Handle friend-related events.
-        """
         process_friend_event(data)
         create_notification(data)
         self.send_to_websocket_group("friends_group", f"New friend added: {data}")
 
     def handle_messenger_event(self, data):
-        """
-        Handle messenger-related events.
-        """
         process_messenger_event(data)
         self.send_to_websocket_group("messenger_group", f"New message event: {data}")
 
     def handle_newsfeed_event(self, data):
-        """
-        Handle newsfeed-related events.
-        """
         process_newsfeed_event(data)
         self.send_to_websocket_group("newsfeed_group", f"Newsfeed updated: {data}")
 
     def handle_page_event(self, data):
-        """
-        Handle page-related events.
-        """
         process_page_event(data)
         self.send_to_websocket_group("pages_group", f"New page created: {data}")
 
     def handle_reaction_event(self, data):
-        """
-        Handle reaction-related events.
-        """
         process_reaction_event(data)
         create_notification(data)
         self.send_to_websocket_group("reactions_group", f"New reaction added: {data}")
 
     def handle_social_event(self, data):
-        """
-        Handle social-related events.
-        """
         process_social_event(data)
         self.send_to_websocket_group("social_group", f"New social action: {data}")
 
     def handle_story_event(self, data):
-        """
-        Handle story-related events.
-        """
         process_story_event(data)
         self.send_to_websocket_group("stories_group", f"New story shared: {data}")
 
     def handle_tagging_event(self, data):
-        """
-        Handle tagging-related events.
-        """
         process_tagging_event(data)
         self.send_to_websocket_group("tagging_group", f"New tag added: {data}")
 
     def handle_user_event(self, data):
-        """
-        Handle user-related events.
-        """
         process_user_event(data)
         self.send_to_websocket_group("users_group", f"New user registered: {data}")
 
     def handle_notification_event(self, data):
-        """
-        Handle notification-related events.
-        """
         create_notification(data)
         self.send_to_websocket_group("notifications_group", f"New notification: {data}")
 
 
+# Graceful shutdown on SIGTERM or SIGINT
+def graceful_shutdown(signum, frame):
+    logger.info("Received shutdown signal, closing Kafka consumer...")
+    consumer_app.close()
+    exit(0)
+
+
 if __name__ == "__main__":
     consumer_app = KafkaConsumerApp()
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
     consumer_app.consume_messages()

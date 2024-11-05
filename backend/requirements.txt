@@ -37,10 +37,9 @@ psycopg2==2.9.9                         # PostgreSQL adapter for Python
 django-redis==5.4.0                     # Redis cache backend for Django
 
 # Elasticsearch and Search Utilities
-elastic-transport==8.13.1               # Transport layer for Elasticsearch clients
-elasticsearch>=8.0.0,<9.0.0             # Elasticsearch Python client
-elasticsearch-dsl>=8.0.0,<9.0.0         # High-level Python client for Elasticsearch
-django-elasticsearch-dsl==8.0           # Django integration for Elasticsearch DSL
+elasticsearch>=7.17.0,<8.0.0             # Elasticsearch Python client compatible with version 7
+elasticsearch-dsl>=7.0.0,<8.0.0          # High-level Python client for Elasticsearch 7
+django-elasticsearch-dsl==7.3          # Django integration for Elasticsearch DSL compatible with Elasticsearch 7
 
 # Security and Cryptography
 cryptography==42.0.8                    # Cryptographic recipes and primitives for Python
@@ -110,3 +109,8 @@ packaging==24.1                         # Packaging utilities for Python
 
 # Sentry
 sentry-sdk==2.17.0                      # Sentry for error tracking
+
+# Pydantic schema validation library for Kafka message validation to prevent injection attacks
+# annotated-types-0.7.0
+pydantic>=2.9.2
+# pydantic-core-2.23.4

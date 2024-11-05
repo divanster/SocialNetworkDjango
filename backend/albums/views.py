@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
-from albums.models import Album, Photo  # Updated import path to match Django models
+from albums.models import Album, Photo
 from .serializers import AlbumSerializer, PhotoSerializer
 import logging
 
