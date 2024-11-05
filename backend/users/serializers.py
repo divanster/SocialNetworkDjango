@@ -22,16 +22,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         required=False
     )
 
-    class UserProfileSerializer(serializers.ModelSerializer):
-        # Remove the tags if the field doesn't exist in the model
-        class Meta:
-            model = UserProfile
-            fields = [
-                'first_name', 'last_name', 'gender', 'date_of_birth',
-                'profile_picture', 'bio', 'phone', 'town', 'country',
-                'relationship_status'
-            ]
+    class Meta:
+        model = UserProfile
+        fields = [
+            'first_name', 'last_name', 'gender', 'date_of_birth',
+            'profile_picture', 'bio', 'phone', 'town', 'country',
+            'relationship_status', 'tags', 'tagged_user_ids'
+        ]
         read_only_fields = ['tags']
+
 
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
