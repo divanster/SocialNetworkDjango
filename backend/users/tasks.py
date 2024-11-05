@@ -3,14 +3,16 @@ from kafka_app.producer import KafkaProducerClient
 from notifications.services import create_notification
 import logging
 from django.conf import settings
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from websocket.consumers import GeneralKafkaConsumer  # Import for generating group names
 
 logger = logging.getLogger('users')
-
 
 @shared_task
 def process_user_event_task(user_id, event_type):
     """
-    Celery task to process user events and send them to Kafka.
+    Celery task to process user events and send them to Kafka and WebSocket notifications.
 
     Args:
         user_id (int): The ID of the user for which the event is being processed.
@@ -23,21 +25,6 @@ def process_user_event_task(user_id, event_type):
         from users.models import CustomUser
 
         user = CustomUser.objects.get(id=user_id)
-        if event_type == 'new_user':
-            # Handle user registration logic
-            handle_user_registration(user)
-
-        elif event_type == 'profile_update':
-            # Handle profile update logic
-            handle_profile_update(user)
-
-        elif event_type == 'deleted_user':
-            # Handle user deletion logic
-            handle_user_deletion(user)
-
-        else:
-            logger.warning(f"[USER] Unknown event type: {event_type}")
-            return
 
         # Construct the Kafka message
         message = {
@@ -52,12 +39,42 @@ def process_user_event_task(user_id, event_type):
         producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for user {event_type} event: {message}")
 
+        # WebSocket notification
+        send_user_websocket_notification(user, event_type)
+
     except CustomUser.DoesNotExist:
         logger.error(f"User with ID {user_id} does not exist. User event not processed.")
     except Exception as e:
         logger.error(f"An error occurred while processing the user event: {e}")
     finally:
         producer.close()  # Close the Kafka producer properly
+
+
+def send_user_websocket_notification(user, event_type):
+    """
+    Send WebSocket notification for a user event.
+
+    Args:
+        user (CustomUser): The user instance for which the notification is being sent.
+        event_type (str): The type of event ('new_user', 'profile_update', 'deleted_user').
+    """
+    try:
+        user_group_name = GeneralKafkaConsumer.generate_group_name(user.id)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            user_group_name,
+            {
+                'type': 'user_notification',
+                'message': f"User event '{event_type}' processed for {user.username}.",
+                'event': event_type,
+                'user_id': str(user.id),
+                'username': user.username,
+            }
+        )
+        logger.info(f"Real-time WebSocket notification sent for user {event_type} with ID {user.id}")
+
+    except Exception as e:
+        logger.error(f"Error sending WebSocket notification for user event {event_type}: {e}")
 
 
 @shared_task
@@ -77,7 +94,7 @@ def send_welcome_email(user_id):
         # Prepare the notification data for the welcome email
         notification_data = {
             'sender_id': user.id,
-            'sender_username': 'System',  # You could use a system sender
+            'sender_username': 'System',  # System user for notifications
             'receiver_id': user.id,
             'receiver_username': user.username,
             'notification_type': 'welcome',
@@ -126,66 +143,3 @@ def send_profile_update_notification(user_id):
         logger.error(f"User with ID {user_id} does not exist. Cannot send profile update notification.")
     except Exception as e:
         logger.error(f"[TASK] Error sending profile update notification to user {user_id}: {e}")
-
-
-def handle_user_registration(user):
-    """
-    Handles logic related to new user registration.
-
-    Args:
-        user (CustomUser): The user object.
-    """
-    try:
-        # Import models dynamically to avoid AppRegistryNotReady errors
-        from users.models import UserProfile
-
-        # Create UserProfile automatically when a new user registers
-        UserProfile.objects.create(user=user)
-        logger.info(f"[USER] UserProfile created for user: {user.email}")
-
-        # Optionally, trigger a notification to welcome the user
-        send_welcome_email.delay(user.id)  # Trigger the welcome email task
-
-    except Exception as e:
-        logger.error(f"[USER] Error handling user registration for {user.email}: {e}")
-
-
-def handle_profile_update(user):
-    """
-    Handles logic related to user profile updates.
-
-    Args:
-        user (CustomUser): The user object.
-    """
-    try:
-        if hasattr(user, 'profile'):
-            user.profile.save()
-            logger.info(f"[USER] Profile updated for user: {user.email}")
-
-            # Optionally, trigger a notification to inform about the profile update
-            send_profile_update_notification.delay(user.id)  # Trigger the profile update notification task
-
-    except Exception as e:
-        logger.error(f"[USER] Error handling profile update for {user.email}: {e}")
-
-
-def handle_user_deletion(user):
-    """
-    Handles logic related to user deletion.
-
-    Args:
-        user (CustomUser): The user object.
-    """
-    try:
-        logger.info(f"[USER] Handling deletion for user: {user.email}")
-
-        # Import models dynamically to avoid AppRegistryNotReady errors
-        from users.models import UserProfile
-
-        # Delete the UserProfile explicitly
-        user.profile.delete()
-        user.delete()
-        logger.info(f"[USER] Deleted user and associated profile for: {user.email}")
-
-    except Exception as e:
-        logger.error(f"[USER] Error handling user deletion for {user.email}: {e}")
