@@ -3,10 +3,8 @@ import logging
 import jwt
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.contrib.auth.models import AnonymousUser, User
 from django.conf import settings
 from rest_framework_simplejwt.exceptions import TokenError
-from cryptography.fernet import Fernet
 import hashlib
 
 logger = logging.getLogger(__name__)
@@ -17,14 +15,12 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         """
         Handles the WebSocket connection initiation.
         """
-        # Extract group name from the URL parameter
         self.group_name = self.scope['url_route']['kwargs'].get('group_name', None)
         if not self.group_name:
             logger.warning("Connection attempt without group name")
             await self.close(code=4001)
             return
 
-        # Extract JWT token from query params
         query_string = self.scope['query_string'].decode()
         token_param = next(
             (param for param in query_string.split("&") if param.startswith("token=")),
@@ -43,6 +39,9 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
             user_id = decoded_token.get('user_id')
 
             # Get the user from the token
+            from django.contrib.auth import \
+                get_user_model  # Lazy import to avoid issues
+            User = get_user_model()
             user = await sync_to_async(User.objects.get)(id=user_id)
             if user.is_anonymous:
                 raise TokenError("Invalid user from token.")
@@ -54,7 +53,7 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        # Perform permission check using a custom method
+        # Permission check
         if not await self.has_permission(user, self.group_name):
             logger.warning(
                 f"User {user.username} lacks permission to join group: {self.group_name}")

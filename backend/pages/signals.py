@@ -1,10 +1,8 @@
-# backend/pages/signals.py
-
+import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Page
 from .tasks import send_page_event_to_kafka  # Import the Celery task
-import logging
 
 logger = logging.getLogger(__name__)
 

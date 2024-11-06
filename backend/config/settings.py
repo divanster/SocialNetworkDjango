@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'csp',
     'django_elasticsearch_dsl',
+    'elasticsearch_service',  # Your centralized Elasticsearch app
 
     # Custom apps
     'users.apps.UsersConfig',
@@ -92,6 +93,7 @@ INSTALLED_APPS = [
     'social.apps.SocialConfig',
     'kafka_app.apps.KafkaAppConfig',
     'websocket',  # WebSocket-related app
+
 ]
 
 # Middleware configuration

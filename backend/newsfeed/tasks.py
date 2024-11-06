@@ -29,7 +29,7 @@ def _dynamic_import(model_path):
 @shared_task
 def send_newsfeed_event_task(object_id, event_type, model_name):
     """
-    Celery task to send various newsfeed model events to Kafka.
+    Celery task to send various newsfeed model events to Kafka and notify users via WebSocket.
     """
     producer = KafkaProducerClient()
 
@@ -59,10 +59,12 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
             }
 
         # Send the constructed message to the NEWSFEED_EVENTS Kafka topic
-        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS',
-                                                'default-newsfeed-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS', 'default-newsfeed-topic')
         producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for {model_name} {event_type}: {message}")
+
+        # Notify users via WebSocket
+        send_websocket_notifications(message)
 
     except model.DoesNotExist:
         logger.error(f"{model_name} with ID {object_id} does not exist.")
@@ -70,6 +72,35 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
         logger.error(f"Error sending Kafka message: {e}")
     finally:
         producer.close()
+
+
+def send_websocket_notifications(message):
+    """
+    Sends WebSocket notifications to the involved users.
+    """
+    try:
+        from websocket.consumers import GeneralKafkaConsumer  # Import to avoid circular dependencies
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+
+        if 'author_id' in message['data']:
+            author_id = message['data']['author_id']
+            user_group_name = GeneralKafkaConsumer.generate_group_name(author_id)
+
+            # Notify the author of the newsfeed event
+            async_to_sync(channel_layer.group_send)(
+                user_group_name,
+                {
+                    'type': 'newsfeed_notification',
+                    'message': f"Newsfeed {message['event_type']}: {message}"
+                }
+            )
+            logger.info(f"Real-time WebSocket notification sent for newsfeed event '{message['event_type']}' with ID {message['id']}")
+
+    except Exception as e:
+        logger.error(f"Error sending WebSocket notifications for newsfeed event: {e}")
 
 
 def _get_instance_data(instance):

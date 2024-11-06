@@ -4,7 +4,6 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Post
 from .serializers import PostSerializer
-from .tasks import process_new_post  # Import the Celery task
 from core.permissions import IsAuthorOrReadOnly
 
 
@@ -29,17 +28,13 @@ class PostViewSet(viewsets.ModelViewSet):
             # If the user is not authenticated, they can only see public posts
             return Post.objects.filter(visibility=VisibilityChoices.PUBLIC).order_by('-created_at')
 
-    @extend_schema(
-        responses=PostSerializer
-    )
+    @extend_schema(responses=PostSerializer)
     def perform_create(self, serializer):
         """
-        Save the post with the author set to the current user,
-        then trigger the Celery task to handle any background processing.
+        Save the post with the author set to the current user.
         """
-        post = serializer.save(author=self.request.user)
-        # Trigger the Celery task after the post is created
-        process_new_post.delay(post.id)
+        # Create the post; the signal will trigger the Celery task for processing.
+        serializer.save(author=self.request.user)
 
     @extend_schema(
         parameters=[

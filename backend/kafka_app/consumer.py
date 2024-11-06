@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 # Import BaseKafkaConsumer to avoid code duplication
 from kafka_app.base_consumer import BaseKafkaConsumer
 
+# Import the WebSocket consumer for generating group names
+from websocket.consumers import GeneralKafkaConsumer
+
 # Now import the services and models after setting up Django
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -160,59 +163,72 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     def handle_album_event(self, data):
         process_album_event(data)
         create_notification(data)
-        self.send_to_websocket_group("albums_group", f"New album created: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New album created: {data}")
 
     def handle_comment_event(self, data):
         process_comment_event(data)
         create_notification(data)
-        self.send_to_websocket_group("comments_group", f"New comment posted: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New comment posted: {data}")
 
     def handle_follow_event(self, data):
         process_follow_event(data)
         create_notification(data)
-        self.send_to_websocket_group("follows_group", f"New follow event: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New follow event: {data}")
 
     def handle_friend_event(self, data):
         process_friend_event(data)
         create_notification(data)
-        self.send_to_websocket_group("friends_group", f"New friend added: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New friend added: {data}")
 
     def handle_messenger_event(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger_group", f"New message event: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New message event: {data}")
 
     def handle_newsfeed_event(self, data):
         process_newsfeed_event(data)
-        self.send_to_websocket_group("newsfeed_group", f"Newsfeed updated: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"Newsfeed updated: {data}")
 
     def handle_page_event(self, data):
         process_page_event(data)
-        self.send_to_websocket_group("pages_group", f"New page created: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New page created: {data}")
 
     def handle_reaction_event(self, data):
         process_reaction_event(data)
         create_notification(data)
-        self.send_to_websocket_group("reactions_group", f"New reaction added: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New reaction added: {data}")
 
     def handle_social_event(self, data):
         process_social_event(data)
-        self.send_to_websocket_group("social_group", f"New social action: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New social action: {data}")
 
     def handle_story_event(self, data):
         process_story_event(data)
-        self.send_to_websocket_group("stories_group", f"New story shared: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New story shared: {data}")
 
     def handle_tagging_event(self, data):
         process_tagging_event(data)
-        self.send_to_websocket_group("tagging_group", f"New tag added: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New tag added: {data}")
 
     def handle_user_event(self, data):
         process_user_event(data)
-        self.send_to_websocket_group("users_group", f"New user registered: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New user registered: {data}")
 
     def handle_notification_event(self, data):
         create_notification(data)
-        self.send_to_websocket_group("notifications_group", f"New notification: {data}")
+        user_group_name = GeneralKafkaConsumer.generate_group_name(data['user_id'])
+        self.send_to_websocket_group(user_group_name, f"New notification: {data}")
 
 
 # Graceful shutdown on SIGTERM or SIGINT

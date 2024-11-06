@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def send_page_event_to_kafka(self, page_id, event_type):
     """
-    Celery task to send page events to Kafka.
+    Celery task to send page events to Kafka and WebSocket.
     """
     producer = KafkaProducerClient()
 
     try:
-        # Dynamically import the Page model
+        # Dynamically import the Page model to avoid circular import
         from pages.models import Page
 
         if event_type == 'deleted':
@@ -41,6 +41,9 @@ def send_page_event_to_kafka(self, page_id, event_type):
         producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for page {event_type}: {message}")
 
+        # Send WebSocket notification to the user who created/owns the page
+        send_websocket_notification(message, "Page")
+
     except Page.DoesNotExist:
         logger.error(f"Page with ID {page_id} does not exist.")
     except Exception as e:
@@ -48,3 +51,34 @@ def send_page_event_to_kafka(self, page_id, event_type):
         self.retry(exc=e, countdown=60)
     finally:
         producer.close()  # Ensure the producer is properly closed
+
+
+def send_websocket_notification(message, entity_type):
+    """
+    Sends WebSocket notification to the involved user (e.g., the owner of the page).
+    """
+    try:
+        from websocket.consumers import GeneralKafkaConsumer  # Import to avoid circular dependencies
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+
+        if "user_id" in message:
+            user_id = message['user_id']
+            user_group_name = GeneralKafkaConsumer.generate_group_name(user_id)
+
+            # Notify the user about the page event
+            async_to_sync(channel_layer.group_send)(
+                user_group_name,
+                {
+                    'type': 'notification_message',
+                    'message': f"{entity_type} {message['event']}: {message}"
+                }
+            )
+            logger.info(
+                f"Real-time WebSocket notification sent for {entity_type.lower()} event '{message['event']}' with ID {message['page_id']}"
+            )
+
+    except Exception as e:
+        logger.error(f"Error sending WebSocket notification for {entity_type.lower()} event: {e}")

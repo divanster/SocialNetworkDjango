@@ -1,5 +1,4 @@
-# backend/social/signals.py
-
+import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from asgiref.sync import async_to_sync
@@ -7,8 +6,9 @@ from channels.layers import get_channel_layer
 from .models import Post
 from tagging.models import TaggedItem
 from .tasks import send_post_event_to_kafka
-from core.utils import get_friends  # Import the utility function for getting friends
-import logging
+from core.utils import get_friends  # Utility function for getting friends
+from websocket.consumers import \
+    GeneralKafkaConsumer  # Import for generating group names
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def post_saved(sender, instance, created, **kwargs):
         if instance.visibility == 'public':
             # Public posts are broadcast to everyone
             async_to_sync(channel_layer.group_send)(
-                'posts_updates',  # Group name for posts updates
+                'posts_updates',  # Group name for public posts updates
                 {
                     'type': 'post_message',
                     'event': event_type,
@@ -45,8 +45,9 @@ def post_saved(sender, instance, created, **kwargs):
             # Notify friends of the author using utility function
             friends = get_friends(instance.author)
             for friend in friends:
+                user_group_name = GeneralKafkaConsumer.generate_group_name(friend.id)
                 async_to_sync(channel_layer.group_send)(
-                    f'user_{friend.id}_updates',  # Group per friend's updates
+                    user_group_name,
                     {
                         'type': 'post_message',
                         'event': event_type,
@@ -60,8 +61,10 @@ def post_saved(sender, instance, created, **kwargs):
 
         elif instance.visibility == 'private':
             # Only notify the author for their own private posts
+            user_group_name = GeneralKafkaConsumer.generate_group_name(
+                instance.author.id)
             async_to_sync(channel_layer.group_send)(
-                f'user_{instance.author.id}_updates',  # Author's updates group
+                user_group_name,
                 {
                     'type': 'post_message',
                     'event': event_type,
@@ -108,8 +111,9 @@ def post_deleted(sender, instance, **kwargs):
             # Notify friends of the author using utility function
             friends = get_friends(instance.author)
             for friend in friends:
+                user_group_name = GeneralKafkaConsumer.generate_group_name(friend.id)
                 async_to_sync(channel_layer.group_send)(
-                    f'user_{friend.id}_updates',
+                    user_group_name,
                     {
                         'type': 'post_message',
                         'event': 'deleted',
@@ -123,8 +127,10 @@ def post_deleted(sender, instance, **kwargs):
 
         elif instance.visibility == 'private':
             # Only notify the author for their own private posts
+            user_group_name = GeneralKafkaConsumer.generate_group_name(
+                instance.author.id)
             async_to_sync(channel_layer.group_send)(
-                f'user_{instance.author.id}_updates',
+                user_group_name,
                 {
                     'type': 'post_message',
                     'event': 'deleted',
@@ -141,7 +147,7 @@ def post_deleted(sender, instance, **kwargs):
             f"Error handling post deleted signal for post ID {instance.id}: {e}")
 
 
-# Signals for the TaggedItem model
+# Signal for TaggedItem model to send updates about tagging actions
 @receiver(post_save, sender=TaggedItem)
 def tagged_item_saved(sender, instance, created, **kwargs):
     try:
@@ -152,15 +158,16 @@ def tagged_item_saved(sender, instance, created, **kwargs):
             if post:
                 # Real-time update for tagged users
                 channel_layer = get_channel_layer()
+                user_group_name = GeneralKafkaConsumer.generate_group_name(
+                    instance.tagged_user_id)
                 async_to_sync(channel_layer.group_send)(
-                    'posts_updates',
+                    user_group_name,
                     {
                         'type': 'post_message',
                         'event': 'tagged' if created else 'untagged',
                         'post': str(post.id),
                         'title': post.title,
                         'content': post.content,
-                        'tagged_user_ids': [str(instance.tagged_user_id)],
                     }
                 )
                 logger.info(f"Real-time tagging update sent for post ID {post.id}")
