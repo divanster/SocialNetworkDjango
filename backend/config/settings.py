@@ -420,18 +420,15 @@ ELASTICSEARCH_DSL = {
 }
 
 
+# Twilio settings
+TWILIO_ACCOUNT_SID = 'your_twilio_account_sid'
+TWILIO_AUTH_TOKEN = 'your_twilio_auth_token'
+TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
 
 # from . import cron_jobs
 # CRONJOBS = cron_jobs.CRONJOBS
 #
-#
-#
-# # TWILIO SETTINGS
-# TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
-# TWILIO_AUTH_TOKEN = config('TWILIO_TOKEN')
-# TWILIO_FROM_NUMBER = config('TWILIO_FROM')
-#
-#
+
 # # FCM (push notifications) configuration
 # FCM_DJANGO_SETTINGS = {
 #         "FCM_SERVER_KEY": config("FCM_SERVER_KEY"),
