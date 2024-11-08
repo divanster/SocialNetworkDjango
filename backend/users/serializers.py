@@ -1,4 +1,4 @@
-# users/serializers.py
+# backend/users/serializers.py
 
 from rest_framework import serializers
 from tagging.serializers import TaggedItemSerializer
@@ -56,21 +56,22 @@ class CustomUserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=False)
     password = serializers.CharField(
         write_only=True,
-        required=False,
+        required=True,
         validators=[validate_password],
         style={'input_type': 'password'}
     )
     password2 = serializers.CharField(
         write_only=True,
-        required=False,
+        required=True,
         style={'input_type': 'password'},
         label="Confirm Password"
     )
+    is_2fa_enabled = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = CustomUser
         fields = [
-            'id', 'email', 'username', 'password', 'password2', 'profile'
+            'id', 'email', 'username', 'password', 'password2', 'profile', 'is_2fa_enabled'
         ]
         extra_kwargs = {
             'email': {
@@ -88,9 +89,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         password = data.get('password')
         password2 = data.get('password2')
 
-        if password or password2:
-            if password != password2:
-                raise ValidationError({"non_field_errors": ["Passwords do not match."]})
+        if password != password2:
+            raise ValidationError({"password": ["Passwords do not match."]})
         return data
 
     def create(self, validated_data):
@@ -98,18 +98,19 @@ class CustomUserSerializer(serializers.ModelSerializer):
         Create a new user instance after removing password2.
         """
         profile_data = validated_data.pop('profile', {})
+        password = validated_data.pop('password')
+        validated_data.pop('password2')
         with transaction.atomic():
             user = CustomUser.objects.create(
                 email=validated_data['email'],
                 username=validated_data['username']
             )
-            if 'password' in validated_data:
-                user.set_password(validated_data['password'])
+            user.set_password(password)
             user.save()
 
             if profile_data:
-                # Retrieve the existing profile created by signals
-                profile = user.profile
+                # Retrieve the existing profile created by signals or create new one
+                profile, created = UserProfile.objects.get_or_create(user=user)
                 profile_serializer = UserProfileSerializer(
                     profile,
                     data=profile_data,
@@ -126,10 +127,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
         Update user instance and associated profile.
         """
         profile_data = validated_data.pop('profile', {})
+        password = validated_data.pop('password', None)
+        validated_data.pop('password2', None)
         instance.email = validated_data.get('email', instance.email)
         instance.username = validated_data.get('username', instance.username)
-        if 'password' in validated_data:
-            instance.set_password(validated_data['password'])
+        if password:
+            instance.set_password(password)
         instance.save()
 
         if profile_data:
@@ -143,11 +146,3 @@ class CustomUserSerializer(serializers.ModelSerializer):
             profile_serializer.save()
 
         return instance
-
-    def get_serializer_context(self):
-        """
-        Ensure the request is passed in the context for nested serializers.
-        """
-        context = super().get_serializer_context()
-        context.update({'request': self.context.get('request')})
-        return context

@@ -8,11 +8,9 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
     PermissionsMixin
 from django.utils import timezone
 from django.conf import settings
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from core.models.base_models import BaseModel, UUIDModel
 from setuptools.config._validate_pyproject.error_reporting import ValidationError
-
+import random
 
 # Define CustomUserManager
 class CustomUserManager(BaseUserManager):
@@ -26,6 +24,8 @@ class CustomUserManager(BaseUserManager):
         """
         if not email:
             raise ValueError('The Email field must be set')
+        if not password:
+            raise ValueError('The Password field must be set')
         email = self.normalize_email(email)
         user = self.model(email=email, username=username, **extra_fields)
         user.set_password(password)
@@ -40,13 +40,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-
         return self.create_user(email, username, password, **extra_fields)
-
 
 # Define CustomUser
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -59,6 +53,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
 
+    # Fields for 2FA
+    is_2fa_enabled = models.BooleanField(default=False)
+    two_factor_code = models.CharField(max_length=6, blank=True, null=True)
+    code_expiration = models.DateTimeField(blank=True, null=True)
+
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
@@ -67,6 +66,37 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+    def generate_two_factor_code(self):
+        """
+        Generates a new 6-digit verification code and sets its expiration time.
+        """
+        self.two_factor_code = f'{random.randint(100000, 999999)}'
+        self.code_expiration = timezone.now() + timezone.timedelta(minutes=10)
+        self.save(update_fields=['two_factor_code', 'code_expiration'])
+
+    def verify_two_factor_code(self, code):
+        """
+        Verifies the given 2FA code against the stored one, if it's still valid.
+        """
+        if (
+            self.two_factor_code == code
+            and self.code_expiration
+            and self.code_expiration > timezone.now()
+        ):
+            # Clear the code after successful verification
+            self.two_factor_code = None
+            self.code_expiration = None
+            self.save(update_fields=['two_factor_code', 'code_expiration'])
+            return True
+        return False
+
+    def clear_two_factor_code(self):
+        """
+        Clears the two-factor code and expiration time.
+        """
+        self.two_factor_code = None
+        self.code_expiration = None
+        self.save(update_fields=['two_factor_code', 'code_expiration'])
 
 def user_profile_picture_file_path(instance, filename):
     """
@@ -75,7 +105,6 @@ def user_profile_picture_file_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/profile_pictures/', filename)
-
 
 # Define UserProfile
 class UserProfile(UUIDModel, BaseModel):
