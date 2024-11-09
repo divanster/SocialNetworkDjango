@@ -28,12 +28,12 @@ def process_message_event_task(self, message_id, event_type):
             message_instance = Message.objects.get(id=message_id)
             message = {
                 "message_id": str(message_instance.id),
+                "conversation_id": str(message_instance.conversation.id),
                 "sender_id": str(message_instance.sender.id),
                 "sender_username": message_instance.sender.username,
-                "receiver_id": str(message_instance.receiver.id),
-                "receiver_username": message_instance.receiver.username,
+                "receiver_ids": [str(participant.id) for participant in message_instance.conversation.participants.all()],
                 "content": message_instance.content,
-                "timestamp": str(message_instance.timestamp),
+                "timestamp": str(message_instance.created_at),
                 "event": event_type
             }
 
@@ -66,26 +66,16 @@ def send_websocket_notifications(message):
 
         channel_layer = get_channel_layer()
 
-        # Generate group names for sender and receiver
-        sender_group_name = GeneralKafkaConsumer.generate_group_name(message['sender_id'])
-        receiver_group_name = GeneralKafkaConsumer.generate_group_name(message['receiver_id'])
-
-        # Send WebSocket notifications to both sender and receiver
-        async_to_sync(channel_layer.group_send)(
-            sender_group_name,
-            {
-                'type': 'message_notification',
-                'message': f"Message {message['event']}: {message}"
-            }
-        )
-
-        async_to_sync(channel_layer.group_send)(
-            receiver_group_name,
-            {
-                'type': 'message_notification',
-                'message': f"Message {message['event']}: {message}"
-            }
-        )
+        # Generate group names for each receiver (including the sender)
+        for user_id in message['receiver_ids']:
+            user_group_name = GeneralKafkaConsumer.generate_group_name(user_id)
+            async_to_sync(channel_layer.group_send)(
+                user_group_name,
+                {
+                    'type': 'message_notification',
+                    'message': f"Message {message['event']}: {message}"
+                }
+            )
 
         logger.info(f"WebSocket notifications sent for message event: {message}")
 

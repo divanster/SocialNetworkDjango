@@ -1,6 +1,8 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import FriendRequest, Friendship
+
+from . import models
+from .models import FriendRequest, Friendship, Block
 from .tasks import process_friend_event
 import logging
 
@@ -39,3 +41,11 @@ def friendship_deleted(sender, instance, **kwargs):
     # Trigger Celery task to process the friendship deleted event
     process_friend_event.delay(instance.id, 'deleted', is_friendship=True)
     logger.info(f"Triggered Celery task for deleted friendship with ID {instance.id}")
+
+
+@receiver(post_save, sender=Block)
+def remove_friendship_on_block(sender, instance, **kwargs):
+    Friendship.objects.filter(
+        (models.Q(user1=instance.blocker, user2=instance.blocked) |
+         models.Q(user1=instance.blocked, user2=instance.blocker))
+    ).delete()

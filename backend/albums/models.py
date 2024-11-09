@@ -1,6 +1,8 @@
 import logging
 from django.db import models
 from django.contrib.auth import get_user_model
+from setuptools.config._validate_pyproject.error_reporting import ValidationError
+
 from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel, SoftDeleteManager
 from django.contrib.contenttypes.fields import GenericRelation
 from tagging.models import TaggedItem
@@ -154,6 +156,12 @@ class Photo(UUIDModel, SoftDeleteModel, BaseModel):
         db_table = 'photos'
         ordering = ['-created_at']
 
+    def save(self, *args, **kwargs):
+        # Ensure photo visibility always matches album visibility
+        if self.album.is_deleted:
+            raise ValidationError("Cannot save a photo to a deleted album.")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Photo in album '{self.album.title}'"
 
@@ -164,3 +172,7 @@ class Photo(UUIDModel, SoftDeleteModel, BaseModel):
         if self.image:
             return self.image.url
         return None
+
+    def get_visibility(self):
+        # Get the visibility from the parent album
+        return self.album.visibility

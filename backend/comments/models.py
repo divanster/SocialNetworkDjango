@@ -13,17 +13,16 @@ User = get_user_model()
 
 
 class Comment(UUIDModel, BaseModel):
-    """
-    Represents a comment made by a user on any content.
-    """
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='comments',
         help_text="User who made the comment"
     )
-    # Generic relation to any content type
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    content_type = models.ForeignKey(
+        ContentType, on_delete=models.CASCADE,
+        limit_choices_to=models.Q(app_label='albums') | models.Q(app_label='posts')
+    )
     object_id = models.UUIDField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
@@ -35,6 +34,7 @@ class Comment(UUIDModel, BaseModel):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['content_type', 'object_id']),
         ]
 
     def __str__(self):

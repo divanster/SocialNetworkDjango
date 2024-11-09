@@ -1,3 +1,5 @@
+from datetime import timezone
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -54,6 +56,7 @@ class FriendRequest(BaseModel):
                                       "blocked users.")
 
             self.status = self.Status.ACCEPTED
+            self.accepted_at = timezone.now()
             self.save()
 
             if str(self.sender.id) < str(self.receiver.id):
@@ -65,6 +68,7 @@ class FriendRequest(BaseModel):
     def reject(self):
         if self.status == self.Status.PENDING:
             self.status = self.Status.REJECTED
+            self.rejected_at = timezone.now()  # Capture rejection time
             self.save()
 
 

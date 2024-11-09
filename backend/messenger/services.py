@@ -15,7 +15,8 @@ def process_messenger_event(message):
         if event_type == "created":
             # Logic for processing the "created" event.
             logger.info(f"New message created event: {message}")
-            # Custom handling can be added here, like notifying users, updating inbox, etc.
+            # Custom handling can be added here, like notifying users, updating
+            # inbox, etc.
 
         elif event_type == "updated":
             # Logic for processing the "updated" event.
@@ -40,18 +41,17 @@ def process_messenger_event(message):
         logger.error(f"Error processing message event {message}: {e}")
 
 
-def create_message(sender, receiver, content):
+def create_message(sender, receiver, content, conversation):
     """
-    Create a new message between sender and receiver.
+    Create a new message within a conversation.
     """
     try:
         message = Message.objects.create(
             sender=sender,
-            receiver=receiver,
+            conversation=conversation,
             content=content
         )
-        logger.info(
-            f"Created new message from {sender} to {receiver}. Message ID: {message.id}")
+        logger.info(f"Created new message from {sender} to {receiver}. Message ID: {message.id}")
         return message
     except Exception as e:
         logger.error(f"Error creating message from {sender} to {receiver}: {e}")

@@ -9,6 +9,7 @@ import os
 
 User = get_user_model()
 
+
 class PostQuerySet(models.QuerySet):
     def visible_to_user(self, user):
         if user.is_anonymous:
@@ -22,6 +23,7 @@ class PostQuerySet(models.QuerySet):
             own_posts = self.filter(author=user)
             return public_posts | friends_posts | own_posts
 
+
 def get_friends(user):
     from friends.models import Friendship
     friends = Friendship.objects.filter(
@@ -34,12 +36,14 @@ def get_friends(user):
     friend_ids.discard(user.id)
     return User.objects.filter(id__in=friend_ids)
 
+
 class PostManager(models.Manager):
     def get_queryset(self):
         return PostQuerySet(self.model, using=self._db)
 
     def visible_to_user(self, user):
         return self.get_queryset().visible_to_user(user)
+
 
 class Post(UUIDModel, SoftDeleteModel, BaseModel):
     """
@@ -94,6 +98,7 @@ def post_image_file_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/post/', filename)
+
 
 class PostImage(UUIDModel, BaseModel):
     """

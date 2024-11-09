@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from datetime import timedelta
 import environ
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -424,6 +425,15 @@ ELASTICSEARCH_DSL = {
 TWILIO_ACCOUNT_SID = 'your_twilio_account_sid'
 TWILIO_AUTH_TOKEN = 'your_twilio_auth_token'
 TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
+
+
+CELERY_BEAT_SCHEDULE = {
+    'clear_expired_two_factor_codes': {
+        'task': 'users.tasks.clear_expired_two_factor_codes',
+        'schedule': crontab(hour='*', minute=0),  # Run every hour
+    },
+}
+
 
 # from . import cron_jobs
 # CRONJOBS = cron_jobs.CRONJOBS
