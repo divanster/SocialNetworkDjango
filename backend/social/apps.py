@@ -6,5 +6,5 @@ class SocialConfig(AppConfig):
     name = 'social'
     verbose_name = 'Social'
 
-    # def ready(self):
-    #     import social.signals
+    def ready(self):
+        import social.signals # noqa

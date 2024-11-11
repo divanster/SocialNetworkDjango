@@ -5,6 +5,8 @@ from comments.models import Comment
 from pages.models import Page
 from albums.models import Album
 from stories.models import Story
+from messenger.models import Message
+
 
 # =======================
 # Post Document
@@ -26,6 +28,7 @@ class PostDocument(Document):
         model = Post
         fields = ['id']
 
+
 # =======================
 # Comment Document
 # =======================
@@ -43,6 +46,7 @@ class CommentDocument(Document):
     class Django:
         model = Comment
         fields = ['id', 'created_at']
+
 
 # =======================
 # Page Document
@@ -64,6 +68,7 @@ class PageDocument(Document):
         model = Page
         fields = ['id']  # Removed 'user_id', represented via ObjectField instead
 
+
 # =======================
 # Album Document
 # =======================
@@ -83,6 +88,7 @@ class AlbumDocument(Document):
     class Django:
         model = Album
         fields = ['id']  # Removed 'user_id', represented via ObjectField instead
+
 
 # =======================
 # Story Document
@@ -104,3 +110,28 @@ class StoryDocument(Document):
     class Django:
         model = Story
         fields = ['id']  # Removed 'user_id', represented via ObjectField instead
+
+
+# =======================
+# Message Document
+# =======================
+@registry.register_document
+class MessageDocument(Document):
+    sender = fields.ObjectField(properties={
+        'id': fields.IntegerField(),
+        'username': fields.TextField(),
+    })
+    receiver = fields.ObjectField(properties={
+        'id': fields.IntegerField(),
+        'username': fields.TextField(),
+    })
+    conversation_id = fields.IntegerField()
+    content = fields.TextField()
+    timestamp = fields.DateField()
+
+    class Index:
+        name = 'messages'  # Specify the index name for this document
+
+    class Django:
+        model = Message  # Connect this to the `Message` model
+        fields = ['id', 'created_at']  # Additional fields to index

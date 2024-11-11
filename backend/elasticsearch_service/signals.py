@@ -8,7 +8,9 @@ from pages.models import Page
 from albums.models import Album
 from stories.models import Story
 from .documents import PostDocument, CommentDocument, PageDocument, AlbumDocument, \
-    StoryDocument
+    StoryDocument, MessageDocument
+from messenger.models import Message
+
 
 
 @receiver(post_save, sender=Post)
@@ -59,3 +61,12 @@ def update_story_index(sender, instance, **kwargs):
 @receiver(post_delete, sender=Story)
 def delete_story_index(sender, instance, **kwargs):
     StoryDocument().delete(instance)
+
+
+@receiver(post_save, sender=Message)
+def update_message_index(sender, instance, **kwargs):
+    MessageDocument().update(instance)
+
+@receiver(post_delete, sender=Message)
+def delete_message_index(sender, instance, **kwargs):
+    MessageDocument().delete(instance)
