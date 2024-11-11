@@ -1,39 +1,32 @@
-# backend/config/tests/test_error_views.py
+# backend/config/tests/test_views.py
 
-from django.test import TestCase, Client
-from django.urls import re_path
-from django.http import HttpResponse, HttpResponseForbidden, Http404
-from django.shortcuts import render
-from config.views import custom_400_view, custom_403_view, custom_404_view, \
-    custom_500_view
-
+from django.test import TestCase, Client, override_settings
+from django.urls import path
+from django.http import Http404
+from config.views import custom_400_view, custom_403_view, custom_404_view, custom_500_view
 
 # Mock views to trigger specific errors for testing purposes
 def bad_request_view(request):
     return custom_400_view(request)
 
-
 def protected_view(request):
-    return HttpResponseForbidden('Permission Denied')
-
+    return custom_403_view(request)
 
 def raise_not_found(request):
     raise Http404('Not Found')
 
-
 def raise_server_error(request):
     raise Exception('Server Error')
 
-
-# Include temporary URLs for testing custom error views
+# Define a separate URL configuration for testing purposes
 urlpatterns = [
-    re_path(r'^bad-request/$', bad_request_view),
-    re_path(r'^some_protected_view/$', protected_view),
-    re_path(r'^raise-server-error/$', raise_server_error),
-    re_path(r'^non-existing-url/$', raise_not_found),  # Non-existent URL for 404
+    path('bad-request/', bad_request_view),
+    path('some_protected_view/', protected_view),
+    path('non-existing-url/', raise_not_found),
+    path('raise-server-error/', raise_server_error),
 ]
 
-
+@override_settings(ROOT_URLCONF='config.tests.test_views')
 class ConfigAppViewsTest(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -53,11 +46,9 @@ class ConfigAppViewsTest(TestCase):
     def test_custom_404_view(self):
         response = self.client.get('/non-existing-url/')
         self.assertEqual(response.status_code, 404)
-        self.assertContains(response, "The requested resource was not found",
-                            status_code=404)
+        self.assertContains(response, "The requested resource was not found", status_code=404)
 
     def test_custom_500_view(self):
         response = self.client.get('/raise-server-error/', follow=True)
         self.assertEqual(response.status_code, 500)
-        self.assertContains(response, "An internal server error occurred",
-                            status_code=500)
+        self.assertContains(response, "An unexpected error occurred.", status_code=500)

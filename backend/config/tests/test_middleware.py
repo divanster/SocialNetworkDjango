@@ -1,9 +1,8 @@
-# backend/config/tests/test_error_middleware.py
-
 from django.test import TestCase, RequestFactory
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from config.custom_error_middleware import CustomErrorMiddleware
+import json
 
 
 class CustomErrorMiddlewareTests(TestCase):
@@ -16,10 +15,13 @@ class CustomErrorMiddlewareTests(TestCase):
         Test that PermissionDenied returns a 403 response.
         """
         request = self.factory.get('/')
-        response = self.middleware.process_exception(request,
-                                                     PermissionDenied("Access Denied"))
+        response = self.middleware.process_exception(request, PermissionDenied("Access Denied"))
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()['error']['type'], 'PermissionDenied')
+
+        # Parse the response content
+        response_data = json.loads(response.content)
+        self.assertEqual(response_data['error']['type'], 'PermissionDenied')
+        self.assertEqual(response_data['error']['message'], 'Access Denied')
 
     def test_http_404_handled(self):
         """
@@ -28,7 +30,11 @@ class CustomErrorMiddlewareTests(TestCase):
         request = self.factory.get('/')
         response = self.middleware.process_exception(request, Http404("Not Found"))
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()['error']['type'], 'NotFound')
+
+        # Parse the response content
+        response_data = json.loads(response.content)
+        self.assertEqual(response_data['error']['type'], 'NotFound')
+        self.assertEqual(response_data['error']['message'], 'The requested resource was not found')
 
     def test_unhandled_exception_handled(self):
         """
@@ -37,4 +43,8 @@ class CustomErrorMiddlewareTests(TestCase):
         request = self.factory.get('/')
         response = self.middleware.process_exception(request, Exception("Server error"))
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()['error']['type'], 'ServerError')
+
+        # Parse the response content
+        response_data = json.loads(response.content)
+        self.assertEqual(response_data['error']['type'], 'ServerError')
+        self.assertEqual(response_data['error']['message'], 'An unexpected error occurred.')

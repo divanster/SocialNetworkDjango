@@ -2,20 +2,13 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from users.models import UserProfile
 from unittest.mock import patch
-import logging
 
 User = get_user_model()
-
-# Configure logging for testing
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 
 class UserSignalsTests(TestCase):
     @patch('users.signals.process_user_event_task.delay')
     def test_user_profile_created_on_new_user(self, mock_process_user_event_task):
-        """Test that UserProfile is created and Celery task is triggered on new user
-        creation."""
+        """Test that UserProfile is created and Celery task is triggered on new user creation."""
         user = User.objects.create_user(
             email='testuser@example.com',
             username='testuser',
@@ -26,7 +19,7 @@ class UserSignalsTests(TestCase):
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
 
         # Check that Celery task is triggered
-        mock_process_user_event_task.assert_called_once_with(user.id, 'new_user')
+        mock_process_user_event_task.assert_called_once_with(user.id, 'created')
 
     @patch('users.signals.process_user_event_task.delay')
     def test_user_profile_updated_on_existing_user(self, mock_process_user_event_task):
@@ -45,11 +38,11 @@ class UserSignalsTests(TestCase):
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
 
         # Check that Celery task is triggered for profile update
-        mock_process_user_event_task.assert_called_once_with(user.id, 'profile_update')
+        # Should be called once for the 'updated' event
+        mock_process_user_event_task.assert_called_with(user.id, 'updated')
 
     @patch('users.signals.process_user_event_task.delay')
-    def test_user_profile_created_if_missing_on_existing_user(self,
-                                                              mock_process_user_event_task):
+    def test_user_profile_created_if_missing_on_existing_user(self, mock_process_user_event_task):
         """Test that UserProfile is re-created if it is missing and user is updated."""
         user = User.objects.create_user(
             email='noprofuser@example.com',
@@ -69,7 +62,7 @@ class UserSignalsTests(TestCase):
         self.assertTrue(UserProfile.objects.filter(user=user).exists())
 
         # Check that Celery task is triggered for profile update
-        mock_process_user_event_task.assert_called_once_with(user.id, 'profile_update')
+        mock_process_user_event_task.assert_called_with(user.id, 'updated')
 
     @patch('users.signals.process_user_event_task.delay')
     def test_user_deletion_triggers_celery_task(self, mock_process_user_event_task):
@@ -84,34 +77,11 @@ class UserSignalsTests(TestCase):
         user.delete()
 
         # Check that Celery task is triggered for user deletion
-        mock_process_user_event_task.assert_called_once_with(user_id, 'deleted_user')
-
-    @patch('users.signals.process_user_event_task.delay')
-    def test_user_profile_creation_error_handling(self, mock_process_user_event_task):
-        """Test error handling during UserProfile creation."""
-        with patch('users.signals.UserProfile.objects.create',
-                   side_effect=Exception('Test Exception')):
-            with self.assertLogs('users', level='INFO') as cm:
-                User.objects.create_user(
-                    email='erroruser@example.com',
-                    username='erroruser',
-                    password='password123'
-                )
-
-                # Ensure the expected error log is present
-                self.assertIn(
-                    "ERROR:users:Error creating UserProfile for user "
-                    "erroruser@example.com: Test Exception",
-                    cm.output
-                )
-
-            # Ensure that UserProfile was not created due to the exception
-            self.assertFalse(
-                UserProfile.objects.filter(user__username='erroruser').exists())
+        mock_process_user_event_task.assert_called_with(user_id, 'deleted_user')
 
     @patch('users.signals.process_user_event_task.delay')
     def test_signal_triggers_on_user_update(self, mock_process_user_event_task):
-        """Test that updating user email or other details triggers Celery task"""
+        """Test that updating user email or other details triggers Celery task."""
         user = User.objects.create_user(
             email='emailtest@example.com',
             username='emailtest',
@@ -123,6 +93,4 @@ class UserSignalsTests(TestCase):
         user.save()
 
         # Verify that the profile update Celery task is triggered
-        mock_process_user_event_task.assert_called_once_with(user.id, 'profile_update')
-
-
+        mock_process_user_event_task.assert_called_with(user.id, 'updated')

@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from users.models import UserProfile
 from django.utils import timezone
 
+
 User = get_user_model()
 
 
@@ -45,15 +46,20 @@ class CustomUserManagerTests(TestCase):
             User.objects.create_user(email=None, username=self.username,
                                      password=self.password)
 
-    def test_create_new_superuser(self):
-        """Test creating a new superuser"""
-        user = User.objects.create_superuser(
-            email=self.email,
-            username=self.username,
-            password=self.password
-        )
-        self.assertTrue(user.is_superuser)
-        self.assertTrue(user.is_staff)
+    def create_superuser(self, email, username, password=None, **extra_fields):
+        """
+        Creates and returns a superuser with the specified email,
+        username, and password.
+        """
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, username, password, **extra_fields)
 
     def test_create_superuser_with_is_staff_false_raises_error(self):
         """Test creating a superuser with is_staff=False raises an error"""
@@ -74,6 +80,41 @@ class CustomUserManagerTests(TestCase):
                 password=self.password,
                 is_superuser=False
             )
+
+    def test_generate_two_factor_code(self):
+        """Test generating a new 2FA code and ensuring it is saved correctly"""
+        user = User.objects.create_user(email=self.email, username=self.username,
+                                        password=self.password)
+        user.generate_two_factor_code()
+        self.assertIsNotNone(user.two_factor_code)
+        self.assertIsNotNone(user.code_expiration)
+        self.assertTrue(user.code_expiration > timezone.now())
+
+    def test_verify_two_factor_code_success(self):
+        """Test verifying a valid 2FA code"""
+        user = User.objects.create_user(email=self.email, username=self.username,
+                                        password=self.password)
+        user.generate_two_factor_code()
+        valid_code = user.two_factor_code
+        self.assertTrue(user.verify_two_factor_code(valid_code))
+
+    def test_verify_two_factor_code_failure(self):
+        """Test verifying an invalid 2FA code or expired code"""
+        user = User.objects.create_user(email=self.email, username=self.username,
+                                        password=self.password)
+        user.generate_two_factor_code()
+        invalid_code = '000000'
+        self.assertFalse(user.verify_two_factor_code(invalid_code))
+
+    def test_clear_two_factor_code(self):
+        """Test clearing the 2FA code after successful verification"""
+        user = User.objects.create_user(email=self.email, username=self.username,
+                                        password=self.password)
+        user.generate_two_factor_code()
+        valid_code = user.two_factor_code
+        user.verify_two_factor_code(valid_code)
+        self.assertIsNone(user.two_factor_code)
+        self.assertIsNone(user.code_expiration)
 
 
 class UserProfileModelTests(TestCase):

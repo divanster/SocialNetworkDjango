@@ -9,8 +9,9 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
 from django.utils import timezone
 from django.conf import settings
 from core.models.base_models import BaseModel, UUIDModel
-from setuptools.config._validate_pyproject.error_reporting import ValidationError
+from django.core.exceptions import ValidationError
 import random
+
 
 # Define CustomUserManager
 class CustomUserManager(BaseUserManager):
@@ -40,7 +41,13 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
         return self.create_user(email, username, password, **extra_fields)
+
 
 # Define CustomUser
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -79,9 +86,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         Verifies the given 2FA code against the stored one, if it's still valid.
         """
         if (
-            self.two_factor_code == code
-            and self.code_expiration
-            and self.code_expiration > timezone.now()
+                self.two_factor_code == code
+                and self.code_expiration
+                and self.code_expiration > timezone.now()
         ):
             # Clear the code after successful verification
             self.two_factor_code = None
@@ -98,6 +105,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         self.code_expiration = None
         self.save(update_fields=['two_factor_code', 'code_expiration'])
 
+
 def user_profile_picture_file_path(instance, filename):
     """
     Generates a file path for a new user profile picture.
@@ -105,6 +113,7 @@ def user_profile_picture_file_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/profile_pictures/', filename)
+
 
 # Define UserProfile
 class UserProfile(UUIDModel, BaseModel):

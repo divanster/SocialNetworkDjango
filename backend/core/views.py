@@ -8,6 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.db import connection
 import redis
 from kafka import KafkaProducer
+from kafka.errors import NoBrokersAvailable
 from django.conf import settings
 
 # Setting up the logger for the core application
@@ -52,7 +53,7 @@ def csp_report(request):
 def health_check(request):
     """
     Health check endpoint to ensure the application is running correctly.
-    This can be extended to include checks for the database, cache, Kafka, etc.
+    This includes checks for the database, cache (Redis), Kafka, etc.
     """
     health_status = {
         "application": "healthy",
@@ -67,25 +68,30 @@ def health_check(request):
         health_status["database"] = "healthy" if connection.is_usable() else "unhealthy"
     except Exception as e:
         health_status["database"] = "unhealthy"
-        logger.error(f"Database health check failed: {e}")
+        logger.error(f"Database health check failed: {str(e)}")
 
     # Check Redis health
     try:
-        r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
-        r.ping()
+        redis_instance = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT,
+                                     db=0)
+        redis_instance.ping()
         health_status["redis"] = "healthy"
     except redis.ConnectionError as e:
         health_status["redis"] = "unhealthy"
-        logger.error(f"Redis health check failed: {e}")
+        logger.error(f"Redis health check failed: {str(e)}")
 
     # Check Kafka health
     try:
         # Attempt to connect to Kafka by instantiating a producer
         producer = KafkaProducer(bootstrap_servers=settings.KAFKA_BROKER_URL)
+        producer.close()  # Close immediately after instantiation to avoid connection issues
         health_status["kafka"] = "healthy"
+    except NoBrokersAvailable as e:
+        health_status["kafka"] = "unhealthy"
+        logger.error(f"Kafka health check failed: {str(e)}")
     except Exception as e:
         health_status["kafka"] = "unhealthy"
-        logger.error(f"Kafka health check failed: {e}")
+        logger.error(f"Unexpected error during Kafka health check: {str(e)}")
 
     # Determine overall health based on the individual services
     status_code = 200 if all(v == "healthy" for v in health_status.values()) else 503
