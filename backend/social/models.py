@@ -6,6 +6,8 @@ from tagging.models import TaggedItem
 from core.choices import VisibilityChoices  # Import visibility choices
 import uuid
 import os
+from django.core.exceptions import ValidationError
+
 
 User = get_user_model()
 
@@ -147,6 +149,10 @@ class Rating(UUIDModel, BaseModel):
         help_text="Rating value between 1 and 5",
         choices=[(i, i) for i in range(1, 6)]
     )
+
+    def clean(self):
+        if self.value < 1 or self.value > 5:
+            raise ValidationError('Rating must be between 1 and 5.')
 
     class Meta:
         db_table = 'ratings'

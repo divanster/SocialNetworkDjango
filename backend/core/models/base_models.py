@@ -1,3 +1,5 @@
+# core/models/base_models.py
+
 from django.db import models
 import uuid
 import os
@@ -37,7 +39,7 @@ class SoftDeleteModel(models.Model):
 
     def delete(self, using=None, keep_parents=False):
         self.is_deleted = True
-        self.save()
+        self.save(update_fields=['is_deleted'])
 
     def hard_delete(self, using=None, keep_parents=False):
         super().delete(using=using, keep_parents=keep_parents)

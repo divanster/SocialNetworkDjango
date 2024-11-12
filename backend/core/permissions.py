@@ -13,4 +13,4 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
             return True
 
         # Write permissions are only allowed to the author of the story
-        return obj.user == request.user
+        return obj.author == request.user
