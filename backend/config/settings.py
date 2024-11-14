@@ -73,7 +73,7 @@ INSTALLED_APPS = [
     'drf_spectacular_sidecar',
     'django_celery_beat',
     'csp',
-    'django_elasticsearch_dsl',
+    # 'django_elasticsearch_dsl',
 
     # Custom apps
     'users.apps.UsersConfig',
@@ -97,9 +97,9 @@ INSTALLED_APPS = [
 # Middleware configuration
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'csp.middleware.CSPMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -408,14 +408,14 @@ LOGGING = {
     },
 }
 
-# =====================
-# Elasticsearch Configuration
-# =====================
-ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': env('ELASTICSEARCH_HOSTS', default='localhost:9200'),
-    },
-}
+# # =====================
+# # Elasticsearch Configuration
+# # =====================
+# ELASTICSEARCH_DSL = {
+#     'default': {
+#         'hosts': env('ELASTICSEARCH_HOSTS', default='localhost:9200'),
+#     },
+# }
 
 
 
