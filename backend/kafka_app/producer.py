@@ -1,3 +1,5 @@
+# backend/kafka_app/producer.py
+
 import json
 import logging
 from kafka import KafkaProducer
@@ -7,7 +9,6 @@ from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger(__name__)
 
-
 class EventData(BaseModel):
     user_id: int
     username: str
@@ -15,7 +16,6 @@ class EventData(BaseModel):
 
     class Config:
         str_min_length = 1
-
 
 class KafkaProducerClient:
     def __init__(self):

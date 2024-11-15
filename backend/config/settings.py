@@ -9,6 +9,7 @@ from django.core.exceptions import ImproperlyConfigured
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
+
 # Initialize environment variables using django-environ
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()

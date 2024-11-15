@@ -1,62 +1,53 @@
-# Use a Debian-based image for better compatibility with PostgreSQL and Kafka drivers
+# Use a Debian-based image for better compatibility
 FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONPATH="/app:/app/backend" \
-    DEV=true
+    PYTHONPATH="/app:/app/backend"
 
 # Set the working directory
 WORKDIR /app
 
-# Install runtime dependencies in smaller groups
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ libc-dev make \
     libssl-dev libsasl2-dev libpq-dev \
-    libjpeg62-turbo-dev zlib1g-dev && \
-    apt-get install -y --no-install-recommends \
-    curl bash libffi-dev libfreetype6-dev libfontconfig1 libxrender1 && \
-    apt-get install -y --no-install-recommends \
+    libjpeg62-turbo-dev zlib1g-dev \
+    curl bash libffi-dev libfreetype6-dev libfontconfig1 libxrender1 \
     libxml2 libxslt1-dev libxmlsec1-dev libxmlsec1-openssl \
     postgresql-client netcat-openbsd python3-dev \
     default-libmysqlclient-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Downgrade pip to avoid strict metadata parsing issues
-RUN pip install --upgrade pip==23.0
+# Upgrade pip
+RUN pip install --upgrade pip
 
-# Copy requirements files to a temporary location
-COPY ./requirements.txt ./requirements.dev.txt /tmp/
+# Stage 1: Builder
+FROM base AS builder
+COPY ./requirements.txt ./requirements.dev.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements.dev.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
-    pip install --no-cache-dir confluent-kafka gunicorn whitenoise psycopg2-binary && \
-    if [ "$DEV" = "true" ]; then \
-        echo "Installing dev requirements"; \
-        pip install --no-cache-dir -r /tmp/requirements.dev.txt; \
-    fi && \
-    rm -rf /tmp  # Clean up to reduce image size
+# Stage 2: Production
+FROM base AS production
 
-# Create a non-root user for running the Django application
-RUN useradd -m django-user && \
-    mkdir -p /vol/web/media /vol/web/static /app/static /app/staticfiles /app/backend/core && \
-    chown -R django-user:django-user /vol/web /app/static /app/staticfiles /app/backend/core
-
-# Copy application code to the Docker image
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . /app
 
-# Ensure all files are owned by django-user for security purposes
-RUN chown -R django-user:django-user /app
+# Create a non-root user and adjust permissions
+RUN useradd -m django-user && \
+    chown -R django-user /app
 
-# Expose the port used by Django to handle HTTP requests
-EXPOSE 8000
-
-# Switch to non-root user for security purposes
+# Switch to non-root user
 USER django-user
 
-# Define a health check to ensure the application is running correctly
+# Expose the port
+EXPOSE 8000
+
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health/ || exit 1
 
-# Command to start the application using Gunicorn
+# Entry point
 CMD ["sh", "-c", "gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"]

@@ -10,17 +10,15 @@ env.bak/
 venv.bak/
 .venv/
 
-# Ignore local development settings
+# Ignore local development settings and files
 .settings/
+db.sqlite3  # Ignore local SQLite database
 
-# Ignore local database
-db.sqlite3
-
-# Ignore media files
+# Ignore media and static files generated during development or runtime
 media/
-
-# Ignore static files
-.static/
+static/
+vol/
+vol/
 .vol/
 
 # Ignore log files
@@ -28,14 +26,16 @@ media/
 
 # Ignore system-specific files
 .DS_Store
+Thumbs.db
 
-# Ignore git and other version control folders
+# Ignore IDE and editor specific files
+.idea/          # PyCharm project files
+.vscode/        # Visual Studio Code project files
+
+# Ignore version control directories
 .git
 .hg
 .svn
 
-# Ignore PyCharm project files
-.idea/
-
-# Ignore Visual Studio Code project files
-.vscode/
+# Ignore node_modules (assuming you have a frontend project with Node.js)
+node_modules/

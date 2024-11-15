@@ -6,6 +6,8 @@ djangorestframework==3.14.0             # Django Rest Framework for building API
 django-cors-headers==4.4.0              # CORS headers handling for cross-origin requests
 django-timezone-field==7.0              # Utility to handle timezones in Django models
 django_csp==3.8                         # Content Security Policy (CSP) support for Django to mitigate XSS attacks
+whitenoise==6.4.0                       # WhiteNoise for serving static files in Django
+
 
 # Authentication and Authorization
 djangorestframework-simplejwt==5.3.1    # JWT authentication support for DRF
@@ -37,8 +39,8 @@ psycopg2==2.9.9                         # PostgreSQL adapter for Python
 django-redis==5.4.0                     # Redis cache backend for Django
 
 # Elasticsearch and Search Utilities
-elasticsearch>=7.17.0,<8.0.0             # Elasticsearch Python client compatible with version 7
-elasticsearch-dsl>=7.0.0,<8.0.0          # High-level Python client for Elasticsearch 7
+# elasticsearch>=7.17.0,<8.0.0             # Elasticsearch Python client compatible with version 7
+# elasticsearch-dsl>=7.0.0,<8.0.0          # High-level Python client for Elasticsearch 7
 django-elasticsearch-dsl==7.3          # Django integration for Elasticsearch DSL compatible with Elasticsearch 7
 
 # Security and Cryptography
@@ -114,3 +116,6 @@ sentry-sdk==2.17.0                      # Sentry for error tracking
 # annotated-types-0.7.0
 pydantic>=2.9.2
 # pydantic-core-2.23.4
+
+# Uvicorn
+uvicorn[standard]

@@ -4,12 +4,13 @@ services:
   # PostgreSQL for SQL models in Django
   db:
     image: postgres:13-alpine
+    platform: linux/arm64
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-app_db}
       POSTGRES_USER: ${POSTGRES_USER:-app_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_password}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data:delegated
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
       interval: 30s
@@ -21,8 +22,9 @@ services:
   # Redis for caching and Celery broker
   redis:
     image: redis:6-alpine
+    platform: linux/arm64
     volumes:
-      - redis_data:/data
+      - redis_data:/data:delegated
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -33,13 +35,15 @@ services:
 
   # Zookeeper for Kafka
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
+    image: bitnami/zookeeper:latest
+    platform: linux/arm64
     environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 3000
     volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_datalog:/var/lib/zookeeper/log
+      - zookeeper_data:/var/lib/zookeeper/data:delegated
+      - zookeeper_datalog:/var/lib/zookeeper/log:delegated
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc localhost 2181 || exit 1"]
       interval: 30s
@@ -51,50 +55,51 @@ services:
 
   # Kafka broker for event handling
   kafka:
-    image: confluentinc/cp-kafka:7.4.0
+    build:
+      context: .
+      dockerfile: Dockerfile.kafka
+    platform: linux/arm64
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_HEAP_OPTS: "-Xmx2G -Xms2G"
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
     volumes:
-      - kafka_data:/var/lib/kafka/data
+      - kafka_data:/var/lib/kafka/data:delegated
     ports:
-      - "9092:9092"
-      - "9093:9093"
+      - "9093:9092"
     healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list || exit 1" ]
-      interval: 60s
-      timeout: 20s
-      retries: 20
+      test: ["CMD-SHELL", "nc -z kafka 9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     restart: always
     networks:
       - kafka_network
-
 
   # Django Web Service (ASGI)
   web:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: production
     command: >
       sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict &&
       ./wait-for-it.sh redis:6379 --timeout=60 --strict &&
-      ./wait-for-it.sh kafka:9092 --timeout=60 --strict &&
+      ./wait-for-it.sh kafka:9092 --timeout=120 --strict &&
       python /app/manage.py wait_for_db &&
       python /app/manage.py migrate --noinput &&
-      python /app/manage.py collectstatic --noinput &&
-      daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+      uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload"
     volumes:
-      - ./backend:/app
-      - ./vol/web:/vol/web
+      - ./backend:/app:cached
+      - ./vol/web:/vol/web:delegated
     ports:
       - "8000:8000"
     depends_on:
@@ -114,17 +119,23 @@ services:
     networks:
       - backend_network
       - kafka_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   # Celery Worker for task processing
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: production
     command: sh -c "./wait-for-it.sh db:5432 --timeout=60 --strict &&
       ./wait-for-it.sh redis:6379 --timeout=60 --strict &&
       celery -A config worker --loglevel=info"
     volumes:
-      - ./backend:/app
+      - ./backend:/app:cached
     depends_on:
       db:
         condition: service_healthy
@@ -134,7 +145,7 @@ services:
       - ./backend/.env
     restart: always
     healthcheck:
-      test: [ "CMD-SHELL", "celery -A config inspect ping || exit 1" ]
+      test: ["CMD-SHELL", "celery -A config inspect ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -146,16 +157,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: production
     command: sh -c "cd /app/kafka_app && python consumer.py"
     volumes:
-      - ./backend:/app
+      - ./backend:/app:cached
     depends_on:
       kafka:
         condition: service_healthy
     env_file:
       - ./backend/.env
     healthcheck:
-      test: [ "CMD-SHELL", "test -f /app/kafka_app/consumer.py || exit 1" ]
+      test: ["CMD-SHELL", "test -f /app/kafka_app/consumer.py || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -169,14 +181,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    command: npm start
     volumes:
-      - ./frontend:/app
+      - ./frontend:/app:cached
     ports:
-      - "3000:3000"  # Map host port 3000 to container port 3000
+      - "3000:3000"
     environment:
-      - CHOKIDAR_USEPOLLING=true  # Enable polling for file changes
+      - CHOKIDAR_USEPOLLING=true
       - NODE_OPTIONS=--openssl-legacy-provider
-      - REACT_APP_API_URL=http://web:8000  # Backend API URL
+      - REACT_APP_API_URL=http://web:8000
     depends_on:
       web:
         condition: service_healthy

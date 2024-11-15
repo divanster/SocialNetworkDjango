@@ -43,14 +43,13 @@ from tagging.services import process_tagging_event
 from users.services import process_user_event
 from notifications.services import create_notification
 
-
 # Define the Pydantic model for message validation
 class EventData(BaseModel):
     event_type: str
     data: dict
 
     class Config:
-        min_anystr_length = 1
+        str_min_length = 1  # Update to comply with Pydantic V2
 
 
 class KafkaConsumerApp(BaseKafkaConsumer):
@@ -59,10 +58,8 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     Inherits from BaseKafkaConsumer to reuse core Kafka setup and consumption logic.
     """
 
-    def __init__(self):
-        # Initialize the base Kafka consumer with all the topics
-        topics = list(settings.KAFKA_TOPICS.values())
-        group_id = settings.KAFKA_CONSUMER_GROUP_ID
+    def __init__(self, topics, group_id):
+        # Initialize the base Kafka consumer with the given topics and group ID
         super().__init__(topics, group_id)
         self.handlers = self._load_handlers()
         self.channel_layer = get_channel_layer()
@@ -90,14 +87,12 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     def consume_messages(self):
         while True:
             try:
-                logger.info(
-                    f"Started consuming messages from topics: {', '.join(self.topics)}")
+                logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
                 for message in self.consumer:
                     close_old_connections()
 
                     if not message.value:
-                        logger.warning(
-                            f"Received an empty message from topic {message.topic}, skipping.")
+                        logger.warning(f"Received an empty message from topic {message.topic}, skipping.")
                         continue
 
                     try:
@@ -107,11 +102,9 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                     except ValidationError as e:
                         logger.error(f"Validation error: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to process message {message.value}: {e}",
-                                     exc_info=True)
+                        logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
             except KafkaError as e:
-                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
-                             exc_info=True)
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
                 time.sleep(10)
             except Exception as e:
                 logger.error(f"Unexpected error: {e}", exc_info=True)
@@ -139,8 +132,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             try:
                 handler(event_data.data)
             except Exception as e:
-                logger.error(f"Error processing event '{event_type}': {e}",
-                             exc_info=True)
+                logger.error(f"Error processing event '{event_type}': {e}", exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
 
@@ -223,7 +215,11 @@ def graceful_shutdown(signum, frame):
 
 
 if __name__ == "__main__":
-    consumer_app = KafkaConsumerApp()
+    # Properly pass `topics` and `group_id` when initializing the `KafkaConsumerApp`
+    topics = list(settings.KAFKA_TOPICS.values())
+    group_id = settings.KAFKA_CONSUMER_GROUP_ID
+    consumer_app = KafkaConsumerApp(topics, group_id)
+
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
     consumer_app.consume_messages()
