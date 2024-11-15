@@ -1,4 +1,4 @@
-# File: backend/config/asgi.py
+# backend/config/asgi.py
 
 import os
 import django
