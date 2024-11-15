@@ -1,3 +1,5 @@
+// frontend/src/contexts/WebSocketManager.tsx
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 interface WebSocketContextType {
@@ -10,37 +12,38 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [sockets, setSockets] = useState<{ [url: string]: WebSocket }>({});
 
   const getSocket = (url: string): WebSocket | null => {
-    if (sockets[url] && sockets[url].readyState !== WebSocket.CLOSED) {
-      return sockets[url];
+    const token = localStorage.getItem('token'); // Get token from localStorage
+    const fullUrl = token ? `${url}?token=${token}` : url;
+
+    // Check if WebSocket is already opened and return it if it's active
+    if (sockets[fullUrl] && sockets[fullUrl].readyState !== WebSocket.CLOSED) {
+      return sockets[fullUrl];
     }
 
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(fullUrl);
 
     ws.onopen = () => {
-      console.log(`WebSocket connection opened for ${url}`);
+      console.log(`WebSocket connection opened for ${fullUrl}`);
     };
 
     ws.onmessage = (event) => {
-      console.log(`Message from ${url}:`, event.data);
+      console.log(`Message from ${fullUrl}:`, event.data);
     };
 
     ws.onerror = (error) => {
-      console.error(`WebSocket error for ${url}:`, error);
+      console.error(`WebSocket error for ${fullUrl}:`, error);
     };
 
     ws.onclose = (event) => {
-      console.log(`WebSocket connection closed for ${url}:`, event);
-      delete sockets[url];
+      console.log(`WebSocket connection closed for ${fullUrl}:`, event);
+      delete sockets[fullUrl];
       setSockets((prev) => {
-        const { [url]: _, ...rest } = prev;
+        const { [fullUrl]: _, ...rest } = prev;
         return rest;
       });
-
-      // Optional: Implement reconnection logic
-      // setTimeout(() => getSocket(url), 5000); // Retry connection after 5 seconds
     };
 
-    setSockets((prev) => ({ ...prev, [url]: ws }));
+    setSockets((prev) => ({ ...prev, [fullUrl]: ws }));
     return ws;
   };
 

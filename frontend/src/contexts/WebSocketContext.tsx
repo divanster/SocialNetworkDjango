@@ -1,3 +1,5 @@
+// frontend/src/contexts/WebSocketContext.tsx
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 interface WebSocketContextType {
@@ -14,7 +16,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/posts/');
+    // Get the JWT token from localStorage
+    const token = localStorage.getItem('token');
+    const wsUrl = token ? `ws://localhost:8000/ws/posts/?token=${token}` : 'ws://localhost:8000/ws/posts/';
+
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('WebSocket connection opened.');
