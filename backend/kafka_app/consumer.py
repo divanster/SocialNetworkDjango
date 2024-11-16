@@ -43,6 +43,7 @@ from tagging.services import process_tagging_event
 from users.services import process_user_event
 from notifications.services import create_notification
 
+
 # Define the Pydantic model for message validation
 class EventData(BaseModel):
     event_type: str
@@ -87,12 +88,14 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     def consume_messages(self):
         while True:
             try:
-                logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
+                logger.info(
+                    f"Started consuming messages from topics: {', '.join(self.topics)}")
                 for message in self.consumer:
                     close_old_connections()
 
                     if not message.value:
-                        logger.warning(f"Received an empty message from topic {message.topic}, skipping.")
+                        logger.warning(
+                            f"Received an empty message from topic {message.topic}, skipping.")
                         continue
 
                     try:
@@ -102,9 +105,11 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                     except ValidationError as e:
                         logger.error(f"Validation error: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
+                        logger.error(f"Failed to process message {message.value}: {e}",
+                                     exc_info=True)
             except KafkaError as e:
-                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
+                             exc_info=True)
                 time.sleep(10)
             except Exception as e:
                 logger.error(f"Unexpected error: {e}", exc_info=True)
@@ -132,7 +137,8 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             try:
                 handler(event_data.data)
             except Exception as e:
-                logger.error(f"Error processing event '{event_type}': {e}", exc_info=True)
+                logger.error(f"Error processing event '{event_type}': {e}",
+                             exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
 

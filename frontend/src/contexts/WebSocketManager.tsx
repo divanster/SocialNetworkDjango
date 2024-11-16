@@ -1,6 +1,7 @@
 // frontend/src/contexts/WebSocketManager.tsx
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useRef } from 'react';
+import { useAuth } from './AuthContext';
 
 interface WebSocketContextType {
   getSocket: (url: string) => WebSocket | null;
@@ -8,51 +9,29 @@ interface WebSocketContextType {
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
-export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [sockets, setSockets] = useState<{ [url: string]: WebSocket }>({});
+export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { token } = useAuth();
+  const sockets = useRef<{ [key: string]: WebSocket }>({});
 
   const getSocket = (url: string): WebSocket | null => {
-    const token = localStorage.getItem('token'); // Get token from localStorage
-    const fullUrl = token ? `${url}?token=${token}` : url;
-
-    // Check if WebSocket is already opened and return it if it's active
-    if (sockets[fullUrl] && sockets[fullUrl].readyState !== WebSocket.CLOSED) {
-      return sockets[fullUrl];
+    if (!token) {
+      console.error('No authentication token available.');
+      return null;
     }
 
-    const ws = new WebSocket(fullUrl);
-
-    ws.onopen = () => {
-      console.log(`WebSocket connection opened for ${fullUrl}`);
-    };
-
-    ws.onmessage = (event) => {
-      console.log(`Message from ${fullUrl}:`, event.data);
-    };
-
-    ws.onerror = (error) => {
-      console.error(`WebSocket error for ${fullUrl}:`, error);
-    };
-
-    ws.onclose = (event) => {
-      console.log(`WebSocket connection closed for ${fullUrl}:`, event);
-      delete sockets[fullUrl];
-      setSockets((prev) => {
-        const { [fullUrl]: _, ...rest } = prev;
-        return rest;
-      });
-    };
-
-    setSockets((prev) => ({ ...prev, [fullUrl]: ws }));
-    return ws;
+    const fullUrl = `${url}?token=${token}`;
+    if (!sockets.current[fullUrl]) {
+      const ws = new WebSocket(fullUrl);
+      ws.onopen = () => console.log(`WebSocket connected to ${fullUrl}`);
+      ws.onclose = () => {
+        console.log(`WebSocket disconnected from ${fullUrl}`);
+        delete sockets.current[fullUrl];
+      };
+      ws.onerror = (error) => console.error(`WebSocket error on ${fullUrl}`, error);
+      sockets.current[fullUrl] = ws;
+    }
+    return sockets.current[fullUrl];
   };
-
-  useEffect(() => {
-    return () => {
-      // Clean up WebSocket connections when the component unmounts
-      Object.values(sockets).forEach((socket) => socket.close());
-    };
-  }, [sockets]);
 
   return (
     <WebSocketContext.Provider value={{ getSocket }}>

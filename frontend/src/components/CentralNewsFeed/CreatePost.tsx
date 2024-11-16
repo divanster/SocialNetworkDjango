@@ -1,21 +1,31 @@
-import React, { useState } from 'react';
+// frontend/src/components/CentralNewsFeed/CreatePost.tsx
+
+import React, { useState, useEffect } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
 import { useWebSocket } from '../../contexts/WebSocketManager';
+import { useAuth } from '../../contexts/AuthContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const CreatePost: React.FC = () => {
   const { getSocket } = useWebSocket();
-  const socket = getSocket('ws://localhost:8000/ws/posts/');
+  const { token } = useAuth();
+  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState<FileList | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (token) {
+      const postSocket = getSocket(`ws://localhost:8000/ws/posts/?token=${token}`);
+      setSocket(postSocket);
+    }
+  }, [getSocket, token]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
 
     if (!token) {
       setError('You must be logged in to create a post.');

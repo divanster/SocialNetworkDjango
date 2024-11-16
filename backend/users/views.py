@@ -12,10 +12,37 @@ from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
 from users.tasks import send_welcome_email, send_profile_update_notification  # Import tasks
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import TokenError
+
+
 
 # Initialize logger once at the top
 logger = logging.getLogger('users')
 
+
+class TokenRefreshView(APIView):
+    """
+    Custom view to refresh the access token using the provided refresh token.
+    """
+
+    def post(self, request):
+        refresh_token = request.data.get('refresh', None)
+
+        if not refresh_token:
+            return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            new_access_token = str(refresh.access_token)
+            logger.info(f"Token refresh successful for refresh token: {refresh_token}")
+            return Response({'access': new_access_token}, status=status.HTTP_200_OK)
+        except TokenError as e:  # Catch token-specific errors
+            return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     """
@@ -61,6 +88,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
     lookup_field = 'pk'  # Changed from 'id' to 'pk'
     lookup_url_kwarg = 'pk'  # Changed from 'id' to 'pk'
 

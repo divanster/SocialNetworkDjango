@@ -1,61 +1,96 @@
+// WebSocketComponent.js
+
+import React, { useEffect, useState, useRef } from "react";
 import jwt_decode from "jwt-decode";
-import { useEffect, useState } from "react";
+import { useAuth } from './AuthContext'; // Assuming your AuthContext file is in the same folder
 
 function isTokenExpired(token) {
-    const decoded = jwt_decode(token);
-    const currentTime = Date.now() / 1000;  // in seconds
-    return decoded.exp < currentTime;
+  const decoded = jwt_decode(token);
+  const currentTime = Date.now() / 1000;  // in seconds
+  return decoded.exp < currentTime;
 }
 
-const MyWebSocketComponent = () => {
-    const [socket, setSocket] = useState(null);
-    const [error, setError] = useState(null);
+const WebSocketComponent = () => {
+  const { token, refreshToken } = useAuth(); // useAuth hook from AuthContext to get current token and refresh function
+  const [error, setError] = useState(null);
+  const socketRef = useRef(null);
 
-    useEffect(() => {
-        const token = localStorage.getItem("access_token");
+  useEffect(() => {
+    const connectWebSocket = async () => {
+      // Close any existing WebSocket connection before attempting to reconnect.
+      if (socketRef.current) {
+        console.log('Closing existing WebSocket connection.');
+        socketRef.current.close();
+      }
 
-        // Check if the token is expired
-        if (token && !isTokenExpired(token)) {
-            // Establish WebSocket connection with the valid token
-            const ws = new WebSocket(`ws://localhost:8000/ws/albums/?token=${token}`);
+      let currentToken = token;
 
-            ws.onopen = () => {
-                console.log("WebSocket connected");
-            };
+      if (!currentToken || isTokenExpired(currentToken)) {
+        console.log('Token is expired or missing. Attempting to refresh.');
+        currentToken = await refreshToken();
+      }
 
-            ws.onmessage = (event) => {
-                console.log("Received:", event.data);
-            };
+      if (currentToken) {
+        console.log('Connecting to WebSocket with token:', currentToken);
+        const ws = new WebSocket(`ws://localhost:8000/ws/albums/?token=${currentToken}`);
 
-            ws.onclose = () => {
-                console.log("WebSocket connection closed");
-            };
-
-            ws.onerror = (error) => {
-                console.error("WebSocket error", error);
-            };
-
-            setSocket(ws);
-        } else {
-            setError("Token expired. Please login again.");
-            // Optionally, you can refresh the token or redirect to login
-            console.log("Token has expired, redirecting to login...");
-            // Redirect to login page, or handle token refresh logic
-        }
-
-        return () => {
-            if (socket) {
-                socket.close();
-            }
+        ws.onopen = () => {
+          console.log("WebSocket connected");
+          setError(null); // Clear any previous errors.
         };
-    }, []);
 
-    return (
-        <div>
-            {error && <p>{error}</p>}
-            {/* Your WebSocket interaction goes here */}
-        </div>
-    );
+        ws.onmessage = (event) => {
+          console.log("Received:", event.data);
+        };
+
+        ws.onclose = async (event) => {
+          console.log("WebSocket connection closed", event);
+          if (event.code === 4002) { // Server closed connection because token expired
+            console.log('Token expired on server. Refreshing token.');
+            const newToken = await refreshToken();
+            if (newToken) {
+              console.log('Reconnecting WebSocket with new token.');
+              connectWebSocket();
+            } else {
+              setError("Token expired. Please login again.");
+            }
+          } else {
+            console.log('WebSocket closed for another reason:', event.reason);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("WebSocket error", error);
+          setError("An error occurred with the WebSocket connection.");
+        };
+
+        socketRef.current = ws;
+      } else {
+        console.log("Unable to connect to WebSocket. No valid token available.");
+        setError("Token expired. Please login again.");
+      }
+    };
+
+    // Only connect if the token is not null.
+    if (token) {
+      connectWebSocket();
+    }
+
+    // Cleanup function when the component unmounts or when re-rendering
+    return () => {
+      if (socketRef.current) {
+        console.log('Cleaning up WebSocket connection.');
+        socketRef.current.close();
+      }
+    };
+  }, [token, refreshToken]); // Re-run the effect whenever the token changes
+
+  return (
+    <div>
+      {error && <p>{error}</p>}
+      {/* Additional UI for WebSocket interactions can go here */}
+    </div>
+  );
 };
 
-export default MyWebSocketComponent;
+export default WebSocketComponent;

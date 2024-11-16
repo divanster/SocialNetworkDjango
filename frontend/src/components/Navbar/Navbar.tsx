@@ -1,9 +1,11 @@
+// src/components/Navbar/Navbar.tsx
+
 import React, { useEffect, useState } from 'react';
 import { Navbar, Nav, NavDropdown, Badge } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchMessagesCount } from 'services/api'; // Ensure this is correctly imported
+import { fetchMessagesCount } from '../../services/api'; // Ensure this is correctly imported
 
 const CustomNavbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -14,7 +16,7 @@ const CustomNavbar: React.FC = () => {
     if (isAuthenticated) {
       const fetchUnreadMessagesCount = async () => {
         try {
-          const count = await fetchMessagesCount();
+          const count = await fetchMessagesCount(); // No longer need to pass token
           setUnreadCount(count);
         } catch (error) {
           console.error('Failed to fetch unread messages count:', error);

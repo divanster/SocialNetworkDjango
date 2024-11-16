@@ -1,5 +1,3 @@
-# backend/websocket/consumers.py
-
 import json
 import logging
 import jwt
@@ -7,7 +5,8 @@ from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import User
 from django.conf import settings
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import \
+    TokenError  # Import TokenError from simplejwt
 import hashlib
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,8 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         self.group_name = self.scope['url_route']['kwargs'].get('group_name', None)
         if not self.group_name:
             logger.warning("Connection attempt without group name")
-            await self.close(code=4001)  # Close with 4001 error code
+            await self.close(
+                code=4001)  # Close with 4001 error code (group name missing)
             return
 
         # Extract JWT token from query parameters
@@ -41,9 +41,13 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         logger.info(f"Received token: {token}")
 
         try:
-            # Validate JWT Token
-            decoded_token = jwt.decode(token, settings.SIMPLE_JWT['SIGNING_KEY'],
-                                       algorithms=['HS256'])
+            # Validate JWT Token (ensure we are verifying expiration)
+            decoded_token = jwt.decode(
+                token,
+                settings.SIMPLE_JWT['SIGNING_KEY'],
+                algorithms=['HS256'],
+                options={'verify_exp': True}  # Ensuring expiration is checked
+            )
             user_id = decoded_token.get('user_id')
             logger.info(f"Decoded token, user ID: {user_id}")
 
@@ -55,10 +59,15 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
             self.scope['user'] = user  # Set user in scope
             logger.info(f"User {user.username} successfully authenticated")
 
-        except (
-        jwt.DecodeError, jwt.ExpiredSignatureError, TokenError, User.DoesNotExist) as e:
+        except jwt.ExpiredSignatureError:
+            # Handling expired signature error explicitly
+            logger.warning("Connection attempt with expired token")
+            await self.close(code=4002)  # Close with 4002 error code (token expired)
+            return
+
+        except (jwt.DecodeError, TokenError, User.DoesNotExist) as e:
             logger.warning(f"Connection attempt with invalid JWT: {e}")
-            await self.close(code=4001)  # Close with error code if token is invalid
+            await self.close(code=4001)  # Close with 4001 error code (invalid token)
             return
 
         # Perform permission check

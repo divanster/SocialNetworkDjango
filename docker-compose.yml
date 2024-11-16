@@ -189,7 +189,7 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - NODE_OPTIONS=--openssl-legacy-provider
-      - REACT_APP_API_URL=http://web:8000
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
     depends_on:
       web:
         condition: service_healthy

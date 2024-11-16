@@ -1,10 +1,10 @@
-# backend/kafka_app/base_consumer.py
-
 import os
 import time
 import logging
 import json
 import django
+import jwt  # Import jwt for decoding tokens
+from pydantic import BaseModel, ValidationError  # Import BaseModel and ValidationError from Pydantic
 from kafka.errors import KafkaError, NoBrokersAvailable, KafkaTimeoutError
 from kafka import KafkaConsumer
 from django.conf import settings
@@ -14,6 +14,15 @@ import random
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
+class EventData(BaseModel):
+    """
+    Pydantic model to validate incoming Kafka message data.
+    """
+    event_type: str
+    data: dict
+
+
 def get_backoff_time(retries):
     """
     Exponential backoff with jitter.
@@ -21,6 +30,7 @@ def get_backoff_time(retries):
     base = 2
     jitter = random.uniform(0.5, 1.5)
     return min(60, base ** retries) * jitter
+
 
 class BaseKafkaConsumer:
     def __init__(self, topics, group_id):
@@ -35,6 +45,7 @@ class BaseKafkaConsumer:
         self.topics = topics if isinstance(topics, list) else [topics]
         self.group_id = group_id
         self.consumer = self.get_kafka_consumer()
+        self.handlers = {}  # Ensure `handlers` is defined
 
     @staticmethod
     def setup_django():
@@ -109,14 +120,40 @@ class BaseKafkaConsumer:
             except KafkaError as e:
                 logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
                 time.sleep(10)
-            # finally:
-            #     self.close()
 
     def process_message(self, message):
         """
-        Placeholder for processing messages. Must be implemented by subclasses.
+        Process an incoming message from Kafka.
         """
-        raise NotImplementedError("Subclasses must implement this method.")
+        try:
+            # Validate incoming message using Pydantic model
+            event_data = EventData.parse_obj(message)
+
+            # Before processing, validate JWT token if required for this message type
+            jwt_token = event_data.data.get("jwt_token")
+            if jwt_token:
+                try:
+                    jwt.decode(jwt_token, settings.SIMPLE_JWT['SIGNING_KEY'],
+                               algorithms=['HS256'], options={'verify_exp': True})
+                except jwt.ExpiredSignatureError:
+                    logger.warning("Received expired JWT token in Kafka message.")
+                    return  # Skip processing this message
+                except jwt.DecodeError:
+                    logger.warning("Received invalid JWT token in Kafka message.")
+                    return  # Skip processing this message
+
+            # Process the event using the appropriate handler
+            event_type = event_data.event_type
+            handler = self.handlers.get(event_type)
+            if handler:
+                handler(event_data.data)
+            else:
+                logger.warning(f"No handler found for event type: {event_type}")
+
+        except ValidationError as e:
+            logger.error(f"Validation error: {e}")
+        except Exception as e:
+            logger.error(f"Error processing message: {e}", exc_info=True)
 
     def close(self):
         """

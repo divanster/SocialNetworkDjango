@@ -1,13 +1,18 @@
+// src/services/api.ts
+
 import axios from 'axios';
 
+// API base URL from environment variable or fallback to localhost
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-// Utility function to get headers with authorization
-const getHeaders = () => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-  },
-});
+// Helper function to set Authorization header for all Axios requests
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common['Authorization'];
+  }
+};
 
 // Helper function to handle errors
 const handleApiError = (error: any, errorMessage: string) => {
@@ -19,9 +24,9 @@ const handleApiError = (error: any, errorMessage: string) => {
 };
 
 // Fetch user profile data
-const fetchProfileData = async () => {
+export const fetchProfileData = async () => {
   try {
-    const response = await axios.get(`${API_URL}/users/users/me/`, getHeaders());
+    const response = await axios.get(`${API_URL}/users/users/me/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching profile data');
@@ -29,11 +34,10 @@ const fetchProfileData = async () => {
 };
 
 // Update user profile data
-const updateProfileData = async (formData: FormData) => {
+export const updateProfileData = async (formData: FormData) => {
   try {
     const response = await axios.patch(`${API_URL}/users/users/me/`, formData, {
       headers: {
-        ...getHeaders().headers,
         'Content-Type': 'multipart/form-data',
       },
     });
@@ -44,9 +48,9 @@ const updateProfileData = async (formData: FormData) => {
 };
 
 // Fetch news feed
-const fetchNewsFeed = async () => {
+export const fetchNewsFeed = async () => {
   try {
-    const response = await axios.get(`${API_URL}/posts/`, getHeaders());
+    const response = await axios.get(`${API_URL}/posts/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching news feed');
@@ -55,9 +59,9 @@ const fetchNewsFeed = async () => {
 };
 
 // Fetch notifications count
-const fetchNotificationsCount = async () => {
+export const fetchNotificationsCount = async () => {
   try {
-    const response = await axios.get(`${API_URL}/notifications/count/`, getHeaders());
+    const response = await axios.get(`${API_URL}/notifications/count/`);
     return response.data.count;
   } catch (error) {
     handleApiError(error, 'Error fetching notifications count');
@@ -66,9 +70,9 @@ const fetchNotificationsCount = async () => {
 };
 
 // Fetch unread messages count
-const fetchMessagesCount = async () => {
+export const fetchMessagesCount = async () => {
   try {
-    const response = await axios.get(`${API_URL}/messenger/messages/count/`, getHeaders());
+    const response = await axios.get(`${API_URL}/messenger/messages/count/`);
     return response.data.count;
   } catch (error) {
     handleApiError(error, 'Error fetching messages count');
@@ -77,13 +81,12 @@ const fetchMessagesCount = async () => {
 };
 
 // Send a new message
-const sendMessage = async (receiverId: number, content: string) => {
+export const sendMessage = async (receiverId: number, content: string) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/messenger/messages/`,
-      { receiver: receiverId, content },
-      getHeaders()
-    );
+    const response = await axios.post(`${API_URL}/messenger/messages/`, {
+      receiver: receiverId,
+      content,
+    });
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error sending message');
@@ -91,11 +94,11 @@ const sendMessage = async (receiverId: number, content: string) => {
 };
 
 // Fetch all messages
-const fetchMessages = async () => {
+export const fetchMessages = async () => {
   try {
-    const response = await axios.get(`${API_URL}/messenger/messages/`, getHeaders());
+    const response = await axios.get(`${API_URL}/messenger/messages/`);
     console.log('API response:', response.data);
-    return response.data.results || []; // Ensure this is an array of message objects
+    return response.data.results || [];
   } catch (error) {
     handleApiError(error, 'Error fetching messages');
     return [];
@@ -103,9 +106,9 @@ const fetchMessages = async () => {
 };
 
 // Fetch albums
-const fetchAlbums = async () => {
+export const fetchAlbums = async () => {
   try {
-    const response = await axios.get(`${API_URL}/albums/`, getHeaders());
+    const response = await axios.get(`${API_URL}/albums/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching albums');
@@ -114,9 +117,9 @@ const fetchAlbums = async () => {
 };
 
 // Fetch comments
-const fetchComments = async () => {
+export const fetchComments = async () => {
   try {
-    const response = await axios.get(`${API_URL}/comments/`, getHeaders());
+    const response = await axios.get(`${API_URL}/comments/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching comments');
@@ -125,9 +128,9 @@ const fetchComments = async () => {
 };
 
 // Fetch follows
-const fetchFollows = async () => {
+export const fetchFollows = async () => {
   try {
-    const response = await axios.get(`${API_URL}/follows/`, getHeaders());
+    const response = await axios.get(`${API_URL}/follows/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching follows');
@@ -136,9 +139,9 @@ const fetchFollows = async () => {
 };
 
 // Fetch friends
-const fetchFriends = async () => {
+export const fetchFriends = async () => {
   try {
-    const response = await axios.get(`${API_URL}/friends/`, getHeaders());
+    const response = await axios.get(`${API_URL}/friends/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching friends');
@@ -147,9 +150,9 @@ const fetchFriends = async () => {
 };
 
 // Fetch notifications
-const fetchNotifications = async () => {
+export const fetchNotifications = async () => {
   try {
-    const response = await axios.get(`${API_URL}/notifications/`, getHeaders());
+    const response = await axios.get(`${API_URL}/notifications/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching notifications');
@@ -158,9 +161,9 @@ const fetchNotifications = async () => {
 };
 
 // Fetch stories
-const fetchStories = async () => {
+export const fetchStories = async () => {
   try {
-    const response = await axios.get(`${API_URL}/stories/`, getHeaders());
+    const response = await axios.get(`${API_URL}/stories/`);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching stories');
@@ -169,29 +172,12 @@ const fetchStories = async () => {
 };
 
 // Fetch users
-const fetchUsers = async () => {
+export const fetchUsers = async () => {
   try {
-    const response = await axios.get(`${API_URL}/users/`, getHeaders());
+    const response = await axios.get(`${API_URL}/users/`);
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     handleApiError(error, 'Error fetching users');
     return [];
   }
-};
-
-export {
-  fetchProfileData,
-  updateProfileData,
-  fetchNewsFeed,
-  fetchNotificationsCount,
-  fetchMessagesCount,
-  sendMessage,
-  fetchAlbums,
-  fetchComments,
-  fetchFollows,
-  fetchFriends,
-  fetchMessages,
-  fetchNotifications,
-  fetchStories,
-  fetchUsers,
 };
