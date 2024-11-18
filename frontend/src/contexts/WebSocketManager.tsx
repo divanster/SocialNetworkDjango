@@ -19,7 +19,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return null;
     }
 
-    const fullUrl = `${url}?token=${token}`;
+    const fullUrl = url.includes('?token=') ? url : `${url}?token=${token}`;
     if (!sockets.current[fullUrl]) {
       const ws = new WebSocket(fullUrl);
       ws.onopen = () => console.log(`WebSocket connected to ${fullUrl}`);
