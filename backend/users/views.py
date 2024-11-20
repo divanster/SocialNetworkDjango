@@ -1,5 +1,3 @@
-# backend/users/test_views.py
-
 import logging
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -11,38 +9,38 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView
-from users.tasks import send_welcome_email, send_profile_update_notification  # Import tasks
+from users.tasks import send_welcome_email, send_profile_update_notification
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
-
-
+from django_ratelimit.decorators import ratelimit
 
 # Initialize logger once at the top
 logger = logging.getLogger('users')
 
 
-class TokenRefreshView(APIView):
+class CustomTokenRefreshView(APIView):
     """
     Custom view to refresh the access token using the provided refresh token.
     """
-
+    @ratelimit(key='ip', rate='5/m', block=True)
     def post(self, request):
         refresh_token = request.data.get('refresh', None)
 
         if not refresh_token:
-            return Response({'error': 'Refresh token is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Refresh token is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         try:
             refresh = RefreshToken(refresh_token)
             new_access_token = str(refresh.access_token)
-            logger.info(f"Token refresh successful for refresh token: {refresh_token}")
+            logger.info(f"Token refresh successful for user with refresh token: {refresh_token}")
             return Response({'access': new_access_token}, status=status.HTTP_200_OK)
-        except TokenError as e:  # Catch token-specific errors
+        except TokenError as e:
+            logger.warning(f"Token refresh failed: {str(e)}")  # Specific exception logging
             return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     """
@@ -51,8 +49,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = 'pk'  # Changed from 'id' to 'pk'
-    lookup_url_kwarg = 'pk'  # Changed from 'id' to 'pk'
+    lookup_field = 'pk'
+    lookup_url_kwarg = 'pk'
 
     @extend_schema(
         parameters=[
@@ -71,14 +69,17 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """
         return super().retrieve(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
+    def update(self, request, *args, **kwargs):
         """
-        Ensures the user is associated with the profile during update and sends notification.
+        Custom update method with rate limiting applied.
         """
-        profile = serializer.save(user=self.request.user)
-        # Trigger the task to send profile update notification
-        send_profile_update_notification.delay(profile.user.id)
-        logger.info(f"Profile updated for user {profile.user.id}, notification task scheduled.")
+        @ratelimit(key='user', rate='5/h', block=True)
+        def perform_update(serializer):
+            profile = serializer.save(user=self.request.user)
+            send_profile_update_notification.delay(profile.user.id)
+            logger.info(f"Profile updated for user {profile.user.id}, notification task scheduled.")
+
+        return super().update(request, *args, **kwargs)
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):
@@ -89,8 +90,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
-    lookup_field = 'pk'  # Changed from 'id' to 'pk'
-    lookup_url_kwarg = 'pk'  # Changed from 'id' to 'pk'
+    lookup_field = 'pk'
+    lookup_url_kwarg = 'pk'
 
     @extend_schema(
         parameters=[
@@ -120,16 +121,10 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         Supports `GET`, `PUT`, and `PATCH` methods.
         """
         if request.method in ['PUT', 'PATCH']:
-            # Determine if the update is partial
             partial = request.method == 'PATCH'
-            serializer = self.get_serializer(
-                request.user,
-                data=request.data,
-                partial=partial
-            )
+            serializer = self.get_serializer(request.user, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            # Log and provide feedback for updating the user
             logger.info(f"User data updated for user {request.user.id}")
         else:
             serializer = self.get_serializer(request.user)
@@ -145,6 +140,7 @@ class CustomUserSignupView(CreateAPIView):
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    @ratelimit(key='ip', rate='3/h', block=True)
     def create(self, request, *args, **kwargs):
         """
         Handles user creation and sends a welcome email.
@@ -155,20 +151,12 @@ class CustomUserSignupView(CreateAPIView):
             try:
                 with transaction.atomic():
                     user = serializer.save()
-                    logger.debug(f"User created successfully: {user}")
-                    # Trigger the task to send a welcome email asynchronously
+                    logger.info(f"User created successfully: {user.email}")
                     send_welcome_email.delay(user.id)
-                    logger.info(f"Scheduled task to send welcome email to user {user.id}")
                     return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Exception as e:
                 logger.error(f"Error during signup: {str(e)}")
-                return Response(
-                    {"detail": str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
             logger.error(f"Signup validation failed: {serializer.errors}")
-            return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

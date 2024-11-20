@@ -11,6 +11,9 @@ from rest_framework_simplejwt.views import (
 )
 from django.views.generic import RedirectView
 from core.views import health_check, csp_report  # Import health_check and csp_report
+from graphene_django.views import GraphQLView
+from django.views.decorators.csrf import csrf_exempt
+
 
 urlpatterns = [
     # Admin and health endpoints
@@ -20,6 +23,9 @@ urlpatterns = [
 
     # Homepage with a welcome message
     path('', lambda request: HttpResponse("Welcome to the Social Network API!"), name='home'),
+
+    # Add the GraphQL endpoint here
+    path('graphql/', csrf_exempt(GraphQLView.as_view(graphiql=True))),
 
     # API Versioning - Versioned API URLs
     path('api/v1/', include([
@@ -40,7 +46,6 @@ urlpatterns = [
         path('tagging/', include(('tagging.urls', 'tagging'), namespace='tagging')),
         path('friends/', include(('friends.urls', 'friends'), namespace='friends')),
         path('newsfeed/', include(('newsfeed.urls', 'newsfeed'), namespace='newsfeed')),
-        path('pages/', include(('pages.urls', 'pages'), namespace='pages')),
         path('stories/', include(('stories.urls', 'stories'), namespace='stories')),
     ])),
 ]

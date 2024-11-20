@@ -2,7 +2,8 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, TokenRefreshView
+from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, CustomTokenRefreshView  # Rename the custom refresh view
+from rest_framework_simplejwt.views import TokenRefreshView  # Use the default JWT TokenRefreshView
 
 app_name = 'users'  # Set the namespace
 
@@ -11,8 +12,8 @@ router.register(r'', CustomUserViewSet, basename='customuser')
 router.register(r'profile', UserProfileViewSet, basename='userprofile')
 
 urlpatterns = [
-
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # JWT Token Refresh endpoint
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     path('', include(router.urls)),  # Include router's URLs
 
@@ -27,4 +28,7 @@ urlpatterns = [
 
     # Include Djoser's JWT URLs for authentication
     path('jwt/', include('djoser.urls.jwt')),  # Moved to a specific subpath to avoid conflicts
+
+    # Include custom token refresh endpoint if needed
+    path('custom-token-refresh/', CustomTokenRefreshView.as_view(), name='custom_token_refresh'),
 ]

@@ -8,7 +8,6 @@ django-timezone-field==7.0              # Utility to handle timezones in Django 
 django_csp==3.8                         # Content Security Policy (CSP) support for Django to mitigate XSS attacks
 whitenoise==6.4.0                       # WhiteNoise for serving static files in Django
 
-
 # Authentication and Authorization
 djangorestframework-simplejwt==5.3.1    # JWT authentication support for DRF
 djoser==2.2.3                           # Simplifies the implementation of authentication in Django REST Framework
@@ -39,9 +38,7 @@ psycopg2==2.9.9                         # PostgreSQL adapter for Python
 django-redis==5.4.0                     # Redis cache backend for Django
 
 # Elasticsearch and Search Utilities
-# elasticsearch>=7.17.0,<8.0.0             # Elasticsearch Python client compatible with version 7
-# elasticsearch-dsl>=7.0.0,<8.0.0          # High-level Python client for Elasticsearch 7
-django-elasticsearch-dsl==7.3          # Django integration for Elasticsearch DSL compatible with Elasticsearch 7
+django-elasticsearch-dsl==7.3           # Django integration for Elasticsearch DSL compatible with Elasticsearch 7
 
 # Security and Cryptography
 cryptography==42.0.8                    # Cryptographic recipes and primitives for Python
@@ -60,7 +57,7 @@ django-extensions==3.2.3                # Extra management commands and utilitie
 django-gravatar==0.1.0                  # Gravatar integration for Django
 drf-yasg==1.21.7                        # Yet Another Swagger Generator - API documentation for Django Rest Framework
 drf-spectacular==0.26.2                 # Another library for generating OpenAPI 3.0 specifications for Django Rest Framework
-drf-spectacular-sidecar>=0.1.1
+drf-spectacular-sidecar>=2024.1.1       # Updated to a version compatible with Python 3.11
 gunicorn==22.0.0                        # Python WSGI HTTP Server for UNIX
 setuptools==74.1.2                      # Library for installing Python packages
 cloc==0.2.5                             # Utility for counting lines of code
@@ -82,9 +79,6 @@ urllib3>=1.26.11,<3.0                   # HTTP client for Python
 pytest==8.3.3                           # Testing framework for Python
 pytest-django==4.8.0                    # Django plugin for pytest
 pytest-asyncio==0.24.0                  # AsyncIO support for pytest
-
-# Graphs and Visualization
-#pygraphviz-1.14                        # Graph visualization library
 
 # Timezone and Date Utilities
 python-dateutil==2.9.0.post0            # Date and time parsing utility for Python
@@ -113,9 +107,18 @@ packaging==24.1                         # Packaging utilities for Python
 sentry-sdk==2.17.0                      # Sentry for error tracking
 
 # Pydantic schema validation library for Kafka message validation to prevent injection attacks
-# annotated-types-0.7.0
 pydantic>=2.9.2
-# pydantic-core-2.23.4
 
 # Uvicorn
-uvicorn[standard]
+uvicorn[standard]                       # ASGI server for production use
+
+# Login rate limiting
+django-ratelimit==4.1.0
+
+# GraphQL
+graphene==3.4.3
+graphene-django==3.2.2
+graphql-core==3.2.5
+graphql-relay==3.2.0
+promise==2.3
+text-unidecode==1.3

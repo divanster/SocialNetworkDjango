@@ -35,7 +35,6 @@ from follows.services import process_follow_event
 from friends.services import process_friend_event
 from messenger.services import process_messenger_event
 from newsfeed.services import process_newsfeed_event
-from pages.services import process_page_event
 from reactions.services import process_reaction_event
 from social.services import process_social_event
 from stories.services import process_story_event
@@ -76,7 +75,6 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             'friend_added': self.handle_friend_event,
             'message_event': self.handle_messenger_event,
             'newsfeed_updated': self.handle_newsfeed_event,
-            'page_created': self.handle_page_event,
             'reaction_added': self.handle_reaction_event,
             'social_action': self.handle_social_event,
             'story_shared': self.handle_story_event,
@@ -182,10 +180,6 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     def handle_newsfeed_event(self, data):
         process_newsfeed_event(data)
         self.send_to_websocket_group("newsfeed_group", f"Newsfeed updated: {data}")
-
-    def handle_page_event(self, data):
-        process_page_event(data)
-        self.send_to_websocket_group("pages_group", f"New page created: {data}")
 
     def handle_reaction_event(self, data):
         process_reaction_event(data)

@@ -77,6 +77,8 @@ INSTALLED_APPS = [
     'drf_spectacular_sidecar',
     'django_celery_beat',
     'csp',
+    'graphene_django',
+    'django_ratelimit',
     # 'django_elasticsearch_dsl',
 
     # Custom apps
@@ -92,7 +94,6 @@ INSTALLED_APPS = [
     'follows.apps.FollowsConfig',
     'messenger.apps.MessengerConfig',
     'newsfeed.apps.NewsfeedConfig',
-    'pages.apps.PagesConfig',
     'social.apps.SocialConfig',
     'kafka_app.apps.KafkaAppConfig',
     'websocket',  # WebSocket-related app
@@ -279,6 +280,20 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
 ])
 CORS_ALLOW_CREDENTIALS = True
 
+# GraphQl settings
+GRAPHENE = {
+    'SCHEMA': 'backend.schema.schema',  # Path to your root GraphQL schema
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',  # Optional, if JWT is used for authentication
+    ],
+}
+
+AUTHENTICATION_BACKENDS = [
+    'graphql_jwt.backends.JSONWebTokenBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
@@ -335,17 +350,42 @@ CSP_REPORT_URI = '/csp-violation-report/'
 
 # Security settings for production deployment
 if not DEBUG:
+    # Enforce HTTPS for all requests
     SECURE_SSL_REDIRECT = True
+
+    # Ensure cookies are only sent over HTTPS
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
+
+    # Protect against XSS attacks
     SECURE_BROWSER_XSS_FILTER = True
+
+    # Prevent content sniffing by the browser
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # Prevent clickjacking attacks
     X_FRAME_OPTIONS = 'DENY'
-    SECURE_HSTS_SECONDS = 31536000
+
+    # Enforce HTTP Strict Transport Security (HSTS)
+    SECURE_HSTS_SECONDS = 31536000  # One year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+    # Configure referrer policy to limit sensitive data leakage
     SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
+
+    # Trust the X-Forwarded-Proto header for identifying HTTPS requests
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # Session settings
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'  # Store sessions in the cache
+    SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
+    SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Sessions expire when the browser is closed
+
+    # Additional headers for enhanced security
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'  # Mitigate Spectre attacks
+    SECURE_CROSS_ORIGIN_EMBEDDER_POLICY = 'require-corp'  # Protect against cross-origin embedding
+    SECURE_CROSS_ORIGIN_RESOURCE_POLICY = 'same-origin'  # Prevent resource leaks to other origins
 
 # Internal IPs for Django Debug Toolbar
 INTERNAL_IPS = [
