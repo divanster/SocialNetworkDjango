@@ -107,7 +107,8 @@ def process_reaction_added(data):
             logger.info(f"[SERVICE] Reaction added by friend to item ID {reacted_item.id}")
 
         elif reacted_item.visibility == 'private':
-            logger.info(f"[SERVICE] Reaction added to private item - No notifications sent.")
+            logger.info(f"[SERVICE] Reaction added to private item - No notifications "
+                        f"sent.")
 
     except Reaction.DoesNotExist:
         logger.error(f"[SERVICE] Reaction with ID {data.get('reaction_id')} does not exist.")
