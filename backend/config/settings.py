@@ -284,7 +284,7 @@ CORS_ALLOW_CREDENTIALS = True
 GRAPHENE = {
     'SCHEMA': 'backend.schema.schema',  # Path to your root GraphQL schema
     'MIDDLEWARE': [
-        'graphql_jwt.middleware.JSONWebTokenMiddleware',  # Optional, if JWT is used for authentication
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
     ],
 }
 
