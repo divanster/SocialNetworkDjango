@@ -11,12 +11,8 @@ from rest_framework_simplejwt.views import (
 )
 from django.views.generic import RedirectView
 from core.views import health_check, csp_report  # Import health_check and csp_report
-from backend.graphql_views import CustomGraphQLView
 
-from graphene_django.views import GraphQLView
-
-from django.views.decorators.csrf import csrf_exempt
-
+from core.graphql_views import CustomGraphQLView
 
 urlpatterns = [
     # Admin and health endpoints
