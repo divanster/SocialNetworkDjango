@@ -3,7 +3,7 @@ FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONPATH="/app:/app/backend"
+    PYTHONPATH="/app"
 
 # Set the working directory
 WORKDIR /app

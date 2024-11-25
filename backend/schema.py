@@ -12,6 +12,7 @@ import newsfeed.schema
 import social.schema
 import messenger.schema
 
+
 # Combine Queries from all the different apps
 class Query(
     albums.schema.Query,
@@ -30,6 +31,7 @@ class Query(
 ):
     pass
 
+
 # Combine Mutations from all the different apps
 class Mutation(
     albums.schema.Mutation,
@@ -41,12 +43,13 @@ class Mutation(
     notifications.schema.Mutation,
     reactions.schema.Mutation,
     tagging.schema.Mutation,
-    newsfeed.schema.Mutation,
+    # newsfeed.schema.Mutation,
     social.schema.Mutation,
     messenger.schema.Mutation,
     graphene.ObjectType,
 ):
     pass
+
 
 # Define the schema
 schema = graphene.Schema(query=Query, mutation=Mutation)
