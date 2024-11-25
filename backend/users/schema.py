@@ -7,11 +7,13 @@ from django.contrib.auth import get_user_model
 # Get the custom User model
 User = get_user_model()
 
+
 # Define GraphQL Types for CustomUser and UserProfile models
 class UserType(DjangoObjectType):
     class Meta:
         model = CustomUser
-        fields = ["id", "email", "username", "is_active", "is_staff", "date_joined"]  # Expose selected fields
+        fields = ["id", "email", "username", "is_active", "is_staff",
+                  "date_joined"]  # Expose selected fields
 
 
 class UserProfileType(DjangoObjectType):
@@ -24,14 +26,16 @@ class UserProfileType(DjangoObjectType):
 class Query(graphene.ObjectType):
     all_users = graphene.List(UserType)
     user_by_id = graphene.Field(UserType, id=graphene.Int(required=True))
-    user_profile_by_id = graphene.Field(UserProfileType, user_id=graphene.Int(required=True))
+    user_profile_by_id = graphene.Field(UserProfileType,
+                                        user_id=graphene.Int(required=True))
     current_user = graphene.Field(UserType)
 
     # Resolve all users (restricted to admin users)
     def resolve_all_users(self, info, **kwargs):
         user = info.context.user
         if not user.is_staff:
-            raise GraphQLError("Permission denied. Only admin users can access all users.")
+            raise GraphQLError(
+                "Permission denied. Only admin users can access all users.")
         return User.objects.all()
 
     # Resolve a specific user by ID
@@ -52,11 +56,12 @@ class Query(graphene.ObjectType):
     def resolve_current_user(self, info):
         user = info.context.user
         if user.is_anonymous:
-            raise GraphQLError("Authentication required to view current user information.")
+            raise GraphQLError(
+                "Authentication required to view current user information.")
         return user
 
 
-# Define Mutations for Creating and Updating Users and UserProfiles
+# Define Mutations for Creating, Updating, and Deleting Users and UserProfiles
 class CreateUser(graphene.Mutation):
     class Arguments:
         email = graphene.String(required=True)
@@ -70,7 +75,8 @@ class CreateUser(graphene.Mutation):
             raise GraphQLError("A user with this email already exists.")
         if User.objects.filter(username=username).exists():
             raise GraphQLError("A user with this username already exists.")
-        user = User.objects.create_user(email=email, username=username, password=password)
+        user = User.objects.create_user(email=email, username=username,
+                                        password=password)
         return CreateUser(user=user)
 
 
@@ -101,10 +107,52 @@ class UpdateUserProfile(graphene.Mutation):
         return UpdateUserProfile(user_profile=user_profile)
 
 
+class DeleteUser(graphene.Mutation):
+    class Arguments:
+        user_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+
+    def mutate(self, info, user_id):
+        user = info.context.user
+        if not user.is_staff and user.id != user_id:
+            raise GraphQLError(
+                "Permission denied. Only admin or the user themselves can delete their account.")
+
+        try:
+            user_to_delete = User.objects.get(id=user_id)
+            user_to_delete.delete()
+            return DeleteUser(success=True)
+        except User.DoesNotExist:
+            raise GraphQLError("User not found.")
+
+
+class DeleteUserProfile(graphene.Mutation):
+    class Arguments:
+        user_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+
+    def mutate(self, info, user_id):
+        user = info.context.user
+        if user.is_anonymous or (not user.is_staff and user.id != user_id):
+            raise GraphQLError(
+                "Permission denied. Only admin or the user themselves can delete the profile.")
+
+        try:
+            user_profile = UserProfile.objects.get(user_id=user_id)
+            user_profile.delete()
+            return DeleteUserProfile(success=True)
+        except UserProfile.DoesNotExist:
+            raise GraphQLError("User profile not found.")
+
+
 # Mutation Class to Group All Mutations for User and UserProfile
 class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     update_user_profile = UpdateUserProfile.Field()
+    delete_user = DeleteUser.Field()
+    delete_user_profile = DeleteUserProfile.Field()
 
 
 # Create the schema combining Query and Mutation

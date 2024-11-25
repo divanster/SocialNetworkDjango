@@ -45,6 +45,7 @@ KAFKA_TOPICS = dict(
 # Authentication Backends
 # =====================
 AUTHENTICATION_BACKENDS = [
+    'graphql_jwt.backends.JSONWebTokenBackend',
     'django.contrib.auth.backends.ModelBackend',  # Default email/password backend
     # 'social_core.backends.google.GoogleOAuth2',
     # 'social_core.backends.facebook.FacebookOAuth2',
@@ -209,7 +210,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.AllowAny',),
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
@@ -288,11 +289,6 @@ GRAPHENE = {
     ],
 }
 
-AUTHENTICATION_BACKENDS = [
-    'graphql_jwt.backends.JSONWebTokenBackend',
-    'django.contrib.auth.backends.ModelBackend',
-]
-
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -337,11 +333,12 @@ if SENTRY_DSN:
 # Content Security Policy (CSP) settings
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
-"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+    "'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_IMG_SRC = (
-"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+    "'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
 CSP_STYLE_SRC = (
-"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+    "'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net',
+    "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)

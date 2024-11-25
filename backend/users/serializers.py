@@ -31,7 +31,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['tags']
 
-
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
         profile = super().update(instance, validated_data)
