@@ -41,6 +41,9 @@ KAFKA_TOPICS = dict(
     item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item
 )
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
 # =====================
 # Authentication Backends
 # =====================
@@ -80,6 +83,8 @@ INSTALLED_APPS = [
     'csp',
     'graphene_django',
     'django_ratelimit',
+    'graphql_jwt',
+
     # 'django_elasticsearch_dsl',
 
     # Custom apps
