@@ -25,6 +25,12 @@ class Follow(BaseModel):
         unique_together = ('follower', 'followed')
         verbose_name = 'Follow Relationship'
         verbose_name_plural = 'Follow Relationships'
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(follower=models.F('followed')),
+                name='prevent_self_follow'
+            )
+        ]
 
     def __str__(self):
         return f"{self.follower.username} follows {self.followed.username}"

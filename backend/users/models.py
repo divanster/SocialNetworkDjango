@@ -4,14 +4,13 @@
 from django.db import models
 import uuid
 import os
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, \
-    PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 from django.conf import settings
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from core.models.base_models import BaseModel, UUIDModel
-from setuptools.config._validate_pyproject.error_reporting import ValidationError
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 # Define CustomUserManager
@@ -26,6 +25,12 @@ class CustomUserManager(BaseUserManager):
         """
         if not email:
             raise ValueError('The Email field must be set')
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            raise ValueError('Invalid email address')
+
         email = self.normalize_email(email)
         user = self.model(email=email, username=username, **extra_fields)
         user.set_password(password)
@@ -115,7 +120,7 @@ class UserProfile(UUIDModel, BaseModel):
         default='static/default_images/profile_picture.png'
     )
     bio = models.TextField(blank=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
+    phone = PhoneNumberField(blank=True, null=True, help_text="User's phone number")
     town = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     relationship_status = models.CharField(

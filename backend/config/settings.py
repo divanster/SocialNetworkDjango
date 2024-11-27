@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from datetime import timedelta
 import environ
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -40,8 +41,6 @@ KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
 KAFKA_TOPICS = dict(
     item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item
 )
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # =====================
@@ -176,6 +175,9 @@ DATABASES = {
     },
 }
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
 # Password validation settings
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -215,16 +217,24 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-        # Enable Browsable API if DEBUG is True
-        'rest_framework.renderers.BrowsableAPIRenderer' if DEBUG else 'rest_framework.renderers.JSONRenderer',
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Should be a string path, not a tuple
+    'PAGE_SIZE': 10,
 }
+
+# Adjust the renderer classes based on DEBUG mode
+if DEBUG:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    )
+else:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
+        'rest_framework.renderers.JSONRenderer',
+    )
 
 # Simple JWT configuration
 SIMPLE_JWT = {
@@ -311,6 +321,15 @@ CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER', default='json')
 CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = 'UTC'
+
+
+# Celery Beat Configuration
+CELERY_BEAT_SCHEDULE = {
+    'deactivate_expired_stories_every_hour': {
+        'task': 'stories.tasks.deactivate_expired_stories',
+        'schedule': crontab(minute=0, hour='*'),
+    },
+}
 
 # Redis caching configuration
 CACHES = {

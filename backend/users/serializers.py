@@ -151,3 +151,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         context = super().get_serializer_context()
         context.update({'request': self.context.get('request')})
         return context
+
+
+class TokenRefreshSerializer(serializers.Serializer):
+    refresh = serializers.CharField(required=True)

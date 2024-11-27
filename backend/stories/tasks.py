@@ -1,60 +1,55 @@
 from celery import shared_task
-from kafka_app.producer import KafkaProducerClient
-from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 import logging
+
+from config import settings
+from kafka_app.producer import KafkaProducerClient
 
 logger = logging.getLogger(__name__)
 
-
-@shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def send_story_event_to_kafka(self, story_id, event_type):
-    """
-    Celery task to send story events to Kafka.
-
-    Args:
-        story_id (str): ID of the story.
-        event_type (str): Type of event to be processed ('created', 'updated', 'deleted').
-
-    Returns:
-        None
-    """
-    producer = KafkaProducerClient()
-
+@shared_task
+def deactivate_expired_stories():
     try:
-        # Import the Story model to avoid circular dependencies
+        logger.info("Started deactivating expired stories...")
+        expiration_time = timezone.now() - timedelta(hours=24)
+
+        # Import Story model here to prevent circular import issues
         from stories.models import Story
 
-        if event_type == 'deleted':
-            message = {
-                "story_id": story_id,
-                "event": "deleted"
-            }
+        # Fetch all the stories that need to be deactivated
+        expired_stories = Story.objects.filter(is_active=True, created_at__lt=expiration_time)
+        total_stories = expired_stories.count()
+
+        if total_stories > 0:
+            # Instantiate Kafka producer
+            producer = KafkaProducerClient()
+
+            # Update in chunks to avoid performance issues
+            for story in expired_stories.iterator(chunk_size=500):
+                try:
+                    story.is_active = False
+                    story.save()
+
+                    # Send a Kafka event for each deactivated story
+                    kafka_topic = settings.KAFKA_TOPICS.get('STORY_EVENTS', 'default-story-topic')
+                    message = {
+                        "story_id": str(story.id),
+                        "event": "deactivated",
+                        "user_id": str(story.user_id),
+                        "created_at": str(story.created_at),
+                    }
+                    producer.send_message(kafka_topic, message)
+                    logger.info(f"Sent Kafka message for deactivated story with ID: {story.id}")
+
+                except Exception as e:
+                    logger.error(f"Error deactivating story with ID '{story.id}': {e}")
+                    continue
+
+            producer.close()  # Close the Kafka producer connection
+            logger.info(f"Successfully deactivated {total_stories} expired stories.")
         else:
-            # Fetch the story instance from the database
-            story = Story.objects.get(id=story_id)
+            logger.info("No expired stories found to deactivate.")
 
-            message = {
-                "story_id": story.id,
-                "user_id": story.user_id,
-                "user_username": story.user.username,  # Updated to access user's username
-                "content": story.content,
-                "media_type": story.media_type,
-                "media_url": story.media_url,
-                "visibility": story.visibility,  # Include visibility in the message
-                "is_active": story.is_active,
-                "created_at": str(story.created_at),
-                "event": event_type,
-            }
-
-        # Send the constructed message to the STORY_EVENTS Kafka topic
-        kafka_topic = settings.KAFKA_TOPICS.get('STORY_EVENTS', 'default-story-topic')
-        producer.send_message(kafka_topic, message)
-        logger.info(f"Sent Kafka message for story event '{event_type}' with message: {message}")
-
-    except Story.DoesNotExist:
-        logger.error(f"Story with ID '{story_id}' does not exist.")
     except Exception as e:
-        logger.error(f"Error sending Kafka message for story ID '{story_id}': {e}")
-        self.retry(exc=e)  # Retry the task in case of failure
-    finally:
-        producer.close()  # Properly close the producer to ensure no open connections
+        logger.error(f"An error occurred while deactivating expired stories: {e}")

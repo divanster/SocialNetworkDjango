@@ -102,6 +102,8 @@ inflection==0.5.1                       # Inflection utilities for Python (e.g.,
 attrs==23.2.0                           # Attribute handling for Python classes
 rpds-py==0.19.0                         # Rust-based persistent data structures for Python
 packaging==24.1                         # Packaging utilities for Python
+django-phonenumber-field>=6.0
+phonenumbers>=8.13.50
 
 # Sentry
 sentry-sdk==2.17.0                      # Sentry for error tracking
@@ -111,6 +113,7 @@ pydantic>=2.9.2
 
 # Uvicorn
 uvicorn[standard]                       # ASGI server for production use
+
 
 # Login rate limiting
 django-ratelimit==4.1.0
@@ -122,4 +125,5 @@ graphql-core==3.2.5
 graphql-relay==3.2.0
 promise==2.3
 text-unidecode==1.3
-django-graphql-jwt==0.3.2
+django-graphql-jwt==0.4.0
+

@@ -1,5 +1,5 @@
 import logging
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -7,7 +7,8 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from .models import CustomUser, UserProfile
-from .serializers import CustomUserSerializer, UserProfileSerializer
+from .serializers import CustomUserSerializer, UserProfileSerializer, \
+    TokenRefreshSerializer
 from rest_framework.generics import CreateAPIView
 from users.tasks import send_welcome_email, send_profile_update_notification
 from rest_framework.views import APIView
@@ -20,27 +21,34 @@ from django_ratelimit.decorators import ratelimit
 logger = logging.getLogger('users')
 
 
-class CustomTokenRefreshView(APIView):
+class CustomTokenRefreshView(generics.GenericAPIView):
     """
     Custom view to refresh the access token using the provided refresh token.
     """
+    serializer_class = TokenRefreshSerializer  # Declare the serializer_class here
+    authentication_classes = [JWTAuthentication]
+
+    @extend_schema(
+        summary="Refresh JWT Token",
+        description="Refreshes the JWT access token using the provided refresh token.",
+        request=TokenRefreshSerializer,
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
     @ratelimit(key='ip', rate='5/m', block=True)
     def post(self, request):
-        refresh_token = request.data.get('refresh', None)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not refresh_token:
-            return Response({'error': 'Refresh token is required'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        refresh_token = serializer.validated_data.get('refresh')
 
         try:
             refresh = RefreshToken(refresh_token)
             new_access_token = str(refresh.access_token)
-            logger.info(f"Token refresh successful for user with refresh token: {refresh_token}")
+            logger.info(f"Token refresh successful for user with refresh token.")
             return Response({'access': new_access_token}, status=status.HTTP_200_OK)
         except TokenError as e:
-            logger.warning(f"Token refresh failed: {str(e)}")  # Specific exception logging
+            logger.warning(f"Token refresh failed: {str(e)}")
             return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     """
