@@ -16,10 +16,12 @@ from django.db import models
 # Get the custom User model
 User = get_user_model()
 
+
 # Define a common interface for all Newsfeed items
 class NewsfeedItemInterface(graphene.Interface):
     id = graphene.ID()
     created_at = graphene.DateTime()
+
 
 # Define GraphQL Types for Newsfeed items implementing the interface
 class AlbumType(DjangoObjectType):
@@ -99,11 +101,6 @@ class MessageType(DjangoObjectType):
         interfaces = (NewsfeedItemInterface,)
 
 
-# Define the NewsfeedItem GraphQL type to aggregate all types of items using the interface
-class NewsfeedItemType(graphene.Interface):
-    id = graphene.ID()
-    created_at = graphene.DateTime()
-
 # Define Queries for the Newsfeed
 class Query(graphene.ObjectType):
     newsfeed = graphene.List(NewsfeedItemInterface)
@@ -141,6 +138,8 @@ class Query(graphene.ObjectType):
                 list(friendships) +
                 list(messages)
         )
+
+        # Sort by created_at, assuming all models have this field
         newsfeed_items.sort(key=lambda x: x.created_at, reverse=True)
 
         return newsfeed_items

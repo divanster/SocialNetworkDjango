@@ -3,7 +3,7 @@ import logging
 import jwt
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.contrib.auth.models import User
+from users.models import CustomUser  # Ensure you use your custom user model
 from django.conf import settings
 from rest_framework_simplejwt.exceptions import \
     TokenError  # Import TokenError from simplejwt
@@ -51,9 +51,9 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
             user_id = decoded_token.get('user_id')
             logger.info(f"Decoded token, user ID: {user_id}")
 
-            # Get the user from the token
-            user = await sync_to_async(User.objects.get)(
-                id=user_id)  # Fetch the user from DB
+            # Get the user from the token (use CustomUser instead of User)
+            user = await sync_to_async(CustomUser.objects.get)(
+                id=user_id)  # Fetch the CustomUser from DB
             if user.is_anonymous:
                 raise TokenError("Invalid user from token.")
             self.scope['user'] = user  # Set user in scope
@@ -65,7 +65,7 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
             await self.close(code=4002)  # Close with 4002 error code (token expired)
             return
 
-        except (jwt.DecodeError, TokenError, User.DoesNotExist) as e:
+        except (jwt.DecodeError, TokenError, CustomUser.DoesNotExist) as e:
             logger.warning(f"Connection attempt with invalid JWT: {e}")
             await self.close(code=4001)  # Close with 4001 error code (invalid token)
             return
@@ -110,6 +110,7 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         """
         Checks if the user has permission to join the group.
         """
+        # Permission logic for user-specific groups
         if group_name.startswith('albums_user_'):
             group_user_id = group_name.split('_')[-1]
             has_permission = str(user.id) == group_user_id

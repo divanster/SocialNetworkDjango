@@ -3,11 +3,13 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
 from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel
 from tagging.models import TaggedItem
+from comments.models import Comment
 from core.choices import VisibilityChoices  # Import visibility choices
 import uuid
 import os
 
 User = get_user_model()
+
 
 class PostQuerySet(models.QuerySet):
     def visible_to_user(self, user):
@@ -22,6 +24,7 @@ class PostQuerySet(models.QuerySet):
             own_posts = self.filter(author=user)
             return public_posts | friends_posts | own_posts
 
+
 def get_friends(user):
     from friends.models import Friendship
     friends = Friendship.objects.filter(
@@ -34,12 +37,14 @@ def get_friends(user):
     friend_ids.discard(user.id)
     return User.objects.filter(id__in=friend_ids)
 
+
 class PostManager(models.Manager):
     def get_queryset(self):
         return PostQuerySet(self.model, using=self._db)
 
     def visible_to_user(self, user):
         return self.get_queryset().visible_to_user(user)
+
 
 class Post(UUIDModel, SoftDeleteModel, BaseModel):
     """
@@ -60,6 +65,7 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         help_text="Visibility of the post"
     )
     tags = GenericRelation(TaggedItem, related_query_name='posts')
+    comments = GenericRelation(Comment, related_query_name='posts')
 
     objects = PostManager()  # Use custom manager
 
@@ -94,6 +100,7 @@ def post_image_file_path(instance, filename):
     ext = filename.split('.')[-1]
     filename = f'{uuid.uuid4()}.{ext}'
     return os.path.join('uploads/post/', filename)
+
 
 class PostImage(UUIDModel, BaseModel):
     """

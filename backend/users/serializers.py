@@ -48,8 +48,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             )
 
     @extend_schema_field(TaggedItemSerializer(many=True))
-    def get_tags(self, instance) -> list:
-        return TaggedItemSerializer(instance.tags.all(), many=True).data
+    def get_tags(self, instance):
+        # Safely check for 'tags' attribute and handle if it doesn't exist
+        if hasattr(instance, 'tags'):
+            return TaggedItemSerializer(instance.tags.all(), many=True).data
+        return []
 
 
 class CustomUserSerializer(serializers.ModelSerializer):

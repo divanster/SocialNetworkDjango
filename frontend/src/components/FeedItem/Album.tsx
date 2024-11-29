@@ -14,13 +14,14 @@ const Album: React.FC<AlbumProps> = ({ album, onDelete }) => {
   return (
     <div className="album">
       <h2>{album.title}</h2>
-      <p>{album.description}</p>
+      {album.description && <p>{album.description}</p>}
       <button onClick={handleDelete}>Delete Album</button>
+
       <div className="photos">
         {album.photos && album.photos.length > 0 ? (
           album.photos.map((photo) => (
             <div key={photo.id} className="photo">
-              <img src={photo.image} alt={photo.description} />
+              <img src={photo.image} alt={photo.description || 'Photo'} />
               <p>{photo.description}</p>
             </div>
           ))

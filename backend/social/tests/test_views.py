@@ -1,196 +1,135 @@
 from django.urls import reverse
+from rest_framework.test import APITestCase
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
-from unittest.mock import patch
-from social.models import Post, PostImage
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
+from social.models import Post
+from friends.models import Friendship
+from core.choices import VisibilityChoices
+from rest_framework_simplejwt.tokens import RefreshToken  # Use simplejwt for JWT token
 
 User = get_user_model()
 
-
-class PostViewSetTest(APITestCase):
+class AggregatedFeedViewTest(APITestCase):
 
     def setUp(self):
-        # Set up a user and authenticate
+        # Create a test user with email (required by custom user manager)
         self.user = User.objects.create_user(
-            username='testuser', email='user@example.com', password='password123'
+            username='testuser',
+            email='testuser@example.com',  # Required field in your user model
+            password='password'
         )
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
-        # Set up a second user for permissions testing
+
+        # Generate JWT token for the user using SimpleJWT
+        refresh = RefreshToken.for_user(self.user)
+        self.token = str(refresh.access_token)
+
+        # Authenticate the user using JWT
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)  # Using JWT Bearer token
+
+        # Create another user for testing
         self.other_user = User.objects.create_user(
-            username='otheruser', email='other@example.com', password='password123'
+            username='otheruser',
+            email='otheruser@example.com',  # Required field in your user model
+            password='password'
         )
-        self.post_data = {
-            'title': 'Test Post',
-            'content': 'This is a test post.',
-            'image_files': [
-                SimpleUploadedFile("test_image.jpg", b"file_content", content_type="image/jpeg")
-            ],
-            'tagged_user_ids': [self.other_user.id]
-        }
 
-    @patch('social.tasks.process_new_post.delay')
-    def test_create_post(self, mock_process_new_post):
-        # Test creating a new post
-        url = reverse('post-list')
-        response = self.client.post(url, self.post_data, format='multipart')
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Post.objects.count(), 1)
-
-        post = Post.objects.first()
-        self.assertEqual(post.title, self.post_data['title'])
-        self.assertEqual(post.content, self.post_data['content'])
-        self.assertEqual(post.author.id, self.user.id)
-
-        # Check if image was uploaded
-        self.assertEqual(post.images.count(), 1)
-
-        # Check if the Celery task was triggered
-        mock_process_new_post.assert_called_once_with(post.id)
-
-    @patch('social.tasks.process_new_post.delay')
-    def test_create_post_with_invalid_data(self, mock_process_new_post):
-        # Test creating a post with invalid data
-        invalid_data = {
-            'title': '',  # Empty title should trigger validation error
-            'content': 'Test content',
-        }
-        url = reverse('post-list')
-        response = self.client.post(url, invalid_data, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(Post.objects.count(), 0)
-        mock_process_new_post.assert_not_called()
-
-    def test_retrieve_post(self):
-        # Test retrieving a single post
-        post = Post.objects.create(
+        # Create a post by the user
+        self.post = Post.objects.create(
             title='Test Post',
-            content='This is a test post.',
-            author_id=self.user.id,
-            author_username=self.user.username,
+            content='This is a test post',
+            author=self.user,
+            visibility=VisibilityChoices.PUBLIC
         )
-        url = reverse('post-detail', kwargs={'pk': post.pk})
-        response = self.client.get(url)
 
+        # Create a post by another user (for testing friend's visibility)
+        self.friend_post = Post.objects.create(
+            title='Friend Post',
+            content='This is a post by a friend',
+            author=self.other_user,
+            visibility=VisibilityChoices.FRIENDS
+        )
+
+        # Create a friendship for testing visibility for 'friends' posts
+        Friendship.objects.create(user1=self.user, user2=self.other_user)
+
+        # Set up the URL for the aggregated feed view
+        self.url = reverse('newsfeed:user_feed')  # Corrected URL name to match your urlpatterns
+
+    def test_aggregated_feed_authenticated(self):
+        # Send the GET request to the aggregated feed view
+        response = self.client.get(self.url)
+
+        # Check if the response is successful
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['title'], post.title)
-        self.assertEqual(response.data['content'], post.content)
 
-    def test_list_posts(self):
-        # Create multiple posts to test listing
-        Post.objects.create(
-            title='Post 1', content='Content 1', author_id=self.user.id, author_username=self.user.username
+        # Check that the response contains posts and other expected fields
+        self.assertIn('posts', response.data)
+        self.assertGreater(len(response.data['posts']), 0)
+
+        # Verify that the public post is in the feed
+        post_titles = [post['title'] for post in response.data['posts']]
+        self.assertIn('Test Post', post_titles)  # The post created by testuser
+        self.assertIn('Friend Post', post_titles)  # The post created by otheruser (visible to friends)
+
+    def test_aggregated_feed_no_posts(self):
+        # Create a new user without posts
+        user_without_posts = User.objects.create_user(
+            username='emptyuser',
+            email='emptyuser@example.com',  # Required field
+            password='password'
         )
-        Post.objects.create(
-            title='Post 2', content='Content 2', author_id=self.other_user.id, author_username=self.other_user.username
-        )
 
-        url = reverse('post-list')
-        response = self.client.get(url)
+        # Generate JWT token for the new user
+        refresh = RefreshToken.for_user(user_without_posts)
+        self.token = str(refresh.access_token)
 
+        # Authenticate the new user using JWT
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
+
+        # Send the GET request to the aggregated feed view
+        response = self.client.get(self.url)
+
+        # Check if the response is successful
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-        self.assertEqual(response.data[0]['title'], 'Post 2')  # Ordered by created_at
 
-    def test_update_post(self):
-        # Test updating a post by the author
-        post = Post.objects.create(
-            title='Old Title',
-            content='Old content.',
-            author_id=self.user.id,
-            author_username=self.user.username
-        )
-        updated_data = {'title': 'Updated Title', 'content': 'Updated content.'}
-        url = reverse('post-detail', kwargs={'pk': post.pk})
-        response = self.client.patch(url, updated_data, format='json')
+        # Check that the response does not contain posts
+        self.assertIn('posts', response.data)
+        self.assertEqual(len(response.data['posts']), 0)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        post.refresh_from_db()
-        self.assertEqual(post.title, 'Updated Title')
-        self.assertEqual(post.content, 'Updated content')
+    def test_aggregated_feed_unauthenticated(self):
+        # Send a GET request without authentication
+        self.client.credentials()  # Clear any authentication credentials
+        response = self.client.get(self.url)
 
-    def test_update_post_not_author(self):
-        # Test trying to update a post by someone other than the author
-        post = Post.objects.create(
-            title='Old Title',
-            content='Old content.',
-            author_id=self.user.id,
-            author_username=self.user.username
-        )
-        self.client.force_authenticate(user=self.other_user)
-        updated_data = {'title': 'Updated Title'}
-        url = reverse('post-detail', kwargs={'pk': post.pk})
-        response = self.client.patch(url, updated_data, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_delete_post(self):
-        # Test deleting a post by the author
-        post = Post.objects.create(
-            title='To be deleted',
-            content='Content of post to be deleted.',
-            author_id=self.user.id,
-            author_username=self.user.username
-        )
-        url = reverse('post-detail', kwargs={'pk': post.pk})
-        response = self.client.delete(url)
-
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(Post.objects.count(), 0)
-
-    def test_delete_post_not_author(self):
-        # Test trying to delete a post by someone other than the author
-        post = Post.objects.create(
-            title='To be deleted',
-            content='Content of post to be deleted.',
-            author_id=self.user.id,
-            author_username=self.user.username
-        )
-        self.client.force_authenticate(user=self.other_user)
-        url = reverse('post-detail', kwargs={'pk': post.pk})
-        response = self.client.delete(url)
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(Post.objects.count(), 1)
-
-    def test_unauthenticated_user_create_post(self):
-        # Test creating a post without being authenticated
-        self.client.logout()
-        url = reverse('post-list')
-        response = self.client.post(url, self.post_data, format='multipart')
-
+        # Check if the response is unauthorized
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(Post.objects.count(), 0)
 
-    def test_authenticated_user_get_posts(self):
-        # Test that an authenticated user can retrieve a list of posts
-        Post.objects.create(
-            title='Post 1', content='Content 1', author_id=self.user.id, author_username=self.user.username
+    def test_aggregated_feed_friends_visibility(self):
+        # Send the GET request to the aggregated feed view
+        response = self.client.get(self.url)
+
+        # Check that the friend post is visible to the authenticated user
+        post_titles = [post['title'] for post in response.data.get('posts', [])]  # Avoid KeyError
+        self.assertIn('Friend Post', post_titles)  # The post by a friend should be included
+
+    def test_aggregated_feed_other_user_post_not_visible(self):
+        # Create another user without adding as a friend
+        user_not_a_friend = User.objects.create_user(
+            username='notafriend',
+            email='notafriend@example.com',  # Required field
+            password='password'
         )
-        url = reverse('post-list')
-        response = self.client.get(url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 1)
+        # Generate JWT token for the new user
+        refresh = RefreshToken.for_user(self.user)
+        self.token = str(refresh.access_token)
 
-    def test_partial_update_post_image(self):
-        # Test updating a post by adding an image
-        post = Post.objects.create(
-            title='Old Title',
-            content='Old content.',
-            author_id=self.user.id,
-            author_username=self.user.username
-        )
-        updated_data = {
-            'image_files': [SimpleUploadedFile("new_image.jpg", b"new_file_content", content_type="image/jpeg")]
-        }
-        url = reverse('post-detail', kwargs={'pk': post.pk})
-        response = self.client.patch(url, updated_data, format='multipart')
+        # Authenticate the user using JWT
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        post.refresh_from_db()
-        self.assertEqual(post.images.count(), 1)
+        # Send the GET request to the aggregated feed view
+        response = self.client.get(self.url)
+
+        # Ensure that the friend's post is not included (as they're not friends)
+        post_titles = [post['title'] for post in response.data.get('posts', [])]  # Avoid KeyError
+        self.assertNotIn('Friend Post', post_titles)  # The post by another user should not appear

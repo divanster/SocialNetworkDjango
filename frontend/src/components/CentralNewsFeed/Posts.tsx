@@ -1,30 +1,22 @@
 import React from 'react';
 import Post from '../FeedItem/Post';
 
+interface PostType {
+    id: number;
+    title: string;
+    content: string;
+    author: string;
+    created_at: string;
+    updated_at: string;
+    tags: { id: number; name: string }[];
+    images: { id: number; image: string }[];
+    ratings: { id: number; value: number; user: number }[];
+}
+
 interface PostsProps {
-    posts: {
-        id: number;
-        title: string;
-        content: string;
-        author: string;
-        created_at: string;
-        updated_at: string;
-        tags: { id: number; name: string }[];
-        images: { id: number; image: string }[];
-        ratings: { id: number; value: number; user: number }[];
-    }[];
-    onDelete: (id: number) => void;  // Handler to delete a post
-    onUpdate: (updatedPost: {
-        id: number;
-        title: string;
-        content: string;
-        author: string;
-        created_at: string;
-        updated_at: string;
-        tags: { id: number; name: string }[];
-        images: { id: number; image: string }[];
-        ratings: { id: number; value: number; user: number }[];
-    }) => void;  // Handler to update a post
+    posts: PostType[];  // Use the full post type
+    onDelete: (id: number) => void;
+    onUpdate: (updatedPost: PostType) => void;  // Pass a full post object to onUpdate
 }
 
 const Posts: React.FC<PostsProps> = ({ posts, onDelete, onUpdate }) => {
@@ -38,7 +30,7 @@ const Posts: React.FC<PostsProps> = ({ posts, onDelete, onUpdate }) => {
                 <div key={post.id}>
                     <Post post={post} />
                     <button onClick={() => onDelete(post.id)}>Delete</button>
-                    <button onClick={() => onUpdate(post)}>Update</button>
+                    <button onClick={() => onUpdate(post)}>Update</button>  {/* Pass the full post */}
                 </div>
             ))}
         </div>
