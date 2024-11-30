@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -10,11 +11,8 @@ from albums.models import Album
 from tagging.models import TaggedItem
 from friends.models import FriendRequest, Friendship
 import logging
-from django.contrib.contenttypes.models import ContentType
-
 
 logger = logging.getLogger(__name__)
-
 
 class AggregatedFeedView(APIView):
     permission_classes = [IsAuthenticated]
@@ -27,45 +25,40 @@ class AggregatedFeedView(APIView):
             user = request.user  # Get the authenticated user
             logger.debug(f"Fetching aggregated feed for user: {user.id}")
 
-            # Fetch posts, comments, reactions, albums, etc.
+            # Fetch posts with visibility settings
             posts = Post.objects.visible_to_user(user) \
                 .select_related('author') \
                 .prefetch_related('comments', 'reactions', 'tags', 'images', 'ratings') \
                 .order_by('-created_at')
-            logger.debug(f"Fetched {posts.count()} posts")
+            logger.debug(f"Fetched posts: {posts.values('id', 'title')}")
 
-            # Get the ContentType for the Post model
+            # Fetch comments related to the posts (use content_type to filter)
             post_content_type = ContentType.objects.get_for_model(Post)
-
-            # Fetch comments related to the posts
             comments = Comment.objects.filter(
-                content_type=post_content_type,  # Use content_type from ContentType
-                object_id__in=posts.values('id')  # Use object_id from Post IDs
+                content_type=post_content_type,
+                object_id__in=posts.values('id')
             ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched {comments.count()} comments")
+            logger.debug(f"Fetched comments: {comments.count()}")
 
-            # Fetch reactions (assuming they are related to posts similarly)
+            # Fetch reactions related to the posts (use content_type to filter)
             reactions = Reaction.objects.filter(
                 content_type=post_content_type,
                 object_id__in=posts.values('id')
             ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched {reactions.count()} reactions")
+            logger.debug(f"Fetched reactions: {reactions.count()}")
 
-            # Fetch albums related to the posts (similar to the comments query)
-            albums = Album.objects.filter(
-                content_type=post_content_type,
-                object_id__in=posts.values('id')
-            ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched {albums.count()} albums")
+            # Fetch albums related to the posts (assuming ForeignKey directly to Post)
+            albums = Album.objects.filter(post__in=posts).select_related('user').order_by('-created_at')
+            logger.debug(f"Fetched albums: {albums.count()}")
 
-            # Similarly, fetch stories, tagged items, friend requests, friendships, etc.
-
+            # Similarly, fetch tagged items
             tagged_items = TaggedItem.objects.filter(
-                content_type=post_content_type,
+                content_type=ContentType.objects.get_for_model(Post),
                 object_id__in=posts.values('id')
             ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched {tagged_items.count()} tagged items")
+            logger.debug(f"Fetched tagged items: {tagged_items.count()}")
 
+            # Fetch friend requests and friendships
             friend_requests = FriendRequest.objects.filter(to_user=user).select_related(
                 'from_user', 'to_user').order_by('-created_at')
             friendships = Friendship.objects.filter(user=user).select_related(
