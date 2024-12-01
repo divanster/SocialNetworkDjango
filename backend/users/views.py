@@ -48,7 +48,9 @@ class CustomTokenRefreshView(generics.GenericAPIView):
             return Response({'access': new_access_token}, status=status.HTTP_200_OK)
         except TokenError as e:
             logger.warning(f"Token refresh failed: {str(e)}")
-            return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f'Invalid token: {str(e)}'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     """
@@ -81,11 +83,13 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """
         Custom update method with rate limiting applied.
         """
+
         @ratelimit(key='user', rate='5/h', block=True)
         def perform_update(serializer):
             profile = serializer.save(user=self.request.user)
             send_profile_update_notification.delay(profile.user.id)
-            logger.info(f"Profile updated for user {profile.user.id}, notification task scheduled.")
+            logger.info(
+                f"Profile updated for user {profile.user.id}, notification task scheduled.")
 
         return super().update(request, *args, **kwargs)
 
@@ -130,7 +134,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         """
         if request.method in ['PUT', 'PATCH']:
             partial = request.method == 'PATCH'
-            serializer = self.get_serializer(request.user, data=request.data, partial=partial)
+            serializer = self.get_serializer(request.user, data=request.data,
+                                             partial=partial)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             logger.info(f"User data updated for user {request.user.id}")

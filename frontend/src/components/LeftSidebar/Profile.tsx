@@ -7,12 +7,14 @@ interface UserProfile {
   email: string;
   first_name: string;
   last_name: string;
-  profile_picture: string | null;
-  bio: string;
-  phone: string | null;
-  town: string | null;
-  country: string | null;
-  relationship_status: string;
+  profile: {
+    profile_picture: string | null;
+    bio: string;
+    phone: string | null;
+    town: string | null;
+    country: string | null;
+    relationship_status: string;
+  } | null;
 }
 
 const Profile: React.FC = () => {
@@ -64,15 +66,19 @@ const Profile: React.FC = () => {
           <h2>{profile.username}</h2>
           <p>{profile.first_name} {profile.last_name}</p>
           <p>{profile.email}</p>
-          {profile.profile_picture ? (
-            <img src={profile.profile_picture} alt="Profile" />
+          {profile.profile && profile.profile.profile_picture ? (
+            <img src={profile.profile.profile_picture} alt={profile.username} />
           ) : (
             <p>No profile picture</p>
           )}
-          <p>Bio: {profile.bio}</p>
-          <p>Phone: {profile.phone}</p>
-          <p>Location: {profile.town}, {profile.country}</p>
-          <p>Relationship Status: {profile.relationship_status}</p>
+          {profile.profile && (
+            <>
+              <p>Bio: {profile.profile.bio}</p>
+              <p>Phone: {profile.profile.phone}</p>
+              <p>Location: {profile.profile.town}, {profile.profile.country}</p>
+              <p>Relationship Status: {profile.profile.relationship_status}</p>
+            </>
+          )}
         </div>
       ) : (
         <p>No profile data available.</p>
