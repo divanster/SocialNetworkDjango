@@ -1,4 +1,4 @@
-# backend/social/permissions.py
+# backend/core/permissions.py
 from rest_framework import permissions
 
 

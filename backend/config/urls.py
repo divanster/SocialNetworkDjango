@@ -13,6 +13,7 @@ from django.views.generic import RedirectView
 from core.views import health_check, csp_report  # Import health_check and csp_report
 
 from core.graphql_views import CustomGraphQLView
+from schema import schema
 
 urlpatterns = [
     # Admin and health endpoints
@@ -24,7 +25,7 @@ urlpatterns = [
     path('', lambda request: HttpResponse("Welcome to the Social Network API!"), name='home'),
 
     # Add the GraphQL endpoint here
-    path('graphql/', CustomGraphQLView.as_view(graphiql=True)),
+    path('graphql/', CustomGraphQLView.as_view(graphiql=True, schema=schema), name='graphql'),
 
     # API Versioning - Versioned API URLs
     path('api/v1/', include([

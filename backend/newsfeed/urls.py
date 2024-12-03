@@ -4,5 +4,5 @@ from .views import AggregatedFeedView
 app_name = 'newsfeed'
 
 urlpatterns = [
-    path('', AggregatedFeedView.as_view(), name='user_feed'),
+    path('feed/', AggregatedFeedView.as_view(), name='user_feed'),
 ]

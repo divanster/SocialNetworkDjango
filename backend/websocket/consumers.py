@@ -5,8 +5,7 @@ from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from users.models import CustomUser  # Ensure you use your custom user model
 from django.conf import settings
-from rest_framework_simplejwt.exceptions import \
-    TokenError  # Import TokenError from simplejwt
+from rest_framework_simplejwt.exceptions import TokenError  # Import TokenError from simplejwt
 import hashlib
 
 logger = logging.getLogger(__name__)
@@ -21,16 +20,12 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         self.group_name = self.scope['url_route']['kwargs'].get('group_name', None)
         if not self.group_name:
             logger.warning("Connection attempt without group name")
-            await self.close(
-                code=4001)  # Close with 4001 error code (group name missing)
+            await self.close(code=4001)  # Close with 4001 error code (group name missing)
             return
 
         # Extract JWT token from query parameters
-        query_string = self.scope[
-            'query_string'].decode()  # Get query string from the URL
-        token_param = next(
-            (param for param in query_string.split("&") if param.startswith("token=")),
-            None)
+        query_string = self.scope['query_string'].decode()  # Get query string from the URL
+        token_param = next((param for param in query_string.split("&") if param.startswith("token=")), None)
         token = token_param.split("=")[1] if token_param else None
 
         if not token:
@@ -72,10 +67,8 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
 
         # Perform permission check
         if not await self.has_permission(user, self.group_name):
-            logger.warning(
-                f"User {user.username} lacks permission to join group: {self.group_name}")
-            await self.close(
-                code=4003)  # Close with 4003 error code (permission denied)
+            logger.warning(f"User {user.username} lacks permission to join group: {self.group_name}")
+            await self.close(code=4003)  # Close with 4003 error code (permission denied)
             return
 
         # Join the group if permission is granted
@@ -87,8 +80,7 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         """
         Handles WebSocket disconnection.
         """
-        await self.channel_layer.group_discard(self.group_name,
-                                               self.channel_name)  # Remove from group
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)  # Remove from group
         logger.info(f"User disconnected from group: {self.group_name}")
 
     async def kafka_message(self, event):
@@ -99,10 +91,8 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
 
         # Send message to the WebSocket client
         try:
-            await self.send(
-                text_data=json.dumps({'message': message}))  # Send the message
-            logger.debug(
-                f"Message sent to WebSocket from group {self.group_name}: {message}")
+            await self.send(text_data=json.dumps({'message': message}))  # Send the message
+            logger.debug(f"Message sent to WebSocket from group {self.group_name}: {message}")
         except Exception as e:
             logger.error(f"Error sending message to WebSocket client: {e}")
 
@@ -110,19 +100,16 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         """
         Checks if the user has permission to join the group.
         """
-        # Permission logic for user-specific groups
+        if group_name in ['posts', 'albums']:
+            # Allow authenticated users to join 'posts' and 'albums' groups
+            return user.is_authenticated
+
+        # Example for user-specific group permission check
         if group_name.startswith('albums_user_'):
             group_user_id = group_name.split('_')[-1]
-            has_permission = str(user.id) == group_user_id
-            logger.info(
-                f"Permission check for user {user.username} to group {group_name}: {has_permission}")
-            return has_permission
+            return str(user.id) == group_user_id
 
-        # General group permission check for public albums
-        if group_name == 'public_albums_group' and user.is_authenticated:
-            return True
-
-        # Deny access by default if no condition matches
+        # Deny access by default
         return False
 
     @staticmethod
@@ -130,5 +117,4 @@ class GeneralKafkaConsumer(AsyncWebsocketConsumer):
         """
         Generates a secure hash-based group name.
         """
-        return hashlib.sha256(
-            f"secure_prefix_{user_id}".encode()).hexdigest()  # Generate group name based on user ID
+        return hashlib.sha256(f"secure_prefix_{user_id}".encode()).hexdigest()  # Generate group name based on user ID

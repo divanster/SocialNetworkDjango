@@ -7,6 +7,7 @@ from graphql import GraphQLError
 # Get the custom User model
 User = get_user_model()
 
+
 # Define GraphQL Type for Follow model
 class FollowType(DjangoObjectType):
     class Meta:
@@ -27,7 +28,8 @@ class Query(graphene.ObjectType):
 
     # Resolve follow relationships by user (both followers and following)
     def resolve_follows_by_user(self, info, user_id):
-        return Follow.objects.filter(follower_id=user_id) | Follow.objects.filter(followed_id=user_id)
+        return Follow.objects.filter(follower_id=user_id) | Follow.objects.filter(
+            followed_id=user_id)
 
     # Resolve followers of a specific user
     def resolve_followers(self, info, user_id):

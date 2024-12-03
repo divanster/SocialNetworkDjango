@@ -5,9 +5,12 @@ from django.contrib.contenttypes.models import ContentType
 from graphql import GraphQLError
 from django.contrib.auth import get_user_model
 from graphene import UUID
+from django.db import models
+
 
 # Get the custom User model
 User = get_user_model()
+
 
 # Define GraphQL Type for TaggedItem model
 class TaggedItemType(DjangoObjectType):
@@ -26,27 +29,35 @@ class TaggedItemType(DjangoObjectType):
 class Query(graphene.ObjectType):
     all_tags = graphene.List(TaggedItemType)
     tags_by_user = graphene.List(TaggedItemType, user_id=graphene.Int(required=True))
-    tags_for_content = graphene.List(TaggedItemType, content_type_id=graphene.Int(required=True), object_id=UUID(required=True))
+    tags_for_content = graphene.List(TaggedItemType,
+                                     content_type_id=graphene.Int(required=True),
+                                     object_id=UUID(required=True))
 
     # Resolve all tags (restricted to admin users)
     def resolve_all_tags(self, info, **kwargs):
         user = info.context.user
         if not user.is_staff:
-            raise GraphQLError("Permission denied. Only admin users can access all tags.")
+            raise GraphQLError(
+                "Permission denied. Only admin users can access all tags.")
         return TaggedItem.objects.all()
 
     # Resolve tags involving a specific user
     def resolve_tags_by_user(self, info, user_id):
         user = info.context.user
         if user.id != user_id and not user.is_staff:
-            raise GraphQLError("Permission denied. You can only view tags involving yourself.")
-        return TaggedItem.objects.filter(models.Q(tagged_user_id=user_id) | models.Q(tagged_by_id=user_id)).order_by('-created_at')
+            raise GraphQLError(
+                "Permission denied. You can only view tags involving yourself.")
+        return TaggedItem.objects.filter(
+            models.Q(tagged_user_id=user_id) | models.Q(tagged_by_id=user_id)).order_by(
+            '-created_at')
 
     # Resolve tags for a specific content type and object
     def resolve_tags_for_content(self, info, content_type_id, object_id):
         try:
             content_type = ContentType.objects.get(id=content_type_id)
-            return TaggedItem.objects.filter(content_type=content_type, object_id=object_id).order_by('-created_at')
+            return TaggedItem.objects.filter(content_type=content_type,
+                                             object_id=object_id).order_by(
+                '-created_at')
         except ContentType.DoesNotExist:
             raise GraphQLError("Content type does not exist.")
 
@@ -76,7 +87,8 @@ class CreateTag(graphene.Mutation):
             raise GraphQLError("User to be tagged not found.")
 
         # Ensure unique constraint for content_type, object_id, and tagged_user
-        if TaggedItem.objects.filter(content_type=content_type, object_id=object_id, tagged_user=tagged_user).exists():
+        if TaggedItem.objects.filter(content_type=content_type, object_id=object_id,
+                                     tagged_user=tagged_user).exists():
             raise GraphQLError("This user has already been tagged in this content.")
 
         # Create the tag

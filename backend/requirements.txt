@@ -69,6 +69,7 @@ sqlparse>=0.4.4,<0.5                    # SQL parsing library
 wcwidth==0.2.13                         # Measure the width of Unicode strings
 vine==5.1.0                             # Helper library for managing callback chains
 uritemplate==4.1.1                      # URI template parser for Python
+phonenumbers>=8.12.0
 
 # Requests and HTTP Libraries
 requests>=2.31.0,<3.0.0                 # HTTP library for Python

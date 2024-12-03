@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'graphene_django',
     'django_ratelimit',
     'graphql_jwt',
+    'phonenumber_field',
 
     # 'django_elasticsearch_dsl',
 

@@ -3,86 +3,140 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import AuthenticationFailed
-from .serializers import AggregatedFeedSerializer
+from .serializers import (
+    AggregatedFeedSerializer, PostSerializer, CommentSerializer, ReactionSerializer,
+    AlbumSerializer, TaggedItemSerializer, FriendRequestSerializer,
+    FriendshipSerializer, StorySerializer
+)
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
 from albums.models import Album
 from tagging.models import TaggedItem
 from friends.models import FriendRequest, Friendship
+from stories.models import Story
 import logging
+from django.db import models
 
 logger = logging.getLogger(__name__)
+
 
 class AggregatedFeedView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        """
-        Handles the request to get the aggregated feed data for the authenticated user.
-        """
         try:
-            user = request.user  # Get the authenticated user
+            # Get the authenticated user
+            user = request.user
             logger.debug(f"Fetching aggregated feed for user: {user.id}")
 
-            # Fetch posts with visibility settings
+            # Fetch posts visible to the user
             posts = Post.objects.visible_to_user(user) \
                 .select_related('author') \
-                .prefetch_related('comments', 'reactions', 'tags', 'images', 'ratings') \
+                .prefetch_related('comments', 'tags', 'images', 'ratings') \
                 .order_by('-created_at')
-            logger.debug(f"Fetched posts: {posts.values('id', 'title')}")
+            logger.debug(f"Fetched posts count: {posts.count()}")
 
-            # Fetch comments related to the posts (use content_type to filter)
+            # Serialize posts
+            post_serializer = PostSerializer(posts, many=True)
+            if not post_serializer.data:
+                logger.debug("No posts found for the user.")
+
+            # Get post IDs as a list of UUIDs for further querying related data
+            post_ids = list(posts.values_list('id', flat=True))
+
+            # Fetch comments related to the posts
             post_content_type = ContentType.objects.get_for_model(Post)
             comments = Comment.objects.filter(
                 content_type=post_content_type,
-                object_id__in=posts.values('id')
+                object_id__in=post_ids
             ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched comments: {comments.count()}")
+            logger.debug(f"Fetched comments count: {comments.count()}")
 
-            # Fetch reactions related to the posts (use content_type to filter)
+            # Serialize comments
+            comment_serializer = CommentSerializer(comments, many=True)
+
+            # Fetch reactions related to the posts
             reactions = Reaction.objects.filter(
                 content_type=post_content_type,
-                object_id__in=posts.values('id')
+                object_id__in=post_ids
             ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched reactions: {reactions.count()}")
+            logger.debug(f"Fetched reactions count: {reactions.count()}")
 
-            # Fetch albums related to the posts (assuming ForeignKey directly to Post)
-            albums = Album.objects.filter(post__in=posts).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched albums: {albums.count()}")
+            # Serialize reactions
+            reaction_serializer = ReactionSerializer(reactions, many=True)
 
-            # Similarly, fetch tagged items
+            # Fetch albums (related to user)
+            albums = Album.objects.visible_to_user(user).select_related(
+                'user').order_by('-created_at')
+            logger.debug(f"Fetched albums count: {albums.count()}")
+
+            # Serialize albums
+            album_serializer = AlbumSerializer(albums, many=True)
+
+            # Fetch tagged items
             tagged_items = TaggedItem.objects.filter(
-                content_type=ContentType.objects.get_for_model(Post),
-                object_id__in=posts.values('id')
-            ).select_related('user').order_by('-created_at')
-            logger.debug(f"Fetched tagged items: {tagged_items.count()}")
+                content_type=post_content_type,
+                object_id__in=post_ids
+            ).select_related('tagged_user', 'tagged_by').order_by('-created_at')
+            logger.debug(f"Fetched tagged items count: {tagged_items.count()}")
+
+            # Serialize tagged items
+            tagged_item_serializer = TaggedItemSerializer(tagged_items, many=True)
 
             # Fetch friend requests and friendships
-            friend_requests = FriendRequest.objects.filter(to_user=user).select_related(
-                'from_user', 'to_user').order_by('-created_at')
-            friendships = Friendship.objects.filter(user=user).select_related(
-                'friend').order_by('-created_at')
+            friend_requests = FriendRequest.objects.filter(
+                receiver=user
+            ).select_related('sender', 'receiver').order_by('-created_at')
+            logger.debug(f"Fetched friend requests count: {friend_requests.count()}")
 
-            # Organize data for serialization
+            friendships = Friendship.objects.filter(
+                models.Q(user1=user) | models.Q(user2=user)
+            ).select_related('user1', 'user2').order_by('-created_at')
+            logger.debug(f"Fetched friendships count: {friendships.count()}")
+
+            # Serialize friend requests and friendships
+            friend_request_serializer = FriendRequestSerializer(friend_requests,
+                                                                many=True)
+            friendship_serializer = FriendshipSerializer(friendships, many=True)
+
+            # Fetch stories visible to the user
+            stories = Story.objects.visible_to_user(user).select_related(
+                'author').order_by('-created_at')
+            logger.debug(f"Fetched stories count: {stories.count()}")
+
+            # Serialize stories
+            story_serializer = StorySerializer(stories, many=True)
+
+            # Organize data for aggregation and serialization
             feed_data = {
-                'posts': posts,
-                'comments': comments,
-                'reactions': reactions,
-                'albums': albums,
-                'tagged_items': tagged_items,
-                'friend_requests': friend_requests,
-                'friendships': friendships,
+                'posts': post_serializer.data,
+                'comments': comment_serializer.data,
+                'reactions': reaction_serializer.data,
+                'albums': album_serializer.data,
+                'tagged_items': tagged_item_serializer.data,
+                'friend_requests': friend_request_serializer.data,
+                'friendships': friendship_serializer.data,
+                'stories': story_serializer.data,
             }
 
-            # Serialize and return data
-            serializer = AggregatedFeedSerializer(feed_data)
+            logger.debug(f"Feed data to be serialized: {feed_data}")
+
+            # Final aggregation into one serialized response
+            serializer = AggregatedFeedSerializer(data=feed_data)
+            if not serializer.is_valid():
+                logger.error(f"Feed serialization error: {serializer.errors}")
+                return Response(serializer.errors, status=400)
+
             return Response(serializer.data)
 
         except AuthenticationFailed as auth_err:
+            # Handle authentication errors
             logger.error(f"Authentication error: {auth_err}")
             return Response({"detail": "Authentication failed."}, status=401)
 
         except Exception as e:
-            logger.error(f"Error fetching feed data: {e}")
-            return Response({"detail": "An error occurred while fetching data."}, status=500)
+            # Handle other exceptions
+            logger.error(f"Unexpected error: {e}")
+            return Response({"detail": f"An unexpected error occurred: {str(e)}"},
+                            status=500)
