@@ -7,6 +7,7 @@ from comments.models import Comment
 from core.choices import VisibilityChoices  # Import visibility choices
 import uuid
 import os
+from users.models import CustomUser
 
 User = get_user_model()
 
@@ -19,9 +20,9 @@ class PostQuerySet(models.QuerySet):
             public_posts = self.filter(visibility=VisibilityChoices.PUBLIC)
             friends_posts = self.filter(
                 visibility=VisibilityChoices.FRIENDS,
-                author__in=get_friends(user)
+                user__in=get_friends(user)  # Changed 'author' to 'user'
             )
-            own_posts = self.filter(author=user)
+            own_posts = self.filter(user=user)  # Changed 'author' to 'user'
             return public_posts | friends_posts | own_posts
 
 
@@ -52,12 +53,9 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
     """
     title = models.CharField(max_length=255, help_text="Title of the post")
     content = models.TextField(help_text="Content of the post", blank=True, null=True)
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='posts',
-        help_text="Author of the post"
-    )
+    user = models.ForeignKey(CustomUser,
+                             related_name='posts',
+                             on_delete=models.CASCADE)
     visibility = models.CharField(
         max_length=10,
         choices=VisibilityChoices.choices,
@@ -73,7 +71,7 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         db_table = 'posts'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['author']),
+            models.Index(fields=['user']),  # Changed 'author' to 'user'
             models.Index(fields=['title']),
             models.Index(fields=['visibility']),
         ]

@@ -1,3 +1,5 @@
+# newsfeed/views.py
+
 from django.contrib.contenttypes.models import ContentType
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -26,24 +28,21 @@ class AggregatedFeedView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            # Get the authenticated user
             user = request.user
             logger.debug(f"Fetching aggregated feed for user: {user.id}")
 
             # Fetch posts visible to the user
             posts = Post.objects.visible_to_user(user) \
-                .select_related('author') \
+                .select_related('user') \
                 .prefetch_related('comments', 'tags', 'images', 'ratings') \
                 .order_by('-created_at')
             logger.debug(f"Fetched posts count: {posts.count()}")
 
             # Serialize posts
             post_serializer = PostSerializer(posts, many=True)
-            if not post_serializer.data:
-                logger.debug("No posts found for the user.")
 
-            # Get post IDs as a list of UUIDs for further querying related data
-            post_ids = list(posts.values_list('id', flat=True))
+            # Extract post IDs from the queryset (do not use serialized data here)
+            post_ids = posts.values_list('id', flat=True)
 
             # Fetch comments related to the posts
             post_content_type = ContentType.objects.get_for_model(Post)
@@ -66,7 +65,7 @@ class AggregatedFeedView(APIView):
             # Serialize reactions
             reaction_serializer = ReactionSerializer(reactions, many=True)
 
-            # Fetch albums (related to user)
+            # Fetch albums related to user
             albums = Album.objects.visible_to_user(user).select_related(
                 'user').order_by('-created_at')
             logger.debug(f"Fetched albums count: {albums.count()}")
@@ -102,7 +101,7 @@ class AggregatedFeedView(APIView):
 
             # Fetch stories visible to the user
             stories = Story.objects.visible_to_user(user).select_related(
-                'author').order_by('-created_at')
+                'user').order_by('-created_at')
             logger.debug(f"Fetched stories count: {stories.count()}")
 
             # Serialize stories
@@ -115,28 +114,21 @@ class AggregatedFeedView(APIView):
                 'reactions': reaction_serializer.data,
                 'albums': album_serializer.data,
                 'tagged_items': tagged_item_serializer.data,
+                'stories': story_serializer.data,
                 'friend_requests': friend_request_serializer.data,
                 'friendships': friendship_serializer.data,
-                'stories': story_serializer.data,
             }
 
             logger.debug(f"Feed data to be serialized: {feed_data}")
 
-            # Final aggregation into one serialized response
-            serializer = AggregatedFeedSerializer(data=feed_data)
-            if not serializer.is_valid():
-                logger.error(f"Feed serialization error: {serializer.errors}")
-                return Response(serializer.errors, status=400)
-
-            return Response(serializer.data)
+            # Directly return the aggregated serialized data without additional serialization
+            return Response(feed_data)
 
         except AuthenticationFailed as auth_err:
-            # Handle authentication errors
             logger.error(f"Authentication error: {auth_err}")
             return Response({"detail": "Authentication failed."}, status=401)
 
         except Exception as e:
-            # Handle other exceptions
             logger.error(f"Unexpected error: {e}")
             return Response({"detail": f"An unexpected error occurred: {str(e)}"},
                             status=500)

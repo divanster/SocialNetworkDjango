@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class StoryViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing, creating, and managing stories.
@@ -32,19 +33,21 @@ class StoryViewSet(viewsets.ModelViewSet):
         Save the story with the author set to the current user.
         """
         serializer.save(user=self.request.user)
-        logger.info(f"Story created by user {self.request.user.username} with ID {serializer.instance.id}")
+        logger.info(
+            f"Story created by user {self.request.user.username} with ID {serializer.instance.id}")
 
     def perform_update(self, serializer):
         """
         Update the story instance.
         """
         serializer.save()
-        logger.info(f"Story updated by user {self.request.user.username} with ID {serializer.instance.id}")
+        logger.info(
+            f"Story updated by user {self.request.user.username} with ID {serializer.instance.id}")
 
     def perform_destroy(self, instance):
         """
         Delete the story instance.
         """
         instance.delete()
-        logger.info(f"Story deleted by user {self.request.user.username} with ID {instance.id}")
-
+        logger.info(
+            f"Story deleted by user {self.request.user.username} with ID {instance.id}")

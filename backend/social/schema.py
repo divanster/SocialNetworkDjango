@@ -7,6 +7,7 @@ from graphql import GraphQLError
 User = get_user_model()
 
 
+# Define PostType
 class PostType(DjangoObjectType):
     class Meta:
         model = Post
@@ -18,12 +19,14 @@ class PostType(DjangoObjectType):
         return self.average_rating
 
 
+# Define PostImageType
 class PostImageType(DjangoObjectType):
     class Meta:
         model = PostImage
         fields = "__all__"
 
 
+# Define RatingType
 class RatingType(DjangoObjectType):
     class Meta:
         model = Rating
@@ -33,8 +36,8 @@ class RatingType(DjangoObjectType):
 # Define Queries
 class Query(graphene.ObjectType):
     all_posts = graphene.List(PostType)
-    post_by_id = graphene.Field(PostType, post_id=graphene.UUID(required=True))
-    posts_by_user = graphene.List(PostType, user_id=graphene.Int(required=True))
+    post_by_id = graphene.Field(PostType, post_id=graphene.UUID(required=True))  # Changed to UUID
+    posts_by_user = graphene.List(PostType, user_id=graphene.UUID(required=True))  # Changed to UUID
 
     def resolve_all_posts(self, info, **kwargs):
         user = info.context.user
@@ -43,15 +46,15 @@ class Query(graphene.ObjectType):
     def resolve_post_by_id(self, info, post_id):
         try:
             user = info.context.user
-            return Post.objects.visible_to_user(user).get(id=post_id)
+            return Post.objects.visible_to_user(user).get(uuid=post_id)  # Changed to uuid
         except Post.DoesNotExist:
             raise GraphQLError("Post not found or you do not have permission to view it.")
 
     def resolve_posts_by_user(self, info, user_id):
         user = info.context.user
-        if user.id != user_id and not user.is_staff:
+        if user.uuid != user_id and not user.is_staff:  # Changed to uuid
             raise GraphQLError("Permission denied. You can only view your own posts.")
-        return Post.objects.filter(author_id=user_id)
+        return Post.objects.filter(user_id=user_id)  # Updated from author_id to user_id
 
 
 # Define Mutations
@@ -69,7 +72,7 @@ class CreatePost(graphene.Mutation):
             raise GraphQLError("Authentication required to create a post.")
 
         post = Post.objects.create(
-            author=user,
+            user=user,  # Changed from author to user
             title=title,
             content=content,
             visibility=visibility
@@ -79,7 +82,7 @@ class CreatePost(graphene.Mutation):
 
 class CreateRating(graphene.Mutation):
     class Arguments:
-        post_id = graphene.UUID(required=True)
+        post_id = graphene.UUID(required=True)  # Changed to UUID
         value = graphene.Int(required=True)
 
     rating = graphene.Field(RatingType)
@@ -93,7 +96,7 @@ class CreateRating(graphene.Mutation):
             raise GraphQLError("Rating value must be between 1 and 5.")
 
         try:
-            post = Post.objects.get(id=post_id)
+            post = Post.objects.get(uuid=post_id)  # Changed to uuid
         except Post.DoesNotExist:
             raise GraphQLError("Post not found.")
 
@@ -106,7 +109,7 @@ class CreateRating(graphene.Mutation):
 
 class UpdatePost(graphene.Mutation):
     class Arguments:
-        post_id = graphene.UUID(required=True)
+        post_id = graphene.UUID(required=True)  # Changed to UUID
         title = graphene.String()
         content = graphene.String()
         visibility = graphene.String()
@@ -119,11 +122,11 @@ class UpdatePost(graphene.Mutation):
             raise GraphQLError("Authentication required to update a post.")
 
         try:
-            post = Post.objects.get(id=post_id)
+            post = Post.objects.get(uuid=post_id)  # Changed to uuid
         except Post.DoesNotExist:
             raise GraphQLError("Post not found.")
 
-        if post.author != user:
+        if post.user != user:  # Changed from author to user
             raise GraphQLError("You can only update your own posts.")
 
         if title:
@@ -137,6 +140,7 @@ class UpdatePost(graphene.Mutation):
         return UpdatePost(post=post)
 
 
+# Mutation Class
 class Mutation(graphene.ObjectType):
     create_post = CreatePost.Field()
     create_rating = CreateRating.Field()

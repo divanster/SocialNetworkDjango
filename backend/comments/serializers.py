@@ -16,7 +16,7 @@ class CommentSerializer(serializers.ModelSerializer):
         required=False,
         help_text="List of user UUIDs to tag in the comment."
     )
-    user = serializers.SerializerMethodField()
+    user = serializers.StringRelatedField()
 
     class Meta:
         model = Comment

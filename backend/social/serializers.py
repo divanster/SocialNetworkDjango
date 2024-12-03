@@ -14,15 +14,17 @@ class PostSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    user = serializers.StringRelatedField()
 
     class Meta:
         model = Post
-        fields = ['id', 'title', 'content', 'author', 'visibility', 'created_at',
+        fields = ['id', 'title', 'content', 'user', 'visibility', 'created_at',
                   'updated_at', 'tags', 'tagged_user_ids']
-        read_only_fields = ['id', 'author', 'created_at', 'updated_at', 'tags']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'tags']
 
     @extend_schema_field(serializers.ListSerializer(child=serializers.DictField()))
     def get_tags(self, obj):
+        # Changed obj.uuid to obj.id
         tags = TaggedItem.objects.filter(object_id=obj.id, content_type__model='post')
         return [
             {
@@ -37,7 +39,7 @@ class PostSerializer(serializers.ModelSerializer):
         post = Post.objects.create(**validated_data)
         self.create_tagged_items(post, tagged_user_ids)
         logger.info(
-            f"[SERIALIZER] Post with ID {post.id} created and tagged users added.")
+            f"[SERIALIZER] Post with ID {post.id} created and tagged users added.")  # Changed uuid to id
         return post
 
     def update(self, instance, validated_data):
@@ -47,7 +49,8 @@ class PostSerializer(serializers.ModelSerializer):
         if tagged_user_ids is not None:
             instance.tags.all().delete()
             self.create_tagged_items(post, tagged_user_ids)
-            logger.info(f"[SERIALIZER] Tags updated for post with ID {post.id}.")
+            logger.info(
+                f"[SERIALIZER] Tags updated for post with ID {post.id}.")  # Changed uuid to id
 
         return post
 
@@ -60,7 +63,8 @@ class PostSerializer(serializers.ModelSerializer):
                     tagged_user_id=user_id,
                     tagged_by=tagged_by
                 )
-                logger.info(f"[SERIALIZER] User {user_id} tagged in post {post.id}.")
+                logger.info(
+                    f"[SERIALIZER] User {user_id} tagged in post {post.id}.")  # Changed uuid to id
             except Exception as e:
                 logger.warning(
-                    f"[SERIALIZER] Failed to tag user {user_id} in post {post.id}: {e}")
+                    f"[SERIALIZER] Failed to tag user {user_id} in post {post.id}: {e}")  # Changed uuid to id
