@@ -1,3 +1,5 @@
+// Post.tsx
+
 import React from 'react';
 
 interface PostProps {
@@ -8,9 +10,9 @@ interface PostProps {
     author: string;
     created_at: string;
     updated_at: string;
-    tags: { id: number; name: string }[];
-    images: { id: number; image: string }[];
-    ratings: { id: number; value: number; user: number }[];
+    tags?: { id: number; name: string }[]; // Optional array
+    images?: { id: number; image: string }[]; // Optional array
+    ratings?: { id: number; value: number; user: number }[]; // Optional array
   };
 }
 
@@ -19,51 +21,47 @@ const Post: React.FC<PostProps> = ({ post }) => {
     <div className="post">
       <h2>{post.title}</h2>
       <p>{post.content}</p>
-      <p><strong>Author:</strong> {post.author}</p>
+      <p>Author: {post.author}</p>
+      <p>Created: {new Date(post.created_at).toLocaleString()}</p>
+      <p>Updated: {new Date(post.updated_at).toLocaleString()}</p>
 
-      {/* Display tags */}
-      <div>
-        <strong>Tags:</strong>
-        {post.tags.length > 0 ? (
-          post.tags.map((tag) => <span key={tag.id} className="tag">{tag.name}</span>)
-        ) : (
-          <span>No tags available</span>
-        )}
-      </div>
+      {/* Safeguards for undefined properties */}
+      {post.tags && post.tags.length > 0 && (
+        <div>
+          <h4>Tags:</h4>
+          <ul>
+            {post.tags.map((tag) => (
+              <li key={tag.id}>{tag.name}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      {/* Display images */}
-      <div>
-        <strong>Images:</strong>
-        {post.images.length > 0 ? (
-          post.images.map((image) => (
-            <div key={image.id} className="image-container">
-              <img src={image.image} alt={`Post image ${image.id}`} style={{ width: '100%', height: 'auto' }} />
-            </div>
-          ))
-        ) : (
-          <p>No images available</p>
-        )}
-      </div>
+      {post.images && post.images.length > 0 && (
+        <div>
+          <h4>Images:</h4>
+          <ul>
+            {post.images.map((image) => (
+              <li key={image.id}>
+                <img src={image.image} alt={`Image ${image.id}`} width="100" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      {/* Display ratings */}
-      <div>
-        <strong>Ratings:</strong>
-        {post.ratings.length > 0 ? (
-          post.ratings.map((rating) => (
-            <span key={rating.id} className="rating">
-              {rating.value} stars by user {rating.user}
-            </span>
-          ))
-        ) : (
-          <p>No ratings available</p>
-        )}
-      </div>
-
-      {/* Display creation and update times */}
-      <p className="text-muted">
-        Posted on {new Date(post.created_at).toLocaleDateString()}
-        {post.created_at !== post.updated_at && ` (updated on ${new Date(post.updated_at).toLocaleDateString()})`}
-      </p>
+      {post.ratings && post.ratings.length > 0 && (
+        <div>
+          <h4>Ratings:</h4>
+          <ul>
+            {post.ratings.map((rating) => (
+              <li key={rating.id}>
+                {rating.value} (User: {rating.user})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

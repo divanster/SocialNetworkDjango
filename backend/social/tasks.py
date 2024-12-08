@@ -27,13 +27,13 @@ def send_post_event_to_kafka(self, post_id, event_type):
                 "event": "deleted"
             }
         else:
-            post = Post.objects.select_related('author').get(id=post_id)
+            post = Post.objects.select_related('user').get(id=post_id)
             message = {
                 "post_id": post.id,
                 "title": post.title,
                 "content": post.content,
-                "author_id": post.author.id,
-                "author_username": post.author.username,
+                "user_id": post.user.id,
+                "user_username": post.user.username,
                 "visibility": post.visibility,
                 "created_at": str(post.created_at),
                 "event": event_type,
@@ -63,15 +63,15 @@ def process_new_post(self, post_id):
         # Initialize Kafka producer
         producer = get_kafka_producer()
 
-        post = Post.objects.select_related('author').get(id=post_id)
+        post = Post.objects.select_related('user').get(id=post_id)
 
         # Example processing logic - Sending post to Kafka for analytics or feed distribution
         message = {
             "post_id": post.id,
             "title": post.title,
             "content": post.content,
-            "author_id": post.author_id,
-            "author_username": post.author.username,
+            "user_id": post.user_id,
+            "user_username": post.user.username,
             "visibility": post.visibility,
             "created_at": str(post.created_at),
             "event": "created"
