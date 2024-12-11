@@ -24,7 +24,6 @@ class PostSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListSerializer(child=serializers.DictField()))
     def get_tags(self, obj):
-        # Changed obj.uuid to obj.id
         tags = TaggedItem.objects.filter(object_id=obj.id, content_type__model='post')
         return [
             {
@@ -39,7 +38,7 @@ class PostSerializer(serializers.ModelSerializer):
         post = Post.objects.create(**validated_data)
         self.create_tagged_items(post, tagged_user_ids)
         logger.info(
-            f"[SERIALIZER] Post with ID {post.id} created and tagged users added.")  # Changed uuid to id
+            f"[SERIALIZER] Post with ID {post.id} created and tagged users added.")
         return post
 
     def update(self, instance, validated_data):
@@ -50,7 +49,7 @@ class PostSerializer(serializers.ModelSerializer):
             instance.tags.all().delete()
             self.create_tagged_items(post, tagged_user_ids)
             logger.info(
-                f"[SERIALIZER] Tags updated for post with ID {post.id}.")  # Changed uuid to id
+                f"[SERIALIZER] Tags updated for post with ID {post.id}.")
 
         return post
 
@@ -64,7 +63,7 @@ class PostSerializer(serializers.ModelSerializer):
                     tagged_by=tagged_by
                 )
                 logger.info(
-                    f"[SERIALIZER] User {user_id} tagged in post {post.id}.")  # Changed uuid to id
+                    f"[SERIALIZER] User {user_id} tagged in post {post.id}.")
             except Exception as e:
                 logger.warning(
-                    f"[SERIALIZER] Failed to tag user {user_id} in post {post.id}: {e}")  # Changed uuid to id
+                    f"[SERIALIZER] Failed to tag user {user_id} in post {post.id}: {e}")

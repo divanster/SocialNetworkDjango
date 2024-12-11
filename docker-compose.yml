@@ -67,16 +67,16 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
     volumes:
-      - kafka_data:/var/lib/kafka/data:delegated
+      - kafka_data:/var/lib/kafka/data
     ports:
       - "9093:9092"
     healthcheck:
-      test: ["CMD-SHELL", "nc -z kafka 9092 || exit 1"]
+      test: [ "CMD", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "kafka:9092" ]
       interval: 30s
       timeout: 10s
       retries: 5

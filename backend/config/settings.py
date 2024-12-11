@@ -42,6 +42,9 @@ KAFKA_TOPICS = dict(
     item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item
 )
 
+# Kafka encryption key for securing messages
+KAFKA_ENCRYPTION_KEY = env('KAFKA_ENCRYPTION_KEY', default=None)
+
 
 # =====================
 # Authentication Backends

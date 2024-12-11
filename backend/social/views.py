@@ -34,10 +34,10 @@ class PostViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         """
-        Save the post with the author set to the current user,
+        Save the post with the user set to the current user,
         then trigger the Celery task to handle any background processing.
         """
-        post = serializer.save(author=self.request.user)
+        post = serializer.save(user=self.request.user)  # Changed `author` to `user`
         # Trigger the Celery task after the post is created
         process_new_post.delay(post.id)
 
@@ -50,10 +50,10 @@ class PostViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """
         Update the post and handle authorization to make sure
-        that only the author can edit their post.
+        that only the user can edit their post.
         """
         post = self.get_object()
-        if post.author != self.request.user:
+        if post.user != self.request.user:  # Changed `author` to `user`
             raise permissions.PermissionDenied(
                 "You do not have permission to edit this post.")
 
@@ -67,9 +67,9 @@ class PostViewSet(viewsets.ModelViewSet):
     )
     def perform_destroy(self, instance):
         """
-        Delete the post and ensure that only the author can delete their post.
+        Delete the post and ensure that only the user can delete their post.
         """
-        if instance.author != self.request.user:
+        if instance.user != self.request.user:  # Changed `author` to `user`
             raise permissions.PermissionDenied(
                 "You do not have permission to delete this post.")
 

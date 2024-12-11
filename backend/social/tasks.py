@@ -56,38 +56,38 @@ def send_post_event_to_kafka(self, post_id, event_type):
 def process_new_post(self, post_id):
     """
     Celery task to process a newly created post.
-    This function could be used to perform various background actions,
-    such as indexing the post for search, sending notifications, etc.
     """
+    producer = None  # Declare the producer variable upfront
     try:
         # Initialize Kafka producer
         producer = get_kafka_producer()
 
-        post = Post.objects.select_related('user').get(id=post_id)
+        post = Post.objects.select_related("user").get(id=post_id)
 
-        # Example processing logic - Sending post to Kafka for analytics or feed distribution
+        # Message to be sent
         message = {
-            "post_id": post.id,
+            "post_id": str(post.id),
             "title": post.title,
             "content": post.content,
-            "user_id": post.user_id,
+            "user_id": str(post.user.id),
             "user_username": post.user.username,
             "visibility": post.visibility,
             "created_at": str(post.created_at),
             "event": "created"
         }
 
-        kafka_topic = settings.KAFKA_TOPICS.get('POST_EVENTS', 'default-post-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get("POST_EVENTS", "post-events")
         producer.send(kafka_topic, value=message)
         producer.flush()
-        logger.info(f"Processed new post and sent to Kafka: {message}")
+        logging.info(f"Processed new post and sent to Kafka: {message}")
     except Post.DoesNotExist:
-        logger.error(f"Post with ID {post_id} does not exist.")
+        logging.error(f"Post with ID {post_id} does not exist.")
     except Exception as e:
-        logger.error(f"Error processing new post with ID {post_id}: {e}")
-        self.retry(exc=e)  # Retry if there's an error
+        logging.error(f"Error processing new post with ID {post_id}: {e}")
+        self.retry(exc=e)  # Retry on failure
     finally:
-        producer.close()  # Properly close the producer to avoid any open connections
+        if producer:
+            producer.close()    # Properly close the producer to avoid any open connections
 
 
 @shared_task
