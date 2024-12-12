@@ -133,7 +133,13 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         # Handle the event using the appropriate handler method
         if handler:
             try:
+                # Call the specific handler for the event
                 handler(event_data.data)
+
+                # Forward the message to a WebSocket group if applicable
+                group_name = event_data.data.get("group_name",
+                                                 "default")  # Use 'default' if no group_name is provided
+                self.send_to_websocket_group(group_name, event_data.data)
             except Exception as e:
                 logger.error(f"Error processing event '{event_type}': {e}",
                              exc_info=True)

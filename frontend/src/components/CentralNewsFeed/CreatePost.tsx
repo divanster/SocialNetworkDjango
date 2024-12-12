@@ -16,22 +16,16 @@ const CreatePost: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Initialize WebSocket connection
   useEffect(() => {
-  if (token) {
-    const postSocket = getSocket(`ws://localhost:8000/ws/posts/?token=${token}`);
-    if (postSocket) { // Ensure postSocket is not null
-      postSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log('New WebSocket message:', data);
-      };
-      setSocket(postSocket);
-    } else {
-      console.error('WebSocket connection could not be established.');
+    if (token) {
+      const postSocket = getSocket(`ws://localhost:8000/ws/posts/?token=${token}`);
+      if (postSocket) {
+        setSocket(postSocket);
+      } else {
+        console.error('WebSocket connection could not be established.');
+      }
     }
-  }
-}, [getSocket, token]);
-
+  }, [getSocket, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,10 +51,9 @@ const CreatePost: React.FC = () => {
       });
 
       if (socket) {
-        socket.send(JSON.stringify({ message: response.data }));
+        socket.send(JSON.stringify({ action: 'new_post', message: response.data }));
       }
 
-      // Clear the form after successful submission
       setTitle('');
       setContent('');
       setImages(null);

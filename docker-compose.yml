@@ -81,6 +81,9 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - kafka_network
 
@@ -116,14 +119,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - backend_network
       - kafka_network
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
 
   # Celery Worker for task processing
   celery-worker:
@@ -141,6 +142,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     env_file:
       - ./backend/.env
     restart: always
@@ -149,8 +152,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - backend_network
+      - kafka_network
 
   # Kafka Consumer Service
   kafka-consumer:
@@ -172,6 +179,9 @@ services:
       timeout: 10s
       retries: 3
     restart: always
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - backend_network
       - kafka_network

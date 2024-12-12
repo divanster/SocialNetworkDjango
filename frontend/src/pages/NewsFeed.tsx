@@ -1,5 +1,3 @@
-// src/pages/NewsFeed.tsx
-
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useWebSocket } from '../contexts/WebSocketManager';
@@ -20,12 +18,14 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const NewsFeed: React.FC = () => {
   const { getSocket } = useWebSocket();
-  const { token } = useAuth();
+  const { token, loading } = useAuth(); // Include loading state
   const [posts, setPosts] = useState<PostType[]>([]);
   const [albums, setAlbums] = useState<AlbumType[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Handles WebSocket connection for posts and albums.
+   */
   const connectWebSocket = useCallback(
     (url: string, onMessage: (event: MessageEvent) => void) => {
       if (!token) {
@@ -53,8 +53,11 @@ const NewsFeed: React.FC = () => {
     [getSocket, token]
   );
 
+  /**
+   * Establishes WebSocket connections for posts and albums when token changes.
+   */
   useEffect(() => {
-    if (token) {
+    if (!loading && token) {
       connectWebSocket('ws://localhost:8000/ws/posts/', (event) => {
         const data = JSON.parse(event.data);
         if (data.message) {
@@ -63,7 +66,9 @@ const NewsFeed: React.FC = () => {
             if (!postExists) {
               return [data.message, ...prevPosts];
             }
-            return prevPosts;
+            return prevPosts.map((post) =>
+              post.id === data.message.id ? { ...post, ...data.message } : post
+            );
           });
         } else {
           console.error('WebSocket error: No message field in response');
@@ -78,20 +83,24 @@ const NewsFeed: React.FC = () => {
             if (!albumExists) {
               return [data.message, ...prevAlbums];
             }
-            return prevAlbums;
+            return prevAlbums.map((album) =>
+              album.id === data.message.id ? { ...album, ...data.message } : album
+            );
           });
         } else {
           console.error('WebSocket error: No message field in response');
         }
       });
     }
-  }, [connectWebSocket, token]);
+  }, [connectWebSocket, token, loading]);
 
+  /**
+   * Fetches the news feed data (posts and albums) when the component is mounted or token changes.
+   */
   useEffect(() => {
     const fetchNewsFeedData = async () => {
       if (!token) {
         setError('User is not authenticated.');
-        setLoading(false);
         return;
       }
 
@@ -106,25 +115,40 @@ const NewsFeed: React.FC = () => {
       } catch (err) {
         console.error('Failed to fetch news feed data:', err);
         setError('Failed to fetch news feed data');
-      } finally {
-        setLoading(false);
       }
     };
-    fetchNewsFeedData();
+
+    if (token) {
+      fetchNewsFeedData();
+    } else {
+      setError('User is not authenticated.');
+    }
   }, [token]);
 
+  /**
+   * Deletes a post by ID.
+   */
   const handleDeletePost = (id: number) => {
     setPosts((prevPosts) => prevPosts.filter((post) => post.id !== id));
   };
 
+  /**
+   * Updates a post with new data.
+   */
   const handleUpdatePost = (updatedPost: PostType) => {
     setPosts((prevPosts) => prevPosts.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
   };
 
+  /**
+   * Deletes an album by ID.
+   */
   const handleDeleteAlbum = (id: number) => {
     setAlbums((prevAlbums) => prevAlbums.filter((album) => album.id !== id));
   };
 
+  /**
+   * Handles loading and error states for the NewsFeed component.
+   */
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
 

@@ -1,11 +1,11 @@
-// src/contexts/AuthContext.tsx
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import axios from 'axios';
+import jwtDecode, { JwtPayload } from 'jwt-decode';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
+  loading: boolean; // Add this
   login: (accessToken: string, refreshTokenStr: string) => void;
   logout: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
@@ -28,17 +28,49 @@ const setAuthToken = (token: string | null) => {
   }
 };
 
+// Decode token to get expiration time
+const getTokenExpirationTime = (token: string): number | null => {
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+    if (decoded.exp) {
+      return decoded.exp * 1000; // Convert to milliseconds
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to decode token:', error);
+    return null;
+  }
+};
+
 // AuthProvider Component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true); // Add loading state
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('access_token');
-    setToken(accessToken);
-    setIsAuthenticated(!!accessToken);
-    setAuthToken(accessToken); // Set token to axios globally
+    const initializeAuth = async () => {
+      const accessToken = localStorage.getItem('access_token');
+      setToken(accessToken);
+      setIsAuthenticated(!!accessToken);
+      setAuthToken(accessToken); // Set token to axios globally
+      setLoading(false); // Token initialization complete
+    };
+
+    initializeAuth();
   }, []);
+
+  const scheduleTokenRefresh = (accessToken: string) => {
+    const expirationTime = getTokenExpirationTime(accessToken);
+    if (expirationTime) {
+      const delay = expirationTime - Date.now() - 60000; // Refresh 1 minute before expiration
+      if (delay > 0) {
+        setTimeout(() => {
+          refreshToken();
+        }, delay);
+      }
+    }
+  };
 
   const login = (accessToken: string, refreshTokenStr: string) => {
     localStorage.setItem('access_token', accessToken);
@@ -46,6 +78,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(accessToken);
     setIsAuthenticated(true);
     setAuthToken(accessToken); // Set token to axios globally
+
+    // Schedule token refresh
+    scheduleTokenRefresh(accessToken);
   };
 
   const logout = async () => {
@@ -76,6 +111,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(response.data.access);
         setIsAuthenticated(true);
         setAuthToken(response.data.access); // Update token in axios headers
+
+        // Schedule token refresh
+        scheduleTokenRefresh(response.data.access);
+
         return response.data.access;
       } else {
         console.log('Failed to refresh token.');
@@ -90,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, token, login, logout, refreshToken }}>
+    <AuthContext.Provider value={{ isAuthenticated, token, loading, login, logout, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );
