@@ -17,48 +17,44 @@ import { useAuth } from '../contexts/AuthContext';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const NewsFeed: React.FC = () => {
-  const { getSocket } = useWebSocket();
-  const { token, loading } = useAuth(); // Include loading state
+  const useWebSocketForGroup = useWebSocket; // Correct use of the WebSocket hook
+  const { token } = useAuth();
   const [posts, setPosts] = useState<PostType[]>([]);
   const [albums, setAlbums] = useState<AlbumType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Handles WebSocket connection for posts and albums.
-   */
+  const postsSocket = useWebSocketForGroup('posts'); // Initialize WebSocket for posts
+  const albumsSocket = useWebSocketForGroup('albums'); // Initialize WebSocket for albums
+
   const connectWebSocket = useCallback(
-    (url: string, onMessage: (event: MessageEvent) => void) => {
+    (socket: WebSocket, onMessage: (event: MessageEvent) => void) => {
       if (!token) {
         console.error('No authentication token available for WebSocket connection.');
         return;
       }
 
-      const socket = getSocket(`${url}?token=${token}`);
-      if (!socket) return;
-
       socket.onmessage = onMessage;
 
-      socket.onerror = (error) => {
-        console.error(`WebSocket error for ${url}:`, error);
+      socket.onerror = (error: Event) => {
+        console.error(`WebSocket error:`, error);
       };
 
-      socket.onclose = (event) => {
-        console.log(`WebSocket connection closed for ${url}:`, event);
+      socket.onclose = (event: CloseEvent) => {
+        console.log(`WebSocket connection closed:`, event);
         if (!event.wasClean) {
-          console.log(`Reconnecting to ${url}...`);
-          setTimeout(() => connectWebSocket(url, onMessage), 5000); // Retry after 5 seconds
+          console.log(`Reconnecting to WebSocket...`);
+          setTimeout(() => connectWebSocket(socket, onMessage), 5000); // Retry after 5 seconds
         }
       };
     },
-    [getSocket, token]
+    [token]
   );
 
-  /**
-   * Establishes WebSocket connections for posts and albums when token changes.
-   */
   useEffect(() => {
-    if (!loading && token) {
-      connectWebSocket('ws://localhost:8000/ws/posts/', (event) => {
+    if (token) {
+      // Connect posts WebSocket
+      connectWebSocket(postsSocket, (event: MessageEvent) => {
         const data = JSON.parse(event.data);
         if (data.message) {
           setPosts((prevPosts) => {
@@ -66,16 +62,15 @@ const NewsFeed: React.FC = () => {
             if (!postExists) {
               return [data.message, ...prevPosts];
             }
-            return prevPosts.map((post) =>
-              post.id === data.message.id ? { ...post, ...data.message } : post
-            );
+            return prevPosts;
           });
         } else {
           console.error('WebSocket error: No message field in response');
         }
       });
 
-      connectWebSocket('ws://localhost:8000/ws/albums/', (event) => {
+      // Connect albums WebSocket
+      connectWebSocket(albumsSocket, (event: MessageEvent) => {
         const data = JSON.parse(event.data);
         if (data.message) {
           setAlbums((prevAlbums) => {
@@ -83,24 +78,20 @@ const NewsFeed: React.FC = () => {
             if (!albumExists) {
               return [data.message, ...prevAlbums];
             }
-            return prevAlbums.map((album) =>
-              album.id === data.message.id ? { ...album, ...data.message } : album
-            );
+            return prevAlbums;
           });
         } else {
           console.error('WebSocket error: No message field in response');
         }
       });
     }
-  }, [connectWebSocket, token, loading]);
+  }, [connectWebSocket, postsSocket, albumsSocket, token]);
 
-  /**
-   * Fetches the news feed data (posts and albums) when the component is mounted or token changes.
-   */
   useEffect(() => {
     const fetchNewsFeedData = async () => {
       if (!token) {
         setError('User is not authenticated.');
+        setLoading(false);
         return;
       }
 
@@ -115,40 +106,25 @@ const NewsFeed: React.FC = () => {
       } catch (err) {
         console.error('Failed to fetch news feed data:', err);
         setError('Failed to fetch news feed data');
+      } finally {
+        setLoading(false);
       }
     };
-
-    if (token) {
-      fetchNewsFeedData();
-    } else {
-      setError('User is not authenticated.');
-    }
+    fetchNewsFeedData();
   }, [token]);
 
-  /**
-   * Deletes a post by ID.
-   */
   const handleDeletePost = (id: number) => {
     setPosts((prevPosts) => prevPosts.filter((post) => post.id !== id));
   };
 
-  /**
-   * Updates a post with new data.
-   */
   const handleUpdatePost = (updatedPost: PostType) => {
     setPosts((prevPosts) => prevPosts.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
   };
 
-  /**
-   * Deletes an album by ID.
-   */
   const handleDeleteAlbum = (id: number) => {
     setAlbums((prevAlbums) => prevAlbums.filter((album) => album.id !== id));
   };
 
-  /**
-   * Handles loading and error states for the NewsFeed component.
-   */
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
 

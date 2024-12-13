@@ -159,58 +159,65 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         )
 
     # Handlers for different event types (e.g. album, comments, etc.)
-    def handle_album_event(self, data):
-        process_album_event(data)
-        create_notification(data)
-        self.send_to_websocket_group("albums_group", f"New album created: {data}")
-
-    def handle_comment_event(self, data):
-        process_comment_event(data)
-        create_notification(data)
-        self.send_to_websocket_group("comments_group", f"New comment posted: {data}")
-
-    def handle_follow_event(self, data):
-        process_follow_event(data)
-        create_notification(data)
-        self.send_to_websocket_group("follows_group", f"New follow event: {data}")
-
-    def handle_friend_event(self, data):
-        process_friend_event(data)
-        create_notification(data)
-        self.send_to_websocket_group("friends_group", f"New friend added: {data}")
-
     def handle_messenger_event(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger_group", f"New message event: {data}")
+        self.send_to_websocket_group("messenger",
+                                     {"event": "New message", "data": data})
 
     def handle_newsfeed_event(self, data):
         process_newsfeed_event(data)
-        self.send_to_websocket_group("newsfeed_group", f"Newsfeed updated: {data}")
+        self.send_to_websocket_group("newsfeed",
+                                     {"event": "Newsfeed updated", "data": data})
+
+    def handle_album_event(self, data):
+        process_album_event(data)
+        self.send_to_websocket_group("albums",
+                                     {"event": "New album created", "data": data})
+
+    def handle_comment_event(self, data):
+        process_comment_event(data)
+        self.send_to_websocket_group("comments",
+                                     {"event": "New comment posted", "data": data})
+
+    def handle_follow_event(self, data):
+        process_follow_event(data)
+        self.send_to_websocket_group("follows",
+                                     {"event": "New follow event", "data": data})
+
+    def handle_friend_event(self, data):
+        process_friend_event(data)
+        self.send_to_websocket_group("friends",
+                                     {"event": "New friend added", "data": data})
 
     def handle_reaction_event(self, data):
         process_reaction_event(data)
-        create_notification(data)
-        self.send_to_websocket_group("reactions_group", f"New reaction added: {data}")
+        self.send_to_websocket_group("reactions",
+                                     {"event": "New reaction added", "data": data})
 
     def handle_social_event(self, data):
         process_social_event(data)
-        self.send_to_websocket_group("social_group", f"New social action: {data}")
+        self.send_to_websocket_group("social",
+                                     {"event": "New social action", "data": data})
 
     def handle_story_event(self, data):
         process_story_event(data)
-        self.send_to_websocket_group("stories_group", f"New story shared: {data}")
+        self.send_to_websocket_group("stories",
+                                     {"event": "New story shared", "data": data})
 
     def handle_tagging_event(self, data):
         process_tagging_event(data)
-        self.send_to_websocket_group("tagging_group", f"New tag added: {data}")
+        self.send_to_websocket_group("tagging",
+                                     {"event": "New tag added", "data": data})
 
     def handle_user_event(self, data):
         process_user_event(data)
-        self.send_to_websocket_group("users_group", f"New user registered: {data}")
+        self.send_to_websocket_group("users",
+                                     {"event": "New user registered", "data": data})
 
     def handle_notification_event(self, data):
         create_notification(data)
-        self.send_to_websocket_group("notifications_group", f"New notification: {data}")
+        self.send_to_websocket_group("notifications",
+                                     {"event": "New notification", "data": data})
 
 
 # Graceful shutdown on SIGTERM or SIGINT

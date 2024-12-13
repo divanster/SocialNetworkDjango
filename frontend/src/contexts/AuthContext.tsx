@@ -1,26 +1,17 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  ReactNode,
+  useCallback,
+  useRef,
+} from 'react';
 import axios from 'axios';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 
-interface AuthContextType {
-  isAuthenticated: boolean;
-  token: string | null;
-  loading: boolean; // Add this
-  login: (accessToken: string, refreshTokenStr: string) => void;
-  logout: () => Promise<void>;
-  refreshToken: () => Promise<string | null>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
-
-// Helper to set Axios default header for authentication
-const setAuthToken = (token: string | null) => {
+// Helper function to set the Axios header
+const setAuthToken = (token: string | null): void => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
@@ -28,7 +19,7 @@ const setAuthToken = (token: string | null) => {
   }
 };
 
-// Decode token to get expiration time
+// Decode token expiration time
 const getTokenExpirationTime = (token: string): number | null => {
   try {
     const decoded = jwtDecode<JwtPayload>(token);
@@ -42,82 +33,72 @@ const getTokenExpirationTime = (token: string): number | null => {
   }
 };
 
-// AuthProvider Component
+interface AuthContextType {
+  isAuthenticated: boolean;
+  token: string | null;
+  loading: boolean;
+  login: (accessToken: string, refreshTokenStr: string) => void;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<string | null>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true); // Add loading state
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const accessToken = localStorage.getItem('access_token');
-      setToken(accessToken);
-      setIsAuthenticated(!!accessToken);
-      setAuthToken(accessToken); // Set token to axios globally
-      setLoading(false); // Token initialization complete
-    };
+  const refreshTokenRef = useRef<(() => Promise<string | null>) | null>(null);
 
-    initializeAuth();
-  }, []);
-
-  const scheduleTokenRefresh = (accessToken: string) => {
+  const scheduleTokenRefresh = useCallback((accessToken: string): void => {
     const expirationTime = getTokenExpirationTime(accessToken);
     if (expirationTime) {
       const delay = expirationTime - Date.now() - 60000; // Refresh 1 minute before expiration
       if (delay > 0) {
         setTimeout(() => {
-          refreshToken();
+          refreshTokenRef.current?.();
         }, delay);
       }
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // No dependencies needed since `refreshTokenRef` is stable.
 
-  const login = (accessToken: string, refreshTokenStr: string) => {
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshTokenStr);
-    setToken(accessToken);
-    setIsAuthenticated(true);
-    setAuthToken(accessToken); // Set token to axios globally
-
-    // Schedule token refresh
-    scheduleTokenRefresh(accessToken);
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async (): Promise<void> => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setToken(null);
     setIsAuthenticated(false);
-    setAuthToken(null); // Clear the axios token
-  };
+    setAuthToken(null);
+  }, []);
 
-  const refreshToken = async (): Promise<string | null> => {
+  const refreshToken = useCallback(async (): Promise<string | null> => {
     try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
+      const storedRefreshToken = localStorage.getItem('refresh_token');
+      if (!storedRefreshToken) {
         console.log('No refresh token available.');
         await logout();
         return null;
       }
 
-      console.log('Attempting to refresh token...');
-      const response = await axios.post(`${API_URL}/token/refresh/`, {
-        refresh: refreshToken,
-      });
-
-      if (response.data.access) {
-        console.log('Token refreshed successfully:', response.data.access);
-        localStorage.setItem('access_token', response.data.access);
-        setToken(response.data.access);
+      const response = await axios.post(`${API_URL}/token/refresh/`, { refresh: storedRefreshToken });
+      const newAccessToken = response.data.access;
+      if (newAccessToken) {
+        localStorage.setItem('access_token', newAccessToken);
+        setToken(newAccessToken);
         setIsAuthenticated(true);
-        setAuthToken(response.data.access); // Update token in axios headers
+        setAuthToken(newAccessToken);
 
-        // Schedule token refresh
-        scheduleTokenRefresh(response.data.access);
+        scheduleTokenRefresh(newAccessToken);
 
-        return response.data.access;
+        return newAccessToken;
       } else {
-        console.log('Failed to refresh token.');
         await logout();
         return null;
       }
@@ -126,16 +107,75 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await logout();
       return null;
     }
+  }, [logout, scheduleTokenRefresh]);
+
+  useEffect(() => {
+    refreshTokenRef.current = refreshToken;
+  }, [refreshToken]);
+
+  const login = (accessToken: string, refreshTokenStr: string): void => {
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshTokenStr);
+    setToken(accessToken);
+    setIsAuthenticated(true);
+    setAuthToken(accessToken);
+
+    scheduleTokenRefresh(accessToken);
   };
 
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        const expirationTime = getTokenExpirationTime(accessToken);
+        if (expirationTime && expirationTime > Date.now()) {
+          setToken(accessToken);
+          setIsAuthenticated(true);
+          setAuthToken(accessToken);
+          scheduleTokenRefresh(accessToken);
+        } else {
+          const newToken = await refreshToken();
+          if (!newToken) await logout();
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+  }, [refreshToken, logout, scheduleTokenRefresh]);
+
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          const newToken = await refreshToken();
+          if (newToken) {
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            return axios(originalRequest);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [refreshToken]);
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, token, loading, login, logout, refreshToken }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, token, loading, login, logout, refreshToken }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');

@@ -4,7 +4,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Post
 from .serializers import PostSerializer
-from .tasks import process_kafka_message  # Import the Celery task
+from .tasks import process_kafka_message, \
+    send_post_event_to_kafka  # Import the Celery task
 from core.permissions import IsAuthorOrReadOnly
 
 
@@ -37,9 +38,9 @@ class PostViewSet(viewsets.ModelViewSet):
         Save the post with the user set to the current user,
         then trigger the Celery task to handle any background processing.
         """
-        post = serializer.save(user=self.request.user)  # Changed `author` to `user`
-        # Trigger the Celery task after the post is created
-        process_kafka_message.delay(post.id)
+        post = serializer.save(user=self.request.user)
+        # Trigger the Celery task to send an event to Kafka
+        send_post_event_to_kafka.delay(post.id, 'created')
 
     @extend_schema(
         parameters=[

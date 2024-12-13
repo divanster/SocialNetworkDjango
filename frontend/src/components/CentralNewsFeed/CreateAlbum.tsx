@@ -1,6 +1,4 @@
-// frontend/src/components/CentralNewsFeed/CreateAlbum.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
 import { useWebSocket } from '../../contexts/WebSocketManager';
@@ -9,21 +7,13 @@ import { useAuth } from '../../contexts/AuthContext';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const CreateAlbum: React.FC = () => {
-  const { getSocket } = useWebSocket();
+  const albumSocket = useWebSocket('albums'); // Get WebSocket directly for "albums"
   const { token } = useAuth(); // Get token from AuthContext
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<FileList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (token) {
-      const albumSocket = getSocket(`ws://localhost:8000/ws/albums/?token=${token}`);
-      setSocket(albumSocket);
-    }
-  }, [getSocket, token]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,8 +43,9 @@ const CreateAlbum: React.FC = () => {
         },
       });
 
-      if (socket) {
-        socket.send(JSON.stringify({ message: response.data }));
+      // Send the newly created album data to the WebSocket
+      if (albumSocket) {
+        albumSocket.send(JSON.stringify({ message: response.data }));
       }
 
       setTitle('');

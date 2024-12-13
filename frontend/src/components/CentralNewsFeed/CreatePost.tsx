@@ -7,9 +7,8 @@ import { useAuth } from '../../contexts/AuthContext';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 const CreatePost: React.FC = () => {
-  const { getSocket } = useWebSocket();
+  const postSocket = useWebSocket('posts'); // Correctly use WebSocket with group name
   const { token } = useAuth();
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState<FileList | null>(null);
@@ -17,15 +16,17 @@ const CreatePost: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token) {
-      const postSocket = getSocket(`ws://localhost:8000/ws/posts/?token=${token}`);
-      if (postSocket) {
-        setSocket(postSocket);
-      } else {
-        console.error('WebSocket connection could not be established.');
-      }
+    if (postSocket) {
+      postSocket.onmessage = (event: MessageEvent) => {
+        const data = JSON.parse(event.data);
+        console.log('New WebSocket message:', data);
+      };
+
+      postSocket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
     }
-  }, [getSocket, token]);
+  }, [postSocket]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,10 +51,11 @@ const CreatePost: React.FC = () => {
         },
       });
 
-      if (socket) {
-        socket.send(JSON.stringify({ action: 'new_post', message: response.data }));
+      if (postSocket) {
+        postSocket.send(JSON.stringify({ message: response.data }));
       }
 
+      // Clear form on success
       setTitle('');
       setContent('');
       setImages(null);
@@ -80,6 +82,7 @@ const CreatePost: React.FC = () => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter title"
+          required
         />
       </Form.Group>
       <Form.Group>
@@ -90,6 +93,7 @@ const CreatePost: React.FC = () => {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write your post content"
+          required
         />
       </Form.Group>
       <Form.Group>

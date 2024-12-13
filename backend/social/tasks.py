@@ -71,17 +71,22 @@ def consume_post_events():
         logger.error(f"Error initializing Kafka consumer: {e}")
 
 
+@shared_task
 def process_kafka_message(message):
     """
     Process a single Kafka message.
     """
     try:
+        if not isinstance(message, dict):
+            raise ValueError(f"Invalid message format: {message}")
+
         event_type = message.get('event')
         post_id = message.get('post_id')
 
         if not event_type or not post_id:
             raise KeyError(f"Missing required keys in Kafka message: {message}")
 
+        # Handle events
         if event_type == 'created':
             logger.info(f"Processing 'created' post event for post ID: {post_id}")
         elif event_type == 'updated':
@@ -93,5 +98,7 @@ def process_kafka_message(message):
 
     except KeyError as e:
         logger.error(f"Missing key in Kafka message: {e}")
+    except ValueError as e:
+        logger.error(f"Invalid Kafka message format: {e}")
     except Exception as e:
         logger.error(f"Error processing Kafka message: {e}")

@@ -6,5 +6,6 @@ class SocialConfig(AppConfig):
     name = 'social'
     verbose_name = 'Social'
 
-    # def ready(self):
-    #     import social.signals
+    def ready(self):
+        import social.tasks  # Ensure Celery tasks are registered
+        import social.signals  # Ensure signals are registered (if applicable)
