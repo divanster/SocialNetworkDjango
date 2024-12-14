@@ -6,5 +6,5 @@ class ReactionsConfig(AppConfig):
     name = 'reactions'
     verbose_name = 'Reactions'
 
-    # def ready(self):
-    #     import reactions.signals  # Import signals if you have any
+    def ready(self):
+        import reactions.signals # noqa
