@@ -2,7 +2,7 @@ from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from kafka_app.producer import KafkaProducerClient
 import logging
-from core.choices import VisibilityChoices  # Assuming this contains the visibility choices
+from core.choices import VisibilityChoices
 
 # Setting up the logger
 logger = logging.getLogger(__name__)

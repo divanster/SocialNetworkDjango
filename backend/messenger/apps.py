@@ -6,5 +6,5 @@ class MessengerConfig(AppConfig):
     name = 'messenger'
     verbose_name = 'Messenger'
 
-    # def ready(self):
-    #     import messenger.signals  # Import signals if you have any
+    def ready(self):
+        import messenger.signals  # noqa

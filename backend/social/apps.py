@@ -7,5 +7,16 @@ class SocialConfig(AppConfig):
     verbose_name = 'Social'
 
     def ready(self):
-        import social.tasks  # Ensure Celery tasks are registered
-        import social.signals  # Ensure signals are registered (if applicable)
+        """
+        Import modules to ensure Celery tasks and Django signals are registered.
+        These imports are critical for tasks and signals to function as expected.
+        """
+        try:
+            import social.tasks  # Register Celery tasks
+        except ImportError as e:
+            raise ImportError(f"Error importing tasks for app 'social': {e}")
+
+        try:
+            import social.signals  # Register signals
+        except ImportError as e:
+            raise ImportError(f"Error importing signals for app 'social': {e}")
