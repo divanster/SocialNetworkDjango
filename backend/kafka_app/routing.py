@@ -1,7 +1,8 @@
-from django.urls import re_path
-from .consumer import KafkaConsumerApp
+# kafka_app/routing.py
 
-# Using the centralized Kafka consumer for WebSocket handling
+from django.urls import re_path
+from .consumers import GroupConsumer
+
 websocket_urlpatterns = [
-    re_path(r'ws/kafka_app/$', KafkaConsumerApp.as_asgi()),
+    re_path(r'ws/(?P<group_name>\w+)/$', GroupConsumer.as_asgi()),
 ]

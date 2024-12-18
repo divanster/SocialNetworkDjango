@@ -3,7 +3,12 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-const useWebSocket = (groupName: string) => {
+interface UseWebSocketProps {
+  groupName: string;
+  onMessage: (data: any) => void;
+}
+
+const useWebSocket = ({ groupName, onMessage }: UseWebSocketProps) => {
   const { token } = useAuth();
   const ws = useRef<WebSocket | null>(null);
   const reconnectAttempts = useRef<number>(0);
@@ -16,7 +21,11 @@ const useWebSocket = (groupName: string) => {
     }
 
     const connect = () => {
-      const websocketUrl = `${process.env.REACT_APP_WEBSOCKET_URL}${groupName}/?token=${token}`;
+      // Ensure the WebSocket URL is correctly formatted
+      const baseUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
+      const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      const websocketUrl = `${normalizedBaseUrl}/${groupName}/?token=${token}`;
+
       console.log(`Attempting to connect to WebSocket at ${websocketUrl}`);
       ws.current = new WebSocket(websocketUrl);
 
@@ -26,9 +35,13 @@ const useWebSocket = (groupName: string) => {
       };
 
       ws.current.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log(`Message received from ${groupName}:`, data);
-        // Handle incoming messages
+        try {
+          const data = JSON.parse(event.data);
+          console.log(`Message received from ${groupName}:`, data);
+          onMessage(data); // Delegate message handling to the caller
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
       };
 
       ws.current.onerror = (error) => {
@@ -52,13 +65,14 @@ const useWebSocket = (groupName: string) => {
 
     connect();
 
+    // Cleanup function to close WebSocket when the component unmounts or dependencies change
     return () => {
       if (ws.current) {
         ws.current.close();
         console.log(`WebSocket connection closed for ${groupName}`);
       }
     };
-  }, [groupName, token]);
+  }, [groupName, token, onMessage]); // Dependencies include onMessage to handle dynamic callbacks
 
   return ws.current;
 };

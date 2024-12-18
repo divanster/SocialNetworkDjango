@@ -1,3 +1,4 @@
+# backend/albums/tasks.py
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from kafka_app.producer import KafkaProducerClient
@@ -21,7 +22,6 @@ def process_album_event_task(self, album_id, event_type):
         None
     """
     from albums.models import Album  # Importing within the function to avoid circular imports
-    from tagging.models import TaggedItem
     producer = KafkaProducerClient()
 
     try:
@@ -34,10 +34,8 @@ def process_album_event_task(self, album_id, event_type):
             logger.info(f"[TASK] Skipping Kafka message for private album with ID {album_id}")
             return
 
-        # Extract tagged_user_ids from tags if they exist
-        tagged_user_ids = [
-            tagged_item.tagged_user_id for tagged_item in TaggedItem.objects.filter(content_object=album)
-        ]
+        # Use reverse relation to get tagged users
+        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in album.tags.all()]
 
         # Constructing the message for Kafka
         message = {
@@ -58,12 +56,10 @@ def process_album_event_task(self, album_id, event_type):
     except Album.DoesNotExist:
         logger.error(f"[TASK] Album with ID {album_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(
-            f"[TASK] Kafka timeout occurred while processing album {album_id} for event {event_type}: {e}")
+        logger.error(f"[TASK] Kafka timeout occurred while processing album {album_id} for event {event_type}: {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(
-            f"[TASK] Unexpected error occurred while sending Kafka message for album {album_id}: {e}")
+        logger.error(f"[TASK] Unexpected error occurred while sending Kafka message for album {album_id}: {e}")
         self.retry(exc=e, countdown=60)
 
 
@@ -81,7 +77,6 @@ def process_photo_event_task(self, photo_id, event_type):
         None
     """
     from albums.models import Photo  # Importing within the function to avoid circular imports
-    from tagging.models import TaggedItem
     producer = KafkaProducerClient()
 
     try:
@@ -94,10 +89,8 @@ def process_photo_event_task(self, photo_id, event_type):
             logger.info(f"[TASK] Skipping Kafka message for photo in private album with ID {photo_id}")
             return
 
-        # Extract tagged_user_ids from tags if they exist
-        tagged_user_ids = [
-            tagged_item.tagged_user_id for tagged_item in TaggedItem.objects.filter(content_object=photo)
-        ]
+        # Use reverse relation to get tagged users
+        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in photo.tags.all()]
 
         # Constructing the message for Kafka
         message = {
@@ -118,10 +111,8 @@ def process_photo_event_task(self, photo_id, event_type):
     except Photo.DoesNotExist:
         logger.error(f"[TASK] Photo with ID {photo_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(
-            f"[TASK] Kafka timeout occurred while processing photo {photo_id} for event {event_type}: {e}")
+        logger.error(f"[TASK] Kafka timeout occurred while processing photo {photo_id} for event {event_type}: {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(
-            f"[TASK] Unexpected error occurred while sending Kafka message for photo {photo_id}: {e}")
+        logger.error(f"[TASK] Unexpected error occurred while sending Kafka message for photo {photo_id}: {e}")
         self.retry(exc=e, countdown=60)

@@ -14,10 +14,14 @@ django.setup()
 
 # Import the centralized WebSocket routing module
 from websocket.routing import websocket_urlpatterns  # Updated import for centralized routing
+from kafka_app.routing import websocket_urlpatterns as kafka_websocket_urlpatterns  # Import Kafka WebSocket routing
 from websocket.middleware import TokenAuthMiddleware  # Import custom middleware
 
 # Configure logging for tracking ASGI events and debugging
 logger = logging.getLogger(__name__)
+
+# Combine all WebSocket URL patterns
+all_websocket_urlpatterns = websocket_urlpatterns + kafka_websocket_urlpatterns
 
 # Define the ASGI application that handles HTTP and WebSocket protocols
 application = ProtocolTypeRouter({
@@ -27,7 +31,7 @@ application = ProtocolTypeRouter({
     # WebSocket connections are handled through the centralized WebSocket routing
     "websocket": TokenAuthMiddleware(
         URLRouter(
-            websocket_urlpatterns  # Use centralized WebSocket routing from `websocket.routing`
+            all_websocket_urlpatterns  # Combine all WebSocket routes
         )
     ),
 })

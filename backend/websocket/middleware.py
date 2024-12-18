@@ -41,7 +41,8 @@ class TokenAuthMiddleware(BaseMiddleware):
 
         # Validate the token and get the user
         try:
-            # Use SimpleJWT's UntypedToken to validate the JWT (using Django's SECRET_KEY)
+            # Use SimpleJWT's UntypedToken to validate the JWT (using Django's
+            # SECRET_KEY)
             validated_token = UntypedToken(token)  # Validate JWT structure
 
             # Decode the token to get user details

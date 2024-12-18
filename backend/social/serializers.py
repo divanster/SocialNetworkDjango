@@ -24,15 +24,14 @@ class PostSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListSerializer(child=serializers.DictField()))
     def get_tags(self, obj):
-        # Handle both model instances and intermediate representations
+        # Try to get the `id` from obj, handle missing gracefully
         object_id = getattr(obj, 'id', None) or obj.get('id')
 
         if not object_id:
-            # Log if object_id is missing
             logger.warning(f"Object ID is missing for obj: {obj}")
-            return []
+            return []  # Skip processing if `id` is missing
 
-        # Ensure object_id is converted to string for querying
+        # Convert object_id to string for consistency
         object_id = str(object_id)
 
         # Fetch tags for the object
@@ -41,8 +40,7 @@ class PostSerializer(serializers.ModelSerializer):
         return [
             {
                 'tagged_user_id': str(tag.tagged_user_id),
-                # Ensure UUID is serialized as a string
-                'tagged_user_username': tag.tagged_user.username if tag.tagged_user else None
+                'tagged_user_username': tag.tagged_user.username if tag.tagged_user else None,
             }
             for tag in tags
         ]

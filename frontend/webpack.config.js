@@ -1,4 +1,3 @@
-// webpack.config.js
 const path = require('path');
 
 module.exports = {
@@ -42,6 +41,9 @@ module.exports = {
   // Resolve extensions
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx'],
+    fallback: {
+      process: require.resolve('process/browser'), // Polyfill process for browser environment
+    },
   },
 
   // DevServer configuration
@@ -50,4 +52,9 @@ module.exports = {
     historyApiFallback: true,
     hot: true,
   },
+
+  // Plugins (optional, if needed for further customization)
+  plugins: [
+    // Add any other necessary plugins here
+  ],
 };
