@@ -136,7 +136,7 @@ const NewsFeed: React.FC = () => {
       <div className="right-sidebar">
         <FriendRequests />
         <Birthdays />
-        <Contacts />
+        <Contactsxx />
       </div>
       <div className="central-news-feed">
         <CreatePost />
