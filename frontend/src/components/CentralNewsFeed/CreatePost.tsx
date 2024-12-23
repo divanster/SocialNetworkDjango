@@ -1,32 +1,19 @@
-import React, { useState, useEffect } from 'react';
+// frontend/src/components/CentralNewsFeed/CreatePost.tsx
+
+import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
-import { useWebSocket } from '../../contexts/WebSocketManager';
 import { useAuth } from '../../contexts/AuthContext';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const CreatePost: React.FC = () => {
-  const postSocket = useWebSocket('posts'); // Correctly use WebSocket with group name
   const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState<FileList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (postSocket) {
-      postSocket.onmessage = (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
-        console.log('New WebSocket message:', data);
-      };
-
-      postSocket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-    }
-  }, [postSocket]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +27,7 @@ const CreatePost: React.FC = () => {
     formData.append('title', title);
     formData.append('content', content);
     if (images) {
-      Array.from(images).forEach((image) => formData.append('image_files', image));
+      Array.from(images).forEach((file) => formData.append('image_files', file));
     }
 
     try {
@@ -51,20 +38,16 @@ const CreatePost: React.FC = () => {
         },
       });
 
-      if (postSocket) {
-        postSocket.send(JSON.stringify({ message: response.data }));
-      }
-
-      // Clear form on success
       setTitle('');
       setContent('');
       setImages(null);
       setError(null);
       setSuccess('Post created successfully!');
-    } catch (error) {
-      console.error('Error creating post:', error);
-      if (axios.isAxiosError(error)) {
-        setError(error.response?.data?.detail || 'An error occurred');
+    } catch (err) {
+      console.error('Error creating post:', err);
+      setSuccess(null);
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail || 'An error occurred');
       } else {
         setError('An unexpected error occurred.');
       }
@@ -75,6 +58,7 @@ const CreatePost: React.FC = () => {
     <Form onSubmit={handleSubmit}>
       {error && <div className="alert alert-danger">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
+
       <Form.Group>
         <Form.Label>Title</Form.Label>
         <Form.Control
@@ -85,6 +69,7 @@ const CreatePost: React.FC = () => {
           required
         />
       </Form.Group>
+
       <Form.Group>
         <Form.Label>Content</Form.Label>
         <Form.Control
@@ -96,6 +81,7 @@ const CreatePost: React.FC = () => {
           required
         />
       </Form.Group>
+
       <Form.Group>
         <Form.Label>Upload Images</Form.Label>
         <Form.Control
@@ -106,6 +92,7 @@ const CreatePost: React.FC = () => {
           }}
         />
       </Form.Group>
+
       <Button type="submit">Post</Button>
     </Form>
   );

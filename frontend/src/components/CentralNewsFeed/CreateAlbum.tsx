@@ -1,14 +1,14 @@
+// frontend/src/components/CentralNewsFeed/CreateAlbum.tsx
+
 import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
-import { useWebSocket } from '../../contexts/WebSocketManager';
 import { useAuth } from '../../contexts/AuthContext';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://web:8000/api/v1';
 
 const CreateAlbum: React.FC = () => {
-  const albumSocket = useWebSocket('albums'); // Get WebSocket directly for "albums"
-  const { token } = useAuth(); // Get token from AuthContext
+  const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState('public'); // Add visibility state
@@ -34,11 +34,6 @@ const CreateAlbum: React.FC = () => {
       });
     }
 
-    // Log form data to ensure it's being sent as expected
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
-
     try {
       if (!token) {
         setError('No authentication token available.');
@@ -52,14 +47,11 @@ const CreateAlbum: React.FC = () => {
         },
       });
 
-      if (albumSocket) {
-        albumSocket.send(JSON.stringify({ message: response.data }));
-      }
-
       setTitle('');
       setDescription('');
       setVisibility('public'); // Reset visibility
       setPhotos(null);
+      setError(null);
       setSuccess('Album created successfully!');
     } catch (error) {
       console.error('Error creating album:', error);
