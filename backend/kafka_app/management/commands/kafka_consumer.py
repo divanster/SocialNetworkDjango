@@ -15,6 +15,7 @@ from kafka_app.consumer import KafkaConsumerApp
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 class Command(BaseCommand):
     help = 'Starts the Kafka consumer to listen to specified topics and forward messages to Channels groups.'
 

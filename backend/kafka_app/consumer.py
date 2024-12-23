@@ -1,12 +1,17 @@
+# backend/kafka_app/consumer.py
+
 import os
 import logging
 import json
 import signal
+import sys
 import time
-from datetime import time
 from pydantic import BaseModel, ValidationError
-
 from kafka.errors import KafkaError
+from django.db import close_old_connections
+from django.conf import settings
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 # Set up Django settings (this MUST be done before importing any Django models or services)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
@@ -16,19 +21,7 @@ import django
 
 django.setup()
 
-from django.db import close_old_connections
-from django.conf import settings
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Import BaseKafkaConsumer to avoid code duplication
-from kafka_app.base_consumer import BaseKafkaConsumer
-
-# Now import the services and models after setting up Django
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+# Import service handlers
 from albums.services import process_album_event
 from comments.services import process_comment_event
 from follows.services import process_follow_event
@@ -42,6 +35,8 @@ from tagging.services import process_tagging_event
 from users.services import process_user_event
 from notifications.services import create_notification
 
+logger = logging.getLogger(__name__)
+
 
 # Define the Pydantic model for message validation
 class EventData(BaseModel):
@@ -49,7 +44,30 @@ class EventData(BaseModel):
     data: dict
 
     class Config:
-        str_min_length = 1  # Update to comply with Pydantic V2
+        min_anystr_length = 1  # Ensure non-empty strings
+
+
+class BaseKafkaConsumer:
+    """
+    Base Kafka Consumer class to handle connection setup and basic consumption logic.
+    """
+
+    def __init__(self, topics, group_id):
+        from kafka import KafkaConsumer
+        self.topics = topics
+        self.group_id = group_id
+        self.consumer = KafkaConsumer(
+            *self.topics,
+            bootstrap_servers=settings.KAFKA_BROKER_URL,
+            auto_offset_reset='earliest',
+            enable_auto_commit=True,
+            group_id=self.group_id,
+            value_deserializer=lambda x: x.decode('utf-8')
+        )
+
+    def close(self):
+        self.consumer.close()
+        logger.info("Kafka consumer closed.")
 
 
 class KafkaConsumerApp(BaseKafkaConsumer):
@@ -153,12 +171,12 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         async_to_sync(self.channel_layer.group_send)(
             group_name,
             {
-                "type": "kafka.message",
+                "type": "kafka_message",  # Must match the consumer's method name
                 "message": message,
             }
         )
 
-    # Handlers for different event types (e.g. album, comments, etc.)
+    # Handlers for different event types (e.g., album, comments, etc.)
     def handle_messenger_event(self, data):
         process_messenger_event(data)
         self.send_to_websocket_group("messenger",
@@ -224,7 +242,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
 def graceful_shutdown(signum, frame):
     logger.info("Received shutdown signal, closing Kafka consumer...")
     consumer_app.close()
-    exit(0)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

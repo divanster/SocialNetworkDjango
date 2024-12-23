@@ -7,6 +7,7 @@ from django.http import Http404
 
 logger = logging.getLogger(__name__)
 
+
 class CustomErrorMiddleware:
     """
     Middleware to handle exceptions and return custom JSON responses.
@@ -37,4 +38,5 @@ class CustomErrorMiddleware:
         else:
             logger.error(f"Unhandled Exception: {exception}", exc_info=True)
             return JsonResponse({'error': {'type': 'ServerError',
-                                           'message': 'An unexpected error occurred.'}}, status=500)
+                                           'message': 'An unexpected error occurred.'}},
+                                status=500)

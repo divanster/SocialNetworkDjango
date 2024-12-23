@@ -24,8 +24,7 @@ if not SECRET_KEY:
 DEBUG = env.bool('DEBUG', default=False)
 
 # List of allowed hosts that can make requests to this Django instance
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',
-                         default=['localhost', '127.0.0.1', 'web', 'backend'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'web', 'backend'])
 
 # =====================
 # Kafka Configuration
@@ -33,8 +32,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',
 
 # Kafka broker URL for event-driven architecture
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID',
-                              default='centralized_consumer_group')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='centralized_consumer_group')
 
 # Kafka topics for different events parsed from a comma-separated list
 KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
@@ -44,7 +42,6 @@ KAFKA_TOPICS = dict(
 
 # Kafka encryption key for securing messages
 KAFKA_ENCRYPTION_KEY = env('KAFKA_ENCRYPTION_KEY', default=None)
-
 
 # =====================
 # Authentication Backends
@@ -56,13 +53,13 @@ AUTHENTICATION_BACKENDS = [
     # 'social_core.backends.facebook.FacebookOAuth2',
 ]
 
-
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
 
-
-# Installed applications (including PostgreSQL-backed apps)
+# =====================
+# Installed Applications
+# =====================
 INSTALLED_APPS = [
     # Django default apps
     'django.contrib.admin',
@@ -88,8 +85,6 @@ INSTALLED_APPS = [
     'graphql_jwt',
     'phonenumber_field',
 
-    # 'django_elasticsearch_dsl',
-
     # Custom apps
     'users.apps.UsersConfig',
     'albums.apps.AlbumsConfig',
@@ -108,7 +103,9 @@ INSTALLED_APPS = [
     'websocket',  # WebSocket-related app
 ]
 
-# Middleware configuration
+# =====================
+# Middleware Configuration
+# =====================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -122,10 +119,19 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Root URL configuration
+# Add Custom Error Middleware at the end
+MIDDLEWARE += [
+    'config.custom_error_middleware.CustomErrorMiddleware',
+]
+
+# =====================
+# Root URL Configuration
+# =====================
 ROOT_URLCONF = 'config.urls'
 
-# Template engine configuration
+# =====================
+# Template Engine Configuration
+# =====================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -144,17 +150,25 @@ TEMPLATES = [
     },
 ]
 
-# WSGI and ASGI application configuration
+# =====================
+# WSGI and ASGI Application Configuration
+# =====================
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# Channels configuration for WebSocket handling using Redis as a broker
+# =====================
+# Channels Configuration for WebSocket Handling Using Redis as a Broker
+# =====================
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(env('REDIS_HOST', default='redis'),
-                       env.int('REDIS_PORT', default=6379))],
+            'hosts': [
+                (
+                    env('REDIS_HOST', default='redis'),
+                    env.int('REDIS_PORT', default=6379)
+                )
+            ],
         },
     },
 }
@@ -162,7 +176,9 @@ CHANNEL_LAYERS = {
 REDIS_HOST = env('REDIS_HOST', default='redis')
 REDIS_PORT = env.int('REDIS_PORT', default=6379)
 
-# Database configuration using PostgreSQL for core functionalities
+# =====================
+# Database Configuration Using PostgreSQL for Core Functionalities
+# =====================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -181,8 +197,9 @@ DATABASES = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-# Password validation settings
+# =====================
+# Password Validation Settings
+# =====================
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'
@@ -199,25 +216,33 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization settings
+# =====================
+# Internationalization Settings
+# =====================
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static and media file settings
+# =====================
+# Static and Media File Settings
+# =====================
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Custom user model
+# =====================
+# Custom User Model
+# =====================
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# Django REST Framework configuration
+# =====================
+# Django REST Framework Configuration
+# =====================
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',  # Updated to use custom handler
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -225,7 +250,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Should be a string path, not a tuple
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 }
 
@@ -240,20 +265,24 @@ else:
         'rest_framework.renderers.JSONRenderer',
     )
 
-# Simple JWT configuration
+# =====================
+# Simple JWT Configuration
+# =====================
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': env('SIMPLE_JWT_SIGNING_KEY'),
+    'SIGNING_KEY': env('SIMPLE_JWT_SIGNING_KEY', default=SECRET_KEY),
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
 
-# Djoser configuration
+# =====================
+# Djoser Configuration
+# =====================
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': True,
@@ -272,7 +301,9 @@ DJOSER = {
     },
 }
 
-# Spectacular configuration for OpenAPI documentation
+# =====================
+# Spectacular Configuration for OpenAPI Documentation
+# =====================
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Social Network APIs',
     'DESCRIPTION': 'API documentation for the Social Network project.',
@@ -294,13 +325,19 @@ SPECTACULAR_SETTINGS = {
     'EXCLUDE_PATHS': [],
 }
 
-# CORS settings to allow frontend origins
+# =====================
+# CORS Settings to Allow Frontend Origins
+# =====================
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
-    'http://127.0.0.1:3000', 'http://localhost:3000', 'http://frontend:3000'
+    'http://127.0.0.1:3000',
+    'http://localhost:3000',
+    'http://frontend:3000'
 ])
 CORS_ALLOW_CREDENTIALS = True
 
-# GraphQl settings
+# =====================
+# GraphQL Settings
+# =====================
 GRAPHENE = {
     'SCHEMA': 'schema.schema',
     'MIDDLEWARE': [
@@ -308,8 +345,9 @@ GRAPHENE = {
     ],
 }
 
-
-# Email configuration
+# =====================
+# Email Configuration
+# =====================
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
@@ -317,7 +355,9 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
-# Celery configuration
+# =====================
+# Celery Configuration
+# =====================
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/0')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT', default=['json'])
@@ -326,8 +366,9 @@ CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = 'UTC'
 
-
+# =====================
 # Celery Beat Configuration
+# =====================
 CELERY_BEAT_SCHEDULE = {
     'deactivate_expired_stories_every_hour': {
         'task': 'stories.tasks.deactivate_expired_stories',
@@ -335,7 +376,9 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# Redis caching configuration
+# =====================
+# Redis Caching Configuration
+# =====================
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -346,7 +389,9 @@ CACHES = {
     }
 }
 
-# Fetch SENTRY_DSN from the environment variables
+# =====================
+# Sentry (Error Tracking)
+# =====================
 SENTRY_DSN = env('SENTRY_DSN', default='')
 
 # Initialize Sentry if DSN is provided
@@ -358,22 +403,22 @@ if SENTRY_DSN:
         send_default_pii=True
     )
 
-# Content Security Policy (CSP) settings
+# =====================
+# Content Security Policy (CSP) Settings
+# =====================
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = (
-    "'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = (
-    "'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = (
-    "'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net',
-    "'unsafe-inline'")
+CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
 CSP_FORM_ACTION = ("'self'",)
 CSP_REPORT_URI = '/csp-violation-report/'
 
-# Security settings for production deployment
+# =====================
+# Security Settings for Production Deployment
+# =====================
 if not DEBUG:
     # Enforce HTTPS for all requests
     SECURE_SSL_REDIRECT = True
@@ -412,20 +457,26 @@ if not DEBUG:
     SECURE_CROSS_ORIGIN_EMBEDDER_POLICY = 'require-corp'  # Protect against cross-origin embedding
     SECURE_CROSS_ORIGIN_RESOURCE_POLICY = 'same-origin'  # Prevent resource leaks to other origins
 
+# =====================
 # Internal IPs for Django Debug Toolbar
+# =====================
 INTERNAL_IPS = [
     '127.0.0.1',
     'localhost',
     'web',
 ]
 
-# Django Debug Toolbar configuration
+# =====================
+# Django Debug Toolbar Configuration
+# =====================
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG and not is_running_tests(),
     'INTERCEPT_REDIRECTS': False,
 }
 
-# Logging configuration
+# =====================
+# Logging Configuration
+# =====================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -483,14 +534,29 @@ LOGGING = {
     },
 }
 
-# # =====================
+# =====================
+# Additional Configurations (Commented Out)
+# =====================
+
+# Uncomment and configure as needed
+
 # # Elasticsearch Configuration
-# # =====================
 # ELASTICSEARCH_DSL = {
 #     'default': {
-#         'hosts': env('ELASTICSEARCH_HOSTS', default='localhost:9200'),
+#         'hosts': env('ELASTICSEARCH_HOSTS', default='elasticsearch:9200'),
 #     },
 # }
+
+# # Haystack Settings
+# HAYSTACK_CONNECTIONS = {
+#     'default': {
+#         'ENGINE': 'haystack.backends.elasticsearch_backend.ElasticsearchSearchEngine',
+#         'URL': 'http://127.0.0.1:9200/',
+#         'INDEX_NAME': 'haystack_indexes',
+#     },
+# }
+# HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
+
 
 
 # from . import cron_jobs
