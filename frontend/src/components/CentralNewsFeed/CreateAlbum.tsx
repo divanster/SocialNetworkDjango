@@ -4,64 +4,63 @@ import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { Album as AlbumType } from '../../types/album'; // Import your Album type
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://web:8000/api/v1';
+interface CreateAlbumProps {
+  onAlbumCreated: (newAlbum: AlbumType) => void;
+}
 
-const CreateAlbum: React.FC = () => {
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+
+const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated }) => {
   const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [visibility, setVisibility] = useState('public'); // Add visibility state
-  const [photos, setPhotos] = useState<FileList | null>(null);
+  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public');
+  const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    // Create a new FormData instance to send as multipart/form-data
+    if (!token) {
+      setError('You must be logged in to create an album.');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
-    formData.append('visibility', visibility); // Append visibility
-
-    if (photos) {
-      // Add photos to form data as 'photos_upload' field
-      Array.from(photos).forEach((photo) => {
-        formData.append('photos_upload', photo);
-      });
+    formData.append('visibility', visibility);
+    if (imageFiles) {
+      Array.from(imageFiles).forEach((file) => formData.append('image_files', file));
     }
 
     try {
-      if (!token) {
-        setError('No authentication token available.');
-        return;
-      }
-
-      const response = await axios.post(`${API_URL}/albums/albums/`, formData, {
+      const response = await axios.post(`${API_URL}/albums/`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
       });
 
+      const createdAlbum: AlbumType = response.data; // Adjust according to your backend response
+
+      // Update the parent component's state
+      onAlbumCreated(createdAlbum);
+
       setTitle('');
       setDescription('');
-      setVisibility('public'); // Reset visibility
-      setPhotos(null);
+      setVisibility('public');
+      setImageFiles(null);
       setError(null);
       setSuccess('Album created successfully!');
-    } catch (error) {
-      console.error('Error creating album:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('Error response data:', error.response?.data); // Log full error response
-        setError(
-          error.response?.data?.detail ||
-            JSON.stringify(error.response?.data) || // Handle nested errors
-            'An error occurred while creating the album.'
-        );
+    } catch (err) {
+      console.error('Error creating album:', err);
+      setSuccess(null);
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail || 'An error occurred');
       } else {
         setError('An unexpected error occurred.');
       }
@@ -102,7 +101,7 @@ const CreateAlbum: React.FC = () => {
         <Form.Control
           as="select"
           value={visibility}
-          onChange={(e) => setVisibility(e.target.value)}
+          onChange={(e) => setVisibility(e.target.value as 'public' | 'friends' | 'private')}
           required
         >
           <option value="public">Public</option>
@@ -118,7 +117,7 @@ const CreateAlbum: React.FC = () => {
           multiple
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             if (e.target.files) {
-              setPhotos(e.target.files);
+              setImageFiles(e.target.files);
             }
           }}
         />

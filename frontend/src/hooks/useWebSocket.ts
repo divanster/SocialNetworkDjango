@@ -50,7 +50,7 @@ export default function useWebSocket(
       };
 
       socketRef.current.onerror = (error) => {
-        console.error(`WebSocket error for ${groupName}:`, error);
+        console.error(`WebSocket error for group ${groupName}:`, error);
       };
 
       socketRef.current.onclose = (event) => {

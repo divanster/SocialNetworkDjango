@@ -17,6 +17,7 @@ import { Album as AlbumType } from '../types/album';
 import { useAuth } from '../contexts/AuthContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws';
 
 const NewsFeed: React.FC = () => {
   const { token, loading: authLoading } = useAuth();
@@ -25,6 +26,16 @@ const NewsFeed: React.FC = () => {
   const [albums, setAlbums] = useState<AlbumType[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Callback to add a new post
+  const addNewPost = (newPost: PostType) => {
+    setPosts((prevPosts) => [newPost, ...prevPosts]);
+  };
+
+  // Callback to add a new album
+  const addNewAlbum = (newAlbum: AlbumType) => {
+    setAlbums((prevAlbums) => [newAlbum, ...prevAlbums]);
+  };
 
   // Handler for incoming posts messages
   const handlePostsMessage = useCallback((data: any) => {
@@ -111,8 +122,8 @@ const NewsFeed: React.FC = () => {
         <Contacts />
       </div>
       <div className="central-news-feed">
-        <CreatePost />
-        <CreateAlbum />
+        <CreatePost onPostCreated={addNewPost} />
+        <CreateAlbum onAlbumCreated={addNewAlbum} />
         {posts.length > 0 ? (
           <Posts posts={posts} onDelete={handleDeletePost} onUpdate={handleUpdatePost} />
         ) : (

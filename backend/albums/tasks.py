@@ -8,6 +8,7 @@ from core.choices import VisibilityChoices
 # Setting up the logger
 logger = logging.getLogger(__name__)
 
+
 @shared_task(bind=True, max_retries=5)
 def process_album_event_task(self, album_id, event_type):
     """
@@ -21,7 +22,8 @@ def process_album_event_task(self, album_id, event_type):
     Returns:
         None
     """
-    from albums.models import Album  # Importing within the function to avoid circular imports
+    from albums.models import \
+        Album  # Importing within the function to avoid circular imports
     producer = KafkaProducerClient()
 
     try:
@@ -31,11 +33,13 @@ def process_album_event_task(self, album_id, event_type):
         # Respect visibility when constructing the Kafka message
         if album.visibility == VisibilityChoices.PRIVATE:
             # If it's private, don't send a Kafka event
-            logger.info(f"[TASK] Skipping Kafka message for private album with ID {album_id}")
+            logger.info(
+                f"[TASK] Skipping Kafka message for private album with ID {album_id}")
             return
 
         # Use reverse relation to get tagged users
-        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in album.tags.all()]
+        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in
+                           album.tags.all()]
 
         # Constructing the message for Kafka
         message = {
@@ -51,15 +55,19 @@ def process_album_event_task(self, album_id, event_type):
         # Send message to Kafka if visibility is public or friends
         if album.visibility == VisibilityChoices.PUBLIC or album.visibility == VisibilityChoices.FRIENDS:
             producer.send_message('ALBUM_EVENTS', message)
-            logger.info(f"[TASK] Successfully sent Kafka message for album event {event_type}: {message}")
+            logger.info(
+                f"[TASK] Successfully sent Kafka message for album event {event_type}: {message}")
 
     except Album.DoesNotExist:
         logger.error(f"[TASK] Album with ID {album_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(f"[TASK] Kafka timeout occurred while processing album {album_id} for event {event_type}: {e}")
-        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
+        logger.error(
+            f"[TASK] Kafka timeout occurred while processing album {album_id} for event {event_type}: {e}")
+        self.retry(exc=e,
+                   countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(f"[TASK] Unexpected error occurred while sending Kafka message for album {album_id}: {e}")
+        logger.error(
+            f"[TASK] Unexpected error occurred while sending Kafka message for album {album_id}: {e}")
         self.retry(exc=e, countdown=60)
 
 
@@ -76,7 +84,8 @@ def process_photo_event_task(self, photo_id, event_type):
     Returns:
         None
     """
-    from albums.models import Photo  # Importing within the function to avoid circular imports
+    from albums.models import \
+        Photo  # Importing within the function to avoid circular imports
     producer = KafkaProducerClient()
 
     try:
@@ -86,11 +95,13 @@ def process_photo_event_task(self, photo_id, event_type):
         # Respect visibility of the parent album when constructing the Kafka message
         if photo.album.visibility == VisibilityChoices.PRIVATE:
             # If the album is private, don't send a Kafka event for the photo
-            logger.info(f"[TASK] Skipping Kafka message for photo in private album with ID {photo_id}")
+            logger.info(
+                f"[TASK] Skipping Kafka message for photo in private album with ID {photo_id}")
             return
 
         # Use reverse relation to get tagged users
-        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in photo.tags.all()]
+        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in
+                           photo.tags.all()]
 
         # Constructing the message for Kafka
         message = {
@@ -106,13 +117,17 @@ def process_photo_event_task(self, photo_id, event_type):
         # Send message to Kafka if visibility is public or friends
         if photo.album.visibility == VisibilityChoices.PUBLIC or photo.album.visibility == VisibilityChoices.FRIENDS:
             producer.send_message('PHOTO_EVENTS', message)
-            logger.info(f"[TASK] Successfully sent Kafka message for photo event {event_type}: {message}")
+            logger.info(
+                f"[TASK] Successfully sent Kafka message for photo event {event_type}: {message}")
 
     except Photo.DoesNotExist:
         logger.error(f"[TASK] Photo with ID {photo_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(f"[TASK] Kafka timeout occurred while processing photo {photo_id} for event {event_type}: {e}")
-        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
+        logger.error(
+            f"[TASK] Kafka timeout occurred while processing photo {photo_id} for event {event_type}: {e}")
+        self.retry(exc=e,
+                   countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(f"[TASK] Unexpected error occurred while sending Kafka message for photo {photo_id}: {e}")
+        logger.error(
+            f"[TASK] Unexpected error occurred while sending Kafka message for photo {photo_id}: {e}")
         self.retry(exc=e, countdown=60)

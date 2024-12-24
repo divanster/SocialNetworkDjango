@@ -4,10 +4,15 @@ import React, { useState } from 'react';
 import { Form, Button } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { Post as PostType } from '../../types/post'; // Import your Post type
+
+interface CreatePostProps {
+  onPostCreated: (newPost: PostType) => void;
+}
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
-const CreatePost: React.FC = () => {
+const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -38,6 +43,11 @@ const CreatePost: React.FC = () => {
         },
       });
 
+      const createdPost: PostType = response.data; // Adjust according to your backend response
+
+      // Update the parent component's state
+      onPostCreated(createdPost);
+
       setTitle('');
       setContent('');
       setImages(null);
@@ -56,6 +66,7 @@ const CreatePost: React.FC = () => {
 
   return (
     <Form onSubmit={handleSubmit}>
+      {/* Display errors or success messages */}
       {error && <div className="alert alert-danger">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
