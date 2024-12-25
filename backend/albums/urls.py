@@ -13,5 +13,5 @@ router.register(r'photos', PhotoViewSet, basename='photo')  # Register PhotoView
 
 # Define urlpatterns for the albums app
 urlpatterns = [
-    path('', include(router.urls)),  # Include all of the routes managed by DefaultRouter
+    path('', include(router.urls)),  # Include all of the routes managed by DefaultRouter.
 ]
