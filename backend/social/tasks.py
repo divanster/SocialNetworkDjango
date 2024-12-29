@@ -2,22 +2,27 @@
 
 import logging
 from celery import shared_task
+from cryptography.fernet import Fernet
 from django.conf import settings
+from kafka.consumer import KafkaConsumer  # Ensure correct import
+
 from social.models import Post
-from core.utils import get_kafka_producer  # or your custom import
-from kafka import KafkaConsumer
+from core.utils import get_kafka_producer
 import json
 
 logger = logging.getLogger(__name__)
+
 
 @shared_task(bind=True, max_retries=5, default_retry_delay=10)
 def send_post_event_to_kafka(self, post_id, event_type):
     """
     Celery task to send post events to Kafka, ensuring all UUID fields become strings.
     """
-    try:
-        producer = get_kafka_producer()  # must be your KafkaProducerClient if you want encryption + UUIDEncoder
+    producer = get_kafka_producer()
+    logger.info(f"Producer instance type: {type(producer)}")  # Added logging
+    logger.info("Obtained KafkaProducerClient instance.")
 
+    try:
         if event_type == 'deleted':
             # Convert post_id (UUID) to str
             message = {
@@ -40,21 +45,20 @@ def send_post_event_to_kafka(self, post_id, event_type):
 
         kafka_topic = settings.KAFKA_TOPICS.get('POST_EVENTS', 'default-post-topic')
 
-        # If your `producer` is your KafkaProducerClient with encryption:
-        #  it should call `encrypt_message` -> `UUIDEncoder`.
-        #  This ensures no raw UUID remain.
-        producer.send(kafka_topic, value=message)
+        # Send message using send_message method
+        producer.send_message(kafka_topic, message)
         producer.flush()
         logger.info(f"Sent Kafka message for post {event_type}: {message}")
 
     except Post.DoesNotExist:
         logger.error(f"Post with ID {post_id} does not exist.")
+    except AttributeError as e:
+        logger.error(f"AttributeError: {e}")
+        self.retry(exc=e)
     except Exception as e:
         logger.error(f"Error sending Kafka message for post {post_id}: {e}")
         self.retry(exc=e)
-    finally:
-        # close producer
-        producer.close()
+    # Do not close the producer to maintain Singleton instance
 
 
 @shared_task
@@ -66,20 +70,31 @@ def consume_post_events():
     try:
         consumer = KafkaConsumer(
             topic,
-            bootstrap_servers=settings.KAFKA_BROKER_URL,
+            bootstrap_servers=[settings.KAFKA_BROKER_URL],
             group_id=settings.KAFKA_CONSUMER_GROUP_ID,
             auto_offset_reset='earliest',
             enable_auto_commit=True,
-            value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+            # Remove value_deserializer since messages are encrypted
+            # value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
+        cipher_suite = Fernet(settings.KAFKA_ENCRYPTION_KEY.encode())
         logger.info(f"Consuming messages from {topic} ...")
         for message in consumer:
             try:
-                process_kafka_message(message.value)
+                # Decrypt the message before deserialization
+                decrypted_bytes = cipher_suite.decrypt(message.value)
+                decrypted_str = decrypted_bytes.decode('utf-8')
+                logger.info(f"Decrypted message: {decrypted_str}")  # Added logging
+                message_data = json.loads(decrypted_str)
+                process_kafka_message(message_data)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to decode JSON: {e}")
             except Exception as e:
                 logger.error(f"Error processing Kafka message: {e}")
     except Exception as e:
         logger.error(f"Error initializing Kafka consumer: {e}")
+    finally:
+        consumer.close()
 
 
 @shared_task

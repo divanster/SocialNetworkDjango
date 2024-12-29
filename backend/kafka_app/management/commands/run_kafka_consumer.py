@@ -1,14 +1,11 @@
-# kafka_app/management/commands/kafka_consumer.py
+# backend/kafka_app/management/commands/run_kafka_consumer.py
 
-import json
 import logging
 import signal
 import sys
-import time
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from asgiref.sync import async_to_sync
 
 from kafka_app.consumer import KafkaConsumerApp
 
@@ -17,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Starts the Kafka consumer to listen to specified topics and forward messages to Channels groups.'
+    help = ('Starts the Kafka consumer to listen to specified topics and forward '
+            'messages to Channels groups.')
 
     def handle(self, *args, **options):
         # Initialize the KafkaConsumerApp with topics and group_id

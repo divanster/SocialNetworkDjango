@@ -326,14 +326,23 @@ SPECTACULAR_SETTINGS = {
 }
 
 # =====================
-# CORS Settings to Allow Frontend Origins
+# CORS Settings to Allow Frontend Origins and HTTP Methods
 # =====================
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
     'http://127.0.0.1:3000',
     'http://localhost:3000',
     'http://frontend:3000'
 ])
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
 CORS_ALLOW_CREDENTIALS = True
+
 
 # =====================
 # GraphQL Settings

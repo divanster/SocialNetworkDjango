@@ -1,16 +1,39 @@
 // frontend/src/components/CentralNewsFeed/Posts.tsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Post as PostType } from '../../types/post';
-import { Card, Button } from 'react-bootstrap';
+import { Card, Button, Spinner } from 'react-bootstrap';
+import EditPostModal from './EditPostModal'; // Ensure this component exists
 
 interface PostsProps {
   posts: PostType[];
   onDelete: (id: number) => void;
   onUpdate: (updatedPost: PostType) => void;
+  deletingPostIds: number[]; // IDs of posts being deleted
+  updatingPostIds: number[]; // IDs of posts being updated
 }
 
-const Posts: React.FC<PostsProps> = ({ posts, onDelete, onUpdate }) => {
+const Posts: React.FC<PostsProps> = ({
+  posts,
+  onDelete,
+  onUpdate,
+  deletingPostIds,
+  updatingPostIds,
+}) => {
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [currentPost, setCurrentPost] = useState<PostType | null>(null);
+
+  const handleEditClick = (post: PostType) => {
+    setCurrentPost(post);
+    setShowModal(true);
+    console.log(`Editing post with ID ${post.id}`);
+  };
+
+  const handleSave = (updatedPost: PostType) => {
+    onUpdate(updatedPost);
+    console.log(`Post with ID ${updatedPost.id} updated.`);
+  };
+
   return (
     <div>
       {posts.map((post) => (
@@ -18,7 +41,7 @@ const Posts: React.FC<PostsProps> = ({ posts, onDelete, onUpdate }) => {
           <Card.Body>
             <Card.Title>{post.title}</Card.Title>
             <Card.Subtitle className="mb-2 text-muted">
-              By {post.author} on {new Date(post.created_at).toLocaleString()}
+              By {post.user.username} on {new Date(post.created_at).toLocaleString()}
             </Card.Subtitle>
             <Card.Text>{post.content}</Card.Text>
             {post.images && post.images.length > 0 && (
@@ -33,13 +56,66 @@ const Posts: React.FC<PostsProps> = ({ posts, onDelete, onUpdate }) => {
                 ))}
               </div>
             )}
-            <Button variant="danger" onClick={() => onDelete(post.id)}>
-              Delete
+            {/* Update Button */}
+            <Button
+              variant="primary"
+              className="me-2"
+              onClick={() => handleEditClick(post)}
+              disabled={updatingPostIds.includes(post.id)}
+            >
+              {updatingPostIds.includes(post.id) ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                  />{' '}
+                  Updating...
+                </>
+              ) : (
+                'Update'
+              )}
             </Button>
-            {/* Add an update button or modal as needed */}
+            {/* Delete Button */}
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete this post?')) {
+                  onDelete(post.id);
+                }
+              }}
+              disabled={deletingPostIds.includes(post.id)}
+            >
+              {deletingPostIds.includes(post.id) ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                  />{' '}
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
           </Card.Body>
         </Card>
       ))}
+
+      {/* Edit Post Modal */}
+      {currentPost && (
+        <EditPostModal
+          show={showModal}
+          onHide={() => setShowModal(false)}
+          post={currentPost}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 };
