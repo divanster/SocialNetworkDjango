@@ -60,23 +60,29 @@ class KafkaProducerClient:
             logger.error(f"Error encrypting message: {e}")
             raise e
 
-    def send_message(self, topic, value):
+    def send_message(self, topic, value, retries=3):
         """
         Sends 'value' to Kafka, ensuring serialization and encryption.
+        Retries on failure up to 'retries' times.
         """
         logger.info(f"send_message called with topic: {topic} and value: {value}")
         logger.info(f"self.producer type: {type(self.producer)}")  # Confirm type
-        try:
-            if not isinstance(value, bytes):
-                value = self.encrypt_message(value)
+        attempt = 0
+        while attempt < retries:
+            try:
+                if not isinstance(value, bytes):
+                    value = self.encrypt_message(value)
 
-            future = self.producer.send(topic, value=value)  # Send raw bytes
-            result = future.get(timeout=10)  # Wait for send to complete
-            logger.info(f"Message sent to topic '{topic}': {value}")
-            return result
-        except Exception as e:
-            logger.error(f"Failed to send message to topic '{topic}': {e}")
-            raise e
+                future = self.producer.send(topic, value=value)  # Send raw bytes
+                result = future.get(timeout=10)  # Wait for send to complete
+                logger.info(f"Message sent to topic '{topic}': {value}")
+                return result
+            except Exception as e:
+                attempt += 1
+                logger.error(f"Attempt {attempt}: Failed to send message to topic '{topic}': {e}")
+                if attempt >= retries:
+                    logger.error(f"Exceeded maximum retries ({retries}) for sending message to topic '{topic}'.")
+                    raise e
 
     def flush(self):
         try:
@@ -88,8 +94,11 @@ class KafkaProducerClient:
 
     def close(self):
         try:
-            self.producer.close(timeout=10)
-            logger.info("KafkaProducer closed.")
+            if hasattr(self, 'producer') and self.producer is not None:
+                self.producer.flush()
+                self.producer.close(timeout=10)
+                self.producer = None
+                logger.info("KafkaProducer closed.")
         except Exception as e:
             logger.error(f"Failed to close KafkaProducer: {e}")
             raise e

@@ -1,3 +1,5 @@
+# backend/users/signals.py
+
 import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
@@ -5,8 +7,7 @@ from users.models import CustomUser, UserProfile
 from .tasks import process_user_event_task  # Import the Celery task
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from websocket.consumers import \
-    GeneralKafkaConsumer  # Import for generating group names
+from utils.group_names import get_user_group_name  # New import
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def create_user_profile(sender, instance, created, **kwargs):
         process_user_event_task.delay(instance.id, event_type)
 
         # Send WebSocket notification for the new user
-        user_group_name = GeneralKafkaConsumer.generate_group_name(instance.id)
+        user_group_name = get_user_group_name(instance.id)  # Use utility function
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             user_group_name,
@@ -43,7 +44,8 @@ def create_user_profile(sender, instance, created, **kwargs):
             }
         )
         logger.info(
-            f"Real-time WebSocket notification sent for user {event_type} with ID {instance.id}")
+            f"Real-time WebSocket notification sent for user {event_type} with ID {instance.id}"
+        )
 
 
 @receiver(post_delete, sender=CustomUser)
@@ -61,7 +63,7 @@ def delete_user_profile(sender, instance, **kwargs):
         process_user_event_task.delay(instance.id, 'deleted_user')
 
         # Send WebSocket notification for user deletion
-        user_group_name = GeneralKafkaConsumer.generate_group_name(instance.id)
+        user_group_name = get_user_group_name(instance.id)  # Use utility function
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             user_group_name,
@@ -74,8 +76,10 @@ def delete_user_profile(sender, instance, **kwargs):
             }
         )
         logger.info(
-            f"Real-time WebSocket notification sent for user deletion with ID {instance.id}")
+            f"Real-time WebSocket notification sent for user deletion with ID {instance.id}"
+        )
 
     except UserProfile.DoesNotExist:
         logger.warning(
-            f"Attempted to delete UserProfile for user ID {instance.id}, but it did not exist.")
+            f"Attempted to delete UserProfile for user ID {instance.id}, but it did not exist."
+        )

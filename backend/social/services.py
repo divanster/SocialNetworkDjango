@@ -1,7 +1,7 @@
 # backend/social/services.py
 import logging
 from django.db.models import Q
-from social.models import Post  # Import Post model if needed
+from social.models import Post, get_friends  # Import Post model if needed
 from comments.models import Comment
 from reactions.models import Reaction
 from django.contrib.auth import get_user_model
@@ -17,15 +17,17 @@ def process_social_event(data):
         data (dict): A dictionary with the event data to process.
     """
     try:
-        action_type = data.get('action_type')
-        if action_type == 'post_created':
+        event_type = data.get('event_type')  # Changed from 'action_type' to 'event_type'
+        if event_type == 'post_created':
             process_post_created(data)
-        elif action_type == 'comment_posted':
+        elif event_type == 'comment_posted':
             process_comment_posted(data)
-        elif action_type == 'reaction_added':
+        elif event_type == 'reaction_added':
             process_reaction_added(data)
+        elif event_type in ['tagged', 'untagged']:
+            process_tagging_event(data)
         else:
-            logger.warning(f"[SERVICE] Unknown social action type: {action_type}")
+            logger.warning(f"[SERVICE] Unknown social event type: {event_type}")
     except Exception as e:
         logger.error(f"[SERVICE] Error processing social event: {e}")
 
@@ -34,7 +36,7 @@ def process_post_created(data):
     Handles the creation of a post, including visibility handling and notifications.
     """
     try:
-        post_id = data.get('post_id')
+        post_id = data.get('post_id')  # Changed from 'post_id' to 'post_id' remains
         post = Post.objects.get(id=post_id)
         logger.info(f"[SERVICE] Post Created: {post.title}")
 
@@ -44,7 +46,7 @@ def process_post_created(data):
 
         # If the post is for friends, notify only friends.
         elif post.visibility == 'friends':
-            friends = post.author.friends.all()  # Assuming `friends` is a related manager.
+            friends = get_friends(post.author)
             notify_users(post, friends)
 
         # Private posts should not trigger notifications to others
@@ -107,13 +109,38 @@ def process_reaction_added(data):
             logger.info(f"[SERVICE] Reaction added by friend to item ID {reacted_item.id}")
 
         elif reacted_item.visibility == 'private':
-            logger.info(f"[SERVICE] Reaction added to private item - No notifications "
-                        f"sent.")
+            logger.info(f"[SERVICE] Reaction added to private item - No notifications sent.")
 
     except Reaction.DoesNotExist:
         logger.error(f"[SERVICE] Reaction with ID {data.get('reaction_id')} does not exist.")
     except Exception as e:
         logger.error(f"[SERVICE] Error processing reaction added event: {e}")
+
+def process_tagging_event(data):
+    """
+    Handles tagging events by notifying the tagged user.
+    """
+    try:
+        post_id = data.get('post_id')
+        tagged_user_ids = data.get('tagged_user_ids', [])
+        post = Post.objects.get(id=post_id)
+        tagged_users = User.objects.filter(id__in=tagged_user_ids)
+
+        for user in tagged_users:
+            create_notification(
+                sender_id=post.author.id,
+                sender_username=post.author.username,
+                receiver_id=user.id,
+                receiver_username=user.username,
+                notification_type='tagged',
+                text=f"You have been tagged in a post titled '{post.title}'."
+            )
+            logger.info(f"[NOTIFICATION] Notified user {user.id} about tagging in post ID {post.id}")
+
+    except Post.DoesNotExist:
+        logger.error(f"[SERVICE] Post with ID {data.get('post_id')} does not exist.")
+    except Exception as e:
+        logger.error(f"[SERVICE] Error processing tagging event: {e}")
 
 def notify_users(event_object, users):
     """

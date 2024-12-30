@@ -1,3 +1,5 @@
+# backend/newsfeed/tasks.py
+
 from celery import shared_task
 from kafka_app.producer import KafkaProducerClient
 import logging
@@ -13,7 +15,6 @@ MODEL_MAP = {
     'Story': 'stories.models.Story',
 }
 
-
 def _dynamic_import(model_path):
     """
     Dynamically import a model class based on its full path.
@@ -24,7 +25,6 @@ def _dynamic_import(model_path):
 
     module = __import__(module_path, fromlist=[model_name])
     return getattr(module, model_name)
-
 
 @shared_task
 def send_newsfeed_event_task(object_id, event_type, model_name):
@@ -59,8 +59,7 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
             }
 
         # Send the constructed message to the NEWSFEED_EVENTS Kafka topic
-        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS',
-                                                'default-newsfeed-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get('NEWSFEED_EVENTS', 'default-newsfeed-topic')
         producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for {model_name} {event_type}: {message}")
 
@@ -68,9 +67,7 @@ def send_newsfeed_event_task(object_id, event_type, model_name):
         logger.error(f"{model_name} with ID {object_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-    finally:
-        producer.close()
-
+    # Removed producer.close()
 
 def _get_instance_data(instance):
     """
@@ -91,3 +88,13 @@ def _get_instance_data(instance):
 
     # Add more fields as needed per model
     return data
+
+from celery.signals import worker_shutdown
+
+@worker_shutdown.connect
+def shutdown_kafka_producer(**kwargs):
+    """
+    Signal handler to close the Kafka producer gracefully when Celery worker shuts down.
+    """
+    producer = KafkaProducerClient()
+    producer.close()

@@ -3,8 +3,6 @@
 import os
 import logging
 import json
-import signal
-import sys
 import time
 from pydantic import BaseModel, ValidationError
 from kafka.errors import KafkaError
@@ -14,9 +12,12 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from cryptography.fernet import Fernet
 
-# Set up Django settings
+# Set up Django settings (this MUST be done before importing any Django models or services)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+# Now initialize Django
 import django
+
 django.setup()
 
 # Import service handlers
@@ -36,6 +37,7 @@ from notifications.services import create_notification
 logger = logging.getLogger(__name__)
 
 
+# Define the Pydantic model for message validation
 class EventData(BaseModel):
     event_type: str
     data: dict
@@ -76,6 +78,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     """
 
     def __init__(self, topics, group_id):
+        # Initialize the base Kafka consumer with the given topics and group ID
         super().__init__(topics, group_id)
         self.handlers = self._load_handlers()
         self.channel_layer = get_channel_layer()
@@ -102,12 +105,14 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     def consume_messages(self):
         while True:
             try:
-                logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
+                logger.info(
+                    f"Started consuming messages from topics: {', '.join(self.topics)}")
                 for message in self.consumer:
                     close_old_connections()
 
                     if not message.value:
-                        logger.warning(f"Received an empty message from topic {message.topic}, skipping.")
+                        logger.warning(
+                            f"Received an empty message from topic {message.topic}, skipping.")
                         continue
 
                     try:
@@ -122,9 +127,11 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                     except ValidationError as e:
                         logger.error(f"Validation error: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
+                        logger.error(f"Failed to process message {message.value}: {e}",
+                                     exc_info=True)
             except KafkaError as e:
-                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
+                             exc_info=True)
                 time.sleep(10)
             except Exception as e:
                 logger.error(f"Unexpected error: {e}", exc_info=True)
@@ -154,10 +161,12 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                 handler(event_data.data)
 
                 # Forward the message to a WebSocket group if applicable
-                group_name = event_data.data.get("group_name", "default")  # Use 'default' if no group_name is provided
+                group_name = event_data.data.get("group_name",
+                                                 "default")  # Use 'default' if no group_name is provided
                 self.send_to_websocket_group(group_name, event_data.data)
             except Exception as e:
-                logger.error(f"Error processing event '{event_type}': {e}", exc_info=True)
+                logger.error(f"Error processing event '{event_type}': {e}",
+                             exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
 
@@ -176,48 +185,76 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     # Handlers for different event types
     def handle_messenger_event(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger", {"event": "New message", "data": data})
+        self.send_to_websocket_group("messenger",
+                                     {"event": "New message", "data": data})
 
     def handle_newsfeed_event(self, data):
         process_newsfeed_event(data)
-        self.send_to_websocket_group("newsfeed", {"event": "Newsfeed updated", "data": data})
+        self.send_to_websocket_group("newsfeed",
+                                     {"event": "Newsfeed updated", "data": data})
 
     def handle_album_event(self, data):
         process_album_event(data)
-        self.send_to_websocket_group("albums", {"event": "New album created", "data": data})
+        self.send_to_websocket_group("albums",
+                                     {"event": "New album created", "data": data})
 
     def handle_comment_event(self, data):
         process_comment_event(data)
-        self.send_to_websocket_group("comments", {"event": "New comment posted", "data": data})
+        self.send_to_websocket_group("comments",
+                                     {"event": "New comment posted", "data": data})
 
     def handle_follow_event(self, data):
         process_follow_event(data)
-        self.send_to_websocket_group("follows", {"event": "New follow event", "data": data})
+        self.send_to_websocket_group("follows",
+                                     {"event": "New follow event", "data": data})
 
     def handle_friend_event(self, data):
         process_friend_event(data)
-        self.send_to_websocket_group("friends", {"event": "New friend added", "data": data})
+        self.send_to_websocket_group("friends",
+                                     {"event": "New friend added", "data": data})
 
     def handle_reaction_event(self, data):
         process_reaction_event(data)
-        self.send_to_websocket_group("reactions", {"event": "New reaction added", "data": data})
+        self.send_to_websocket_group("reactions",
+                                     {"event": "New reaction added", "data": data})
 
     def handle_social_event(self, data):
         process_social_event(data)
-        self.send_to_websocket_group("social", {"event": "New social action", "data": data})
+        # Determine the event for WebSocket based on event_type
+        event_type = data.get('event_type')
+        websocket_event = ""
+        if event_type == 'post_created':
+            websocket_event = "New post created"
+        elif event_type == 'post_updated':
+            websocket_event = "Post updated"
+        elif event_type == 'post_deleted':
+            websocket_event = "Post deleted"
+        elif event_type == 'tagged':
+            websocket_event = "New tag added"
+        elif event_type == 'untagged':
+            websocket_event = "Tag removed"
+        else:
+            websocket_event = f"Social event: {event_type}"
+
+        self.send_to_websocket_group("social",
+                                     {"event": websocket_event, "data": data})
 
     def handle_story_event(self, data):
         process_story_event(data)
-        self.send_to_websocket_group("stories", {"event": "New story shared", "data": data})
+        self.send_to_websocket_group("stories",
+                                     {"event": "New story shared", "data": data})
 
     def handle_tagging_event(self, data):
         process_tagging_event(data)
-        self.send_to_websocket_group("tagging", {"event": "New tag added", "data": data})
+        self.send_to_websocket_group("tagging",
+                                     {"event": "New tag added", "data": data})
 
     def handle_user_event(self, data):
         process_user_event(data)
-        self.send_to_websocket_group("users", {"event": "New user registered", "data": data})
+        self.send_to_websocket_group("users",
+                                     {"event": "New user registered", "data": data})
 
     def handle_notification_event(self, data):
         create_notification(data)
-        self.send_to_websocket_group("notifications", {"event": "New notification", "data": data})
+        self.send_to_websocket_group("notifications",
+                                     {"event": "New notification", "data": data})

@@ -7,80 +7,302 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 logger = logging.getLogger(__name__)
 
 
-class GeneralKafkaConsumer(AsyncWebsocketConsumer):
+class PostConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        """
-        Handles the WebSocket connection initiation.
-        """
-        logger.info("Attempting to connect WebSocket...")
-
-        # Extract group name from the URL parameter
-        self.group_name = self.scope['url_route']['kwargs'].get('group_name', None)
-        if not self.group_name:
-            logger.warning("Connection attempt without group name")
-            await self.close(
-                code=4001)  # Close with 4001 error code (group name missing)
-            return
-
-        user = self.scope['user']
-
-        if not user.is_authenticated:
-            logger.warning("Connection attempt by unauthenticated user")
-            await self.close(
-                code=4001)  # Close with 4001 error code (authentication failed)
-            return
-
-        logger.info(f"User {user.username} is authenticated")
-
-        # Perform permission check
-        if not await self.has_permission(user, self.group_name):
-            logger.warning(
-                f"User {user.username} lacks permission to join group: {self.group_name}")
-            await self.close(
-                code=4003)  # Close with 4003 error code (permission denied)
-            return
-
-        # Join the group if permission is granted
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()  # Accept the WebSocket connection
-        logger.info(f"User {user.username} connected to group: {self.group_name}")
+        self.group_name = 'posts'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
 
     async def disconnect(self, close_code):
-        """
-        Handles WebSocket disconnection.
-        """
-        await self.channel_layer.group_discard(self.group_name,
-                                               self.channel_name)  # Remove from group
-        logger.info(f"User disconnected from group: {self.group_name}")
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
 
     async def kafka_message(self, event):
-        """
-        Receives Kafka messages from the Channels layer and forwards them to the WebSocket.
-        """
-        message = event.get('message', {})
-        logger.debug(f"Received Kafka message for group {self.group_name}: {message}")
+        message = event['message']
+        logger.debug(f"PostConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
 
-        # Send message to the WebSocket client
-        try:
-            await self.send(
-                text_data=json.dumps({'message': message}))  # Send the message
-            logger.debug(
-                f"Message sent to WebSocket from group {self.group_name}: {message}")
-        except Exception as e:
-            logger.error(f"Error sending message to WebSocket client: {e}")
 
-    async def has_permission(self, user, group_name):
-        """
-        Checks if the user has permission to join the group.
-        """
-        if group_name in ['posts', 'albums']:
-            # Allow authenticated users to join 'posts' and 'albums' groups
-            return user.is_authenticated
+class AlbumConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'albums'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
 
-        # Example for user-specific group permission check
-        if group_name.startswith('albums_user_'):
-            group_user_id = group_name.split('_')[-1]
-            return str(user.id) == group_user_id
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
 
-        # Deny access by default
-        return False
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"AlbumConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+# Similarly, implement other consumers for each app
+
+class CommentConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'comments'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"CommentConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class FollowConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'follows'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"FollowConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class FriendConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'friends'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"FriendConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class MessengerConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'messenger'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"MessengerConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class NewsfeedConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'newsfeed'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"NewsfeedConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class ReactionConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'reactions'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"ReactionConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class SocialConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'social'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"SocialConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class StoryConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'stories'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"StoryConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class TaggingConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'tagging'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"TaggingConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class UserConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'users'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"UserConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))
+
+
+class NotificationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = 'notifications'
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        logger.info(f"WebSocket connected for group: {self.group_name}")
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+        logger.info(f"WebSocket disconnected from group: {self.group_name}")
+
+    async def kafka_message(self, event):
+        message = event['message']
+        logger.debug(f"NotificationConsumer received message: {message}")
+        await self.send(text_data=json.dumps(message))

@@ -1,11 +1,11 @@
+# backend/social/views.py
+
 from core.choices import VisibilityChoices
 from rest_framework import viewsets, permissions
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import Post
 from .serializers import PostSerializer
-from .tasks import process_kafka_message, \
-    send_post_event_to_kafka  # Import the Celery task
 from core.permissions import IsAuthorOrReadOnly
 
 
@@ -35,12 +35,10 @@ class PostViewSet(viewsets.ModelViewSet):
     )
     def perform_create(self, serializer):
         """
-        Save the post with the user set to the current user,
-        then trigger the Celery task to handle any background processing.
+        Save the post with the user set to the current user.
+        Kafka event is handled via Django signals.
         """
-        post = serializer.save(user=self.request.user)
-        # Trigger the Celery task to send an event to Kafka
-        send_post_event_to_kafka.delay(post.id, 'created')
+        serializer.save(user=self.request.user)
 
     @extend_schema(
         parameters=[
@@ -54,9 +52,10 @@ class PostViewSet(viewsets.ModelViewSet):
         that only the user can edit their post.
         """
         post = self.get_object()
-        if post.user != self.request.user:  # Changed `author` to `user`
+        if post.user != self.request.user:
             raise permissions.PermissionDenied(
-                "You do not have permission to edit this post.")
+                "You do not have permission to edit this post."
+            )
 
         serializer.save()
 
@@ -70,8 +69,9 @@ class PostViewSet(viewsets.ModelViewSet):
         """
         Delete the post and ensure that only the user can delete their post.
         """
-        if instance.user != self.request.user:  # Changed `author` to `user`
+        if instance.user != self.request.user:
             raise permissions.PermissionDenied(
-                "You do not have permission to delete this post.")
+                "You do not have permission to delete this post."
+            )
 
         instance.delete()

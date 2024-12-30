@@ -17,8 +17,13 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=Post)
 def post_saved(sender, instance, created, **kwargs):
     try:
+        # Define specific event types
+        if created:
+            event_type = 'post_created'
+        else:
+            event_type = 'post_updated'
+
         # Trigger the Celery task to send the event to Kafka
-        event_type = 'created' if created else 'updated'
         send_post_event_to_kafka.delay(instance.id, event_type)
         logger.info(
             f"Triggered Celery task for post {event_type} event with ID {instance.id}")
@@ -81,8 +86,11 @@ def post_saved(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=Post)
 def post_deleted(sender, instance, **kwargs):
     try:
+        # Define specific event type
+        event_type = 'post_deleted'
+
         # Trigger the Celery task to send the deleted event to Kafka
-        send_post_event_to_kafka.delay(instance.id, 'deleted')
+        send_post_event_to_kafka.delay(instance.id, event_type)
         logger.info(
             f"Triggered Celery task for deleted post event with ID {instance.id}")
 
@@ -95,7 +103,7 @@ def post_deleted(sender, instance, **kwargs):
                 'posts_updates',
                 {
                     'type': 'post_message',
-                    'event': 'deleted',
+                    'event': event_type,
                     'post': str(instance.id),
                     'title': instance.title,
                     'content': instance.content,
@@ -112,7 +120,7 @@ def post_deleted(sender, instance, **kwargs):
                     f'user_{friend.id}_updates',
                     {
                         'type': 'post_message',
-                        'event': 'deleted',
+                        'event': event_type,
                         'post': str(instance.id),
                         'title': instance.title,
                         'content': instance.content,
@@ -127,14 +135,14 @@ def post_deleted(sender, instance, **kwargs):
                 f'user_{instance.author.id}_updates',
                 {
                     'type': 'post_message',
-                    'event': 'deleted',
+                    'event': event_type,
                     'post': str(instance.id),
                     'title': instance.title,
                     'content': instance.content,
                 }
             )
             logger.info(
-                f"Real-time delete notification sent to the author for post ID {instance.id}")
+                f"Real-time delete notification sent to the author for private post {event_type} event with ID {instance.id}")
 
     except Exception as e:
         logger.error(
@@ -164,6 +172,15 @@ def tagged_item_saved(sender, instance, created, **kwargs):
                     }
                 )
                 logger.info(f"Real-time tagging update sent for post ID {post.id}")
+
+                # Trigger the Celery task to send the tagging event to Kafka
+                send_post_event_to_kafka.delay(
+                    post.id,
+                    'tagged' if created else 'untagged',
+                    tagged_user_ids=[instance.tagged_user_id]
+                )
+                logger.info(
+                    f"Triggered Celery task for tagging event '{'tagged' if created else 'untagged'}' on post ID {post.id}")
 
     except Exception as e:
         logger.error(

@@ -5,9 +5,10 @@ import logging
 from django.conf import settings
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from websocket.consumers import GeneralKafkaConsumer  # Import for generating group names
+from utils.group_names import get_user_group_name  # New import
 
 logger = logging.getLogger('users')
+
 
 @shared_task
 def process_user_event_task(user_id, event_type):
@@ -59,7 +60,7 @@ def send_user_websocket_notification(user, event_type):
         event_type (str): The type of event ('new_user', 'profile_update', 'deleted_user').
     """
     try:
-        user_group_name = GeneralKafkaConsumer.generate_group_name(user.id)
+        user_group_name = get_user_group_name(user.id)  # Use utility function
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             user_group_name,

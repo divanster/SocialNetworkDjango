@@ -165,19 +165,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
-    command: sh -c "cd /app/kafka_app && python consumer.py"
+    command: sh -c "python manage.py run_kafka_consumer"
     volumes:
       - ./backend:/app:cached
     depends_on:
       kafka:
         condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - ./backend/.env
     healthcheck:
-      test: ["CMD-SHELL", "test -f /app/kafka_app/consumer.py || exit 1"]
+      test: ["CMD-SHELL", "python manage.py kafka_consumer_healthcheck"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
     restart: always
     dns:
       - 8.8.8.8
