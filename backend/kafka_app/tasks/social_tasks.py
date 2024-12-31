@@ -1,27 +1,33 @@
-# backend/social/tasks.py
+# backend/kafka_app/tasks/social_tasks.py
 
 import logging
 from celery import shared_task
-
-from social.models import Post
-from core.utils import get_kafka_producer
+from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
-import json
+from backend.core.task_utils import BaseTask
+from kafka_app.producer import KafkaProducerClient
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=5, default_retry_delay=10)
-def send_post_event_to_kafka(self, post_id, event_type):
+@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=10)
+def process_post_event_task(self, post_id, event_type):
     """
     Celery task to send post events to Kafka, ensuring all UUID fields become strings.
-    """
-    producer = get_kafka_producer()
-    logger.info(f"Producer instance type: {type(producer)}")
-    logger.info("Obtained KafkaProducerClient instance.")
 
+    Args:
+        self: Celery task instance.
+        post_id (int): The ID of the post.
+        event_type (str): Type of event (e.g., "created", "updated", "deleted").
+
+    Returns:
+        None
+    """
     try:
+        from social.models import Post  # Local import to avoid circular dependencies
+        producer = KafkaProducerClient()
+
         if event_type == 'deleted':
             # Convert post_id (UUID) to str
             message = {
@@ -42,7 +48,7 @@ def send_post_event_to_kafka(self, post_id, event_type):
                 "event": event_type,
             }
 
-        kafka_topic = settings.KAFKA_TOPICS.get('POST_EVENTS', 'default-post-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get('SOCIAL_EVENTS', 'social-events')
 
         # Send message using send_message method
         producer.send_message(kafka_topic, message)
@@ -53,10 +59,10 @@ def send_post_event_to_kafka(self, post_id, event_type):
         logger.error(f"Post with ID {post_id} does not exist.")
     except AttributeError as e:
         logger.error(f"AttributeError: {e}")
-        self.retry(exc=e)
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
+    except KafkaTimeoutError as e:
+        logger.error(f"Kafka timeout error while sending post {event_type}: {e}")
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
         logger.error(f"Error sending Kafka message for post {post_id}: {e}")
-        self.retry(exc=e)
-    # Do not close the producer to maintain Singleton instance
-
-# Removed the consume_post_events task as consumers should run independently
+        self.retry(exc=e, countdown=60)

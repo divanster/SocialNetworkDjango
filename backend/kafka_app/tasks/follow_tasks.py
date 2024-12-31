@@ -1,31 +1,33 @@
-# backend/follows/tasks.py
+# backend/kafka_app/tasks/follow_tasks.py
 
-from celery import shared_task
-from kafka_app.producer import KafkaProducerClient
-from django.conf import settings
 import logging
+from celery import shared_task
+from kafka.errors import KafkaTimeoutError
+from django.conf import settings
+
+from backend.core.task_utils import BaseTask
+from kafka_app.producer import KafkaProducerClient
 
 logger = logging.getLogger(__name__)
 
-@shared_task(bind=True, max_retries=3)
+
+@shared_task(bind=True, base=BaseTask, max_retries=3, default_retry_delay=60)
 def process_follow_event_task(self, follow_id, event_type):
     """
     Celery task to process follow events and send them to Kafka.
 
-    This function attempts to send information about a follow event (created or deleted)
-    to a Kafka topic using a Kafka producer. In case of failure, it retries the operation.
-
     Args:
+        self: Celery task instance.
         follow_id (int): ID of the follow event.
         event_type (str): Type of the event, either 'created' or 'deleted'.
 
     Raises:
         self.retry: Retries the task in case of an exception.
     """
-    from .models import Follow  # Move model import inside the function to avoid AppRegistryNotReady error
-    producer = KafkaProducerClient()
-
     try:
+        from follows.models import Follow  # Local import to avoid AppRegistryNotReady errors
+        producer = KafkaProducerClient()
+
         # Construct the message based on the event type
         if event_type == 'deleted':
             message = {
@@ -45,19 +47,18 @@ def process_follow_event_task(self, follow_id, event_type):
             }
 
         # Get Kafka topic from settings for better flexibility
-        kafka_topic = settings.KAFKA_TOPICS.get('FOLLOW_EVENTS', 'default-follow-topic')
+        kafka_topic = settings.KAFKA_TOPICS.get('FOLLOW_EVENTS', 'follow-events')
 
         # Send message to Kafka
         producer.send_message(kafka_topic, message)
 
-        logger.info(
-            f"[KAFKA] Successfully sent follow {event_type} event to topic '{kafka_topic}': {message}")
+        logger.info(f"[KAFKA] Successfully sent follow {event_type} event to topic '{kafka_topic}': {message}")
 
     except Follow.DoesNotExist:
-        logger.error(
-            f"[KAFKA] Follow with ID {follow_id} does not exist. Cannot send {event_type} event.")
+        logger.error(f"[KAFKA] Follow with ID {follow_id} does not exist. Cannot send {event_type} event.")
+    except KafkaTimeoutError as e:
+        logger.error(f"[KAFKA] Kafka timeout error while sending follow {event_type} event for follow ID {follow_id}: {e}")
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(
-            f"[KAFKA] Error sending follow {event_type} event to Kafka for follow ID {follow_id}: {e}")
-        # Retry the task in case of failure, with exponential backoff
-        raise self.retry(exc=e, countdown=60)
+        logger.error(f"[KAFKA] Error sending follow {event_type} event to Kafka for follow ID {follow_id}: {e}")
+        self.retry(exc=e, countdown=60)

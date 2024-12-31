@@ -1,8 +1,8 @@
-# backend/comments/tasks.py
+# backend/kafka_app/tasks/comment_tasks.py
 
 import logging
 from celery import shared_task
-
+from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
 from backend.core.task_utils import BaseTask
@@ -11,13 +11,22 @@ from kafka_app.producer import KafkaProducerClient
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, base=BaseTask)
-def send_comment_event_to_kafka(self, comment_id, event_type):
+@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
+def process_comment_event_task(self, comment_id, event_type):
     """
-    Celery task to send comment events to Kafka.
+    Celery task to process comment events and send messages to Kafka.
+
+    Args:
+        self: Celery task instance.
+        comment_id (str): The ID of the comment.
+        event_type (str): Type of event to be processed (e.g., "created", "updated", "deleted").
+
+    Returns:
+        None
     """
     try:
-        from comments.models import Comment
+        from comments.models import Comment  # Local import to prevent circular dependencies
+        producer = KafkaProducerClient()
 
         if event_type == 'deleted':
             message = {
@@ -35,13 +44,15 @@ def send_comment_event_to_kafka(self, comment_id, event_type):
                 "event": event_type,
             }
 
-        kafka_topic = settings.KAFKA_TOPICS.get('COMMENT_EVENTS',
-                                                'default-comment-topic')
-        KafkaProducerClient.send_message(kafka_topic, message)
+        kafka_topic = settings.KAFKA_TOPICS.get('COMMENT_EVENTS', 'comment-events')
+        producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for comment {event_type}: {message}")
 
     except Comment.DoesNotExist:
         logger.error(f"Comment with ID {comment_id} does not exist.")
+    except KafkaTimeoutError as e:
+        logger.error(f"Kafka timeout error while sending comment {event_type}: {e}")
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-        self.retry(exc=e)
+        self.retry(exc=e, countdown=60)

@@ -1,21 +1,32 @@
-# backend/tagging/tasks.py
+# backend/kafka_app/tasks/tagging_tasks.py
 
 import logging
 from celery import shared_task
-
+from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
+from backend.core.task_utils import BaseTask
 from kafka_app.producer import KafkaProducerClient
 
 logger = logging.getLogger(__name__)
 
-@shared_task(bind=True, max_retries=5, default_retry_delay=60)
+
+@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
 def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
     """
     Celery task to send tagging events to Kafka.
+
+    Args:
+        self: Celery task instance.
+        tagged_item_id (int): The ID of the TaggedItem.
+        event_type (str): Type of event (e.g., "created", "deleted").
+
+    Returns:
+        None
     """
     try:
-        from .models import TaggedItem  # Local import to prevent circular dependencies
+        from tagging.models import TaggedItem  # Local import to prevent circular dependencies
+        producer = KafkaProducerClient()
 
         if event_type == 'deleted':
             message = {
@@ -34,17 +45,21 @@ def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
                 "event": event_type,
             }
 
-        kafka_topic = settings.KAFKA_TOPICS.get('TAGGING_EVENTS', 'default-tagging-topic')
-        KafkaProducerClient.send_message(kafka_topic, message)
+        kafka_topic = settings.KAFKA_TOPICS.get('TAGGING_EVENTS', 'tagging-events')
+        producer.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for tagging event {event_type}: {message}")
 
     except TaggedItem.DoesNotExist:
         logger.error(f"TaggedItem with ID {tagged_item_id} does not exist.")
+    except KafkaTimeoutError as e:
+        logger.error(f"Kafka timeout error while sending tagging {event_type}: {e}")
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-        self.retry(exc=e)
+        self.retry(exc=e, countdown=60)
 
-@shared_task(bind=True, max_retries=5, default_retry_delay=60)
+
+@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
 def consume_tagging_events(self):
     """
     Celery task to consume tagging events from Kafka.
@@ -55,4 +70,4 @@ def consume_tagging_events(self):
         # Implement Kafka consumer logic here if needed
     except Exception as e:
         logger.error(f"Error consuming tagging events: {e}")
-        self.retry(exc=e)
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
