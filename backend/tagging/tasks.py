@@ -1,60 +1,58 @@
 # backend/tagging/tasks.py
 
-from celery import shared_task
-from kafka_app.producer import KafkaProducerClient
-from django.conf import settings
 import logging
-import json
+from celery import shared_task
+
+from django.conf import settings
+
+from kafka_app.producer import KafkaProducerClient
 
 logger = logging.getLogger(__name__)
 
-
-@shared_task
-def send_tagging_event_to_kafka(tagged_item_id, event_type):
+@shared_task(bind=True, max_retries=5, default_retry_delay=60)
+def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
     """
     Celery task to send tagging events to Kafka.
     """
-    from .models import TaggedItem  # Import the model inside the task
-
-    producer = KafkaProducerClient()
-
     try:
+        from .models import TaggedItem  # Local import to prevent circular dependencies
+
         if event_type == 'deleted':
             message = {
                 "tagged_item_id": tagged_item_id,
                 "event": "deleted"
             }
         else:
-            tagged_item = TaggedItem.objects.get(id=tagged_item_id)
+            tagged_item = TaggedItem.objects.select_related('tagged_user', 'tagged_by').get(id=tagged_item_id)
             message = {
                 "tagged_item_id": tagged_item.id,
-                "tagged_user_id": tagged_item.tagged_user.id,
+                "tagged_user_id": str(tagged_item.tagged_user.id),
                 "content_type": str(tagged_item.content_type),
-                "object_id": tagged_item.object_id,
-                "tagged_by_id": tagged_item.tagged_by.id,
-                "created_at": str(tagged_item.created_at),
+                "object_id": str(tagged_item.object_id),
+                "tagged_by_id": str(tagged_item.tagged_by.id),
+                "created_at": tagged_item.created_at.isoformat(),
                 "event": event_type,
             }
 
-        # Get Kafka topic from settings
         kafka_topic = settings.KAFKA_TOPICS.get('TAGGING_EVENTS', 'default-tagging-topic')
-        producer.send_message(kafka_topic, message)
+        KafkaProducerClient.send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for tagging event {event_type}: {message}")
+
     except TaggedItem.DoesNotExist:
         logger.error(f"TaggedItem with ID {tagged_item_id} does not exist.")
     except Exception as e:
         logger.error(f"Error sending Kafka message: {e}")
-    finally:
-        producer.close()  # Ensure producer is closed to free resources.
+        self.retry(exc=e)
 
-
-@shared_task
-def consume_tagging_events():
+@shared_task(bind=True, max_retries=5, default_retry_delay=60)
+def consume_tagging_events(self):
     """
     Celery task to consume tagging events from Kafka.
     """
     try:
-        # Placeholder implementation, should be updated based on Kafka client
+        # Placeholder implementation
         logger.warning("The consume_tagging_events task is not implemented.")
+        # Implement Kafka consumer logic here if needed
     except Exception as e:
         logger.error(f"Error consuming tagging events: {e}")
+        self.retry(exc=e)
