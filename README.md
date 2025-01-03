@@ -1,327 +1,489 @@
-SocialNetworkDjango Documentation  Project Technologies Documentation
-This document provides an overview of all the technologies integrated into the project. It explains what each technology is, its purpose, and how it contributes to the project's functionality.
+# SocialNetworkDjango
 
-Table of Contents
-1. Python and Django
-2. django-environ
-3. Django REST Framework (DRF)
-4. Simple JWT
-5. Djoser
-6. CORS Headers
-7. Django Channels
-8. django-extensions
-9. drf-spectacular
-10. Custom Django Apps
-11. django-celery-beat
-12. Celery
-13. Redis
-14. WhiteNoise
-15. Sentry SDK
-16. PostgreSQL
-17. Email Backend (SMTP with Gmail)
-18. Logging Configuration
-19. Security Enhancements
-20. Caching
-21. Error Tracking
-22. Testing Utilities
+**A feature-rich social networking application built with Django, React, GraphQL, Kafka, and Celery, offering real-time messaging, notifications, and seamless user interactions.**
 
-Python and Django
-* Python: A high-level, interpreted programming language known for its readability and versatility.
-* Django: A high-level Python web framework that encourages rapid development and clean, pragmatic design.
-Usage in Project:
-* Provides the foundational framework for building the web application.
-* Enables rapid development with built-in functionalities for database interaction, user authentication, and more.
+![SocialNetworkDjango Banner](https://your-banner-image-url.com/banner.png) <!-- Replace with your actual banner image URL -->
 
-django-environ
-* Purpose: Simplifies the management of environment variables in Django projects.
-* Usage:
-    * Reads environment variables from a .env file.
-    * Helps in keeping sensitive information like secret keys and database passwords out of the codebase.
-Benefits:
-* Enhances security by avoiding hardcoding sensitive information.
-* Makes configuration flexible across different environments (development, testing, production).
+## Table of Contents
 
-Django REST Framework (DRF)
-* Purpose: A toolkit for building Web APIs with Django.
-* Usage:
-    * Provides serializers for converting complex data types to JSON.
-    * Offers views and viewsets for handling API requests.
-    * Includes built-in authentication and permission classes.
-Features:
-* Serialization: Easily convert model instances to and from JSON.
-* Authentication: Supports various authentication methods.
-* Throttling and Pagination: Controls request rates and paginates responses.
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+  - [Using Docker](#using-docker)
+  - [Manual Setup](#manual-setup)
+- [Running the Application](#running-the-application)
+  - [With Docker Compose](#with-docker-compose)
+  - [Without Docker](#without-docker)
+- [Environment Variables](#environment-variables)
+- [API Documentation](#api-documentation)
+- [Running Tests](#running-tests)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+- [Acknowledgments](#acknowledgments)
 
-Simple JWT
-* Purpose: Implements JSON Web Token (JWT) authentication for DRF.
-* Usage:
-    * Secures API endpoints by requiring JWTs for authentication.
-    * Issues and validates tokens during user authentication processes.
-Features:
-* Token Rotation: Enhances security by rotating refresh tokens.
-* Blacklisting: Invalidates tokens after logout or expiration.
-* Customizable: Configurable token lifetimes and algorithms.
+---
 
-Djoser
-* Purpose: Provides a set of views to handle basic actions like registration, login, logout, password reset, and account activation.
-* Usage:
-    * Simplifies the implementation of user authentication endpoints.
-    * Works seamlessly with DRF and Simple JWT.
-Features:
-* Email Notifications: Sends emails for account activation and password resets.
-* Customizable Serializers: Allows for custom user models and fields.
-* Token Management: Integrates with JWT for token-based authentication.
+## Features
 
-CORS Headers
-* Package: django-cors-headers
-* Purpose: Handles Cross-Origin Resource Sharing (CORS) in Django applications.
-* Usage:
-    * Allows the backend to accept requests from different origins.
-    * Essential when the frontend and backend are hosted on different domains or ports.
-Benefits:
-* Enables integration with frontend applications like React or Angular.
-* Provides security by specifying allowed origins.
+- **User Authentication:** Secure registration, login, and logout using JWT.
+- **Social Interactions:**
+  - Create, edit, and delete posts.
+  - Follow and unfollow users.
+  - Like and comment on posts.
+- **Real-Time Communication:**
+  - Real-time messaging between users via WebSockets.
+  - Instant notifications for events like new messages, comments, and likes.
+- **Media Management:** Upload and manage images for posts and user profiles.
+- **Event-Driven Architecture:**
+  - Kafka integration for efficient event handling.
+  - Celery for asynchronous task processing.
+- **API Documentation:**
+  - Comprehensive GraphQL API using Graphene.
+  - REST API documentation with Swagger UI.
+- **Security:**
+  - Implemented Content Security Policy (CSP).
+  - Robust security settings for production environments.
+- **CI/CD:** Automated workflows with GitHub Actions for continuous integration and deployment.
 
-Django Channels
-* Purpose: Adds support for handling WebSockets and background tasks in Django.
-* Usage:
-    * Facilitates real-time features like chat applications, notifications, and live updates.
-    * Manages asynchronous tasks alongside traditional synchronous views.
-Features:
-* Channel Layers: Allows communication between different instances of the application.
-* Redis Integration: Uses Redis as the message broker for handling channels.
-* Backward Compatibility: Works with existing Django applications.
+---
 
-django-extensions
-* Purpose: Provides custom extensions, management commands, and tools for Django projects.
-* Usage:
-    * Enhances development productivity with additional commands.
-    * Offers utilities like shell_plus, which auto-imports models into the Django shell.
-Features:
-* Graph Models: Visualize model relationships.
-* Runserver Plus: An improved development server with features like SSL support.
-* Database Commands: Additional commands for database management.
+## Technology Stack
 
-drf-spectacular
-* Purpose: Generates OpenAPI 3.0 schemas for your DRF API.
-* Usage:
-    * Automates API documentation generation.
-    * Integrates with Swagger UI and ReDoc for interactive documentation.
-Benefits:
-* Keeps API documentation up-to-date with minimal effort.
-* Improves collaboration by providing clear API specifications.
+- **Backend:**
+  - Django
+  - Django REST Framework
+  - GraphQL (Graphene Django)
+  - Channels (WebSockets)
+  - Celery
+  - Kafka
+  - PostgreSQL
+  - Redis
+- **Frontend:**
+  - React
+  - Redux
+  - Bootstrap
+  - React Router
+- **DevOps:**
+  - Docker & Docker Compose
+  - GitHub Actions
+- **Others:**
+  - Sentry for error tracking
+  - Elasticsearch (optional, commented out in settings)
+  - Twilio (optional, commented out in settings)
+  - FCM for push notifications (optional, commented out in settings)
 
-Custom Django Apps
-* List of Apps:
-    * users: Custom user model and authentication logic.
-    * follows: Manages following relationships between users.
-    * reactions: Handles user reactions like likes and dislikes.
-    * stories: Implements ephemeral content similar to social media stories.
-    * social: Core social networking functionalities.
-    * messenger: Real-time messaging between users.
-    * newsfeed: Aggregates content for user feeds.
-    * pages: Allows creation and management of pages or profiles.
-    * friends: Manages friend requests and relationships.
-    * comments: Enables commenting on posts or content.
-    * notifications: Sends in-app notifications to users.
-    * albums: Manages media albums for users.
-    * core: Contains shared utilities and base configurations.
-Purpose:
-* Modularizes the application for better maintainability.
-* Encapsulates specific features and functionalities.
+---
 
-django-celery-beat
-* Purpose: Schedules periodic tasks in Django using Celery.
-* Usage:
-    * Manages scheduled tasks through the Django admin interface.
-    * Stores task schedules in the database.
-Features:
-* Dynamic Scheduling: Modify task schedules without restarting the server.
-* Admin Integration: Easy management of tasks via Django admin.
+## Prerequisites
 
-Celery
-* Purpose: An asynchronous task queue for executing tasks outside the HTTP request-response cycle.
-* Usage:
-    * Offloads long-running tasks like sending emails, generating reports, or processing images.
-    * Works with brokers like Redis to manage task queues.
-Benefits:
-* Improves application performance by handling tasks asynchronously.
-* Scalable and efficient in handling numerous tasks.
+Ensure you have the following installed on your machine:
 
-Redis
-* Purpose: An in-memory data structure store used as a database, cache, and message broker.
-* Usage in Project:
-    * Message Broker for Celery: Facilitates communication between Celery workers and the application.
-    * Channel Layer for Django Channels: Manages real-time communication channels.
-    * Caching Backend: Stores frequently accessed data to reduce database load.
-Benefits:
-* High-speed data access.
-* Supports advanced data structures.
-* Scalable for handling large amounts of data.
+- **Operating System:** macOS, Linux, or Windows.
+- **Docker:** [Install Docker](https://www.docker.com/get-started)
+- **Docker Compose:** Comes bundled with Docker Desktop.
+- **Git:** [Install Git](https://git-scm.com/downloads)
 
-WhiteNoise
-* Purpose: Simplifies static file serving for Django applications, especially in production.
-* Usage:
-    * Serves static files directly from the Django application.
-    * Compresses files and adds appropriate headers for caching.
-Benefits:
-* Eliminates the need for external services or servers for static files.
-* Enhances performance by serving compressed files.
+*Note: The project is configured for `linux/arm64` architecture. Ensure your Docker setup supports this architecture.*
 
-Sentry SDK
-* Purpose: Provides real-time error tracking and performance monitoring.
-* Usage:
-    * Captures exceptions and errors in the application.
-    * Sends alerts and notifications to developers.
-Features:
-* Detailed Stack Traces: Helps in debugging issues quickly.
-* Performance Metrics: Monitors application performance and bottlenecks.
-* Third-Party Integrations: Works with various tools and services for enhanced monitoring.
+---
 
-PostgreSQL
-* Purpose: An open-source relational database system.
-* Usage:
-    * Stores persistent data for the application.
-    * Supports advanced data types and indexing.
-Benefits:
-* Reliable and robust database management.
-* ACID-compliant transactions.
-* Scalable for large applications.
+## Installation
 
-Email Backend (SMTP with Gmail)
-* Purpose: Enables the application to send emails.
-* Usage:
-    * Uses Gmail's SMTP server for sending emails like account activation and password resets.
-    * Configured with TLS for secure communication.
-Features:
-* Email Notifications: Keeps users informed about account activities.
-* Secure Transmission: Protects data during email transmission.
+### Using Docker
 
-Logging Configuration
-* Purpose: Captures application logs for monitoring and debugging.
-* Usage:
-    * Logs warnings and errors to the console and a file.
-    * Configured to log messages from Django and Channels.
-Benefits:
-* Helps in diagnosing issues.
-* Keeps a record of application behavior over time.
+Docker simplifies the setup by containerizing all services.
 
-Security Enhancements
-* Purpose: Protects the application in production environments.
-* Usage:
-    * SECURE_SSL_REDIRECT: Forces HTTPS connections.
-    * CSRF and Session Cookies: Secured with HTTPS.
-    * HTTP Strict Transport Security (HSTS): Enforces secure connections over time.
-    * X-Frame-Options: Prevents clickjacking attacks.
-    * Content Security Policy: Mitigates cross-site scripting (XSS) attacks.
-Benefits:
-* Enhances overall security posture.
-* Complies with best practices and standards.
+1. **Clone the Repository:**
 
-Caching
-* Backend: Uses Redis for caching.
-* Purpose: Speeds up data retrieval and reduces database load.
-* Usage:
-    * Stores frequently accessed data in memory.
-    * Configurable cache timeout and invalidation.
-Benefits:
-* Improves application performance.
-* Scalable caching solution.
+   ```bash
+   git clone https://github.com/yourusername/SocialNetworkDjango.git
+   cd SocialNetworkDjango
+   ```
 
-Error Tracking
-* Tools: Sentry SDK and logging.
-* Purpose: Monitors and reports errors in real-time.
-* Usage:
-    * Captures exceptions and sends them to Sentry.
-    * Logs warnings and errors for review.
-Benefits:
-* Proactive error detection.
-* Faster resolution of issues.
+2. **Create Environment Variables:**
 
-Testing Utilities
-* Custom Management Commands:
-    * NonInteractiveMigrationQuestioner: Automates migrations during testing.
-* Purpose: Streamlines the testing process.
-* Usage:
-    * Automates database migrations without manual intervention.
-    * Ensures tests run smoothly.
-Benefits:
-* Saves time during testing.
-* Reduces human error.
+   Duplicate the `.env.example` file:
 
-## Technical Stack
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
 
-1. Backend:
+   Edit `backend/.env` with your configurations.
 
-    •	Django: Serves as the primary backend framework, facilitating rapid development with built-in ORM, authentication, and admin panel.
-    •	Django REST Framework (DRF): Provides robust API endpoints with features like serialization, authentication, and permission management.
-    •	PostgreSQL: Relational database used for storing user data, posts, interactions, and other structured data.
-    •	Django Channels: Adds support for handling WebSockets and real-time functionalities such as notifications and messaging.
-    •	Celery + Redis: Celery handles asynchronous task queues (e.g., sending emails, background jobs), while Redis is used as the message broker for Celery and the channel layer for real-time communication.
-    •	JWT Authentication (Simple JWT): Implements secure token-based authentication for user sessions in API interactions.
-    •	Sentry SDK: Monitors real-time error tracking and performance logging to ensure system health.
+3. **Build and Start Services:**
 
-2. Security & Configuration:
+   ```bash
+   docker-compose up --build
+   ```
 
-    •	django-environ: Manages environment variables, improving security by keeping sensitive data like keys and passwords outside the codebase.
-    •	CORS Headers (django-cors-headers): Handles Cross-Origin Resource Sharing (CORS) to allow communication between frontend and backend.
-    •	Security Enhancements: Includes HTTPS redirection, Content Security Policy (CSP), HSTS, and CSRF protection to secure the application in production environments.
+4. **Services Included:**
 
-3. Asynchronous & Task Scheduling:
+   - `db`: PostgreSQL database.
+   - `redis`: Redis server for caching and Celery broker.
+   - `zookeeper` & `kafka`: Kafka setup for event handling.
+   - `web`: Django backend (ASGI) with Uvicorn.
+   - `celery-worker`: Celery worker for async tasks.
+   - `kafka-consumer`: Kafka consumer service.
+   - `frontend`: React frontend.
 
-    •	Celery + django-celery-beat: Celery executes background tasks, while django-celery-beat schedules periodic tasks via the Django admin panel.
+5. **Access the Application:**
 
-4. Static Files & Caching:
+   - **Frontend:** [http://localhost:3000](http://localhost:3000)
+   - **Backend API:** [http://localhost:8000/api/v1](http://localhost:8000/api/v1)
+   - **GraphQL Playground:** [http://localhost:8000/graphql](http://localhost:8000/graphql)
+   - **API Documentation:** [http://localhost:8000/schema/swagger-ui/](http://localhost:8000/schema/swagger-ui/)
 
-    •	WhiteNoise: Simplifies static file serving for Django applications, compressing files and optimizing performance for production.
-    •	Redis: Used as the caching backend to store frequently accessed data, improving performance and reducing database load.
+### Manual Setup
 
-5. API Documentation:
+For those preferring a non-Docker setup:
 
-    •	drf-spectacular: Automatically generates OpenAPI 3.0-compliant API documentation for easy collaboration and integration with frontends.
+#### Backend Setup
 
-6. Logging & Monitoring:
+1. Navigate to Backend Directory:
 
-    •	Logging Configuration: Logs errors, warnings, and key application events, which is crucial for debugging and monitoring.
-    •	Sentry SDK: Provides real-time error tracking and performance monitoring, alerting developers to issues as they occur.
+   ```bash
+   cd backend
+   ```
 
-7. Email & Notifications:
+2. Create and Activate Virtual Environment:
 
-    •	SMTP with Gmail: Enables the backend to send transactional emails like account activation and password reset notifications using Gmail’s SMTP server.
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-8. Containerization & Deployment:
+3. Install Dependencies:
 
-    •	Docker: Containerizes the entire application stack, making it easy to deploy, scale, and maintain consistency across development, staging, and production environments.
+   ```bash
+   pip install -r requirements.txt
+   pip install -r requirements.dev.txt
+   ```
 
-9. Testing & Development Tools:
+4. Configure Environment Variables:
 
-    •	django-extensions: Adds extra management commands and tools that streamline development (e.g., shell_plus, custom database commands).
-    •	Custom Management Commands: Automates database migrations and testing routines for smoother CI/CD pipelines.
+   ```bash
+   cp .env.example .env
+   ```
 
-10. Frontend:
+   Edit `backend/.env` with your settings.
 
-     •	React: JavaScript library for building the user interface.
-     •	React Router: For navigation between different views.
-     •	Redux: For state management.
-     •	Axios: For making API requests.
+5. Apply Migrations:
 
-11. Mobile App:
+   ```bash
+   python manage.py migrate
+   ```
 
-     •	React Native: Framework for building cross-platform mobile apps.
-     •	React Navigation: For handling navigation in the mobile app.
-     •	Redux: For state management in the mobile app.
-     •	Axios: For API interactions.
+6. Run the Development Server:
 
-12. DevOps:
+   ```bash
+   python manage.py runserver
+   ```
 
-     •	GitHub Actions: For Continuous Integration/Continuous Deployment (CI/CD).
-     •	Docker: Ensures consistency across different environments.
-     •	Heroku: For hosting the backend API.
-     •	Netlify/Vercel: For hosting the frontend application.
+#### Frontend Setup
 
-Installation and Setup
+1. Navigate to Frontend Directory:
 
-Clone the Repository
-```sh
-git clone https://github.com/your-username/SocialNetworkDjango.git
-cd SocialNetworkDjango
+   ```bash
+   cd frontend
+   ```
+
+2. Install Dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Configure Environment Variables:
+
+   Create a `.env` file in the frontend directory:
+
+   ```env
+   REACT_APP_API_URL=http://localhost:8000/api/v1
+   REACT_APP_WEBSOCKET_URL=ws://localhost:8000/ws
+   CHOKIDAR_USEPOLLING=true
+   NODE_OPTIONS=--openssl-legacy-provider
+   ```
+
+4. Start the Development Server:
+
+   ```bash
+   npm start
+   ```
+
+---
+
+## Running the Application
+
+### With Docker Compose
+
+Ensure all services are up and running:
+
+```bash
+docker-compose up --build
+```
+
+Detach Mode: Run containers in the background.
+
+```bash
+docker-compose up --build -d
+```
+
+### Without Docker
+
+#### Backend
+
+1. Activate Virtual Environment:
+
+   ```bash
+   source backend/venv/bin/activate
+   ```
+
+2. Run Django Server:
+
+   ```bash
+   python manage.py runserver
+   ```
+
+#### Celery Worker
+
+In a separate terminal:
+
+```bash
+source backend/venv/bin/activate
+celery -A config worker --loglevel=info
+```
+
+#### Kafka Consumer
+
+In another terminal:
+
+```bash
+source backend/venv/bin/activate
+python manage.py run_kafka_consumer
+```
+
+#### Frontend
+
+1. Navigate to Frontend Directory:
+
+   ```bash
+   cd frontend
+   ```
+
+2. Start React Server:
+
+   ```bash
+   npm start
+   ```
+
+---
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+```env
+# Django Settings
+DJANGO_SECRET_KEY=your-secret-key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1,web,backend
+
+# Database Settings
+POSTGRES_DB=app_db
+POSTGRES_USER=app_user
+POSTGRES_PASSWORD=app_password
+DB_HOST=db
+DB_PORT=5432
+
+# Redis Settings
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Kafka Settings
+KAFKA_BROKER_URL=kafka:9092
+KAFKA_CONSUMER_GROUP_ID=centralized_consumer_group
+KAFKA_TOPICS=social-events:social-events,newsfeed-events:newsfeed-events
+KAFKA_ENCRYPTION_KEY=your-kafka-encryption-key
+
+# Celery Settings
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+# Email Settings
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@example.com
+EMAIL_HOST_PASSWORD=your-email-password
+
+# Sentry Settings
+SENTRY_DSN=your-sentry-dsn
+
+# Other Settings
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000
+```
+
+### Frontend (`frontend/.env`)
+
+```env
+REACT_APP_API_URL=http://localhost:8000/api/v1
+REACT_APP_WEBSOCKET_URL=ws://localhost:8000/ws
+CHOKIDAR_USEPOLLING=true
+NODE_OPTIONS=--openssl-legacy-provider
+```
+
+Ensure you replace placeholder values with your actual configurations.
+
+---
+
+## API Documentation
+
+### GraphQL Playground
+
+Interact with the GraphQL API:
+
+- **URL:** [http://localhost:8000/graphql](http://localhost:8000/graphql)
+
+### REST API Documentation
+
+View REST API endpoints via Swagger UI:
+
+- **URL:** [http://localhost:8000/schema/swagger-ui/](http://localhost:8000/schema/swagger-ui/)
+
+---
+
+## Running Tests
+
+### Backend Tests
+
+Execute Django's test suite:
+
+```bash
+cd backend
+source venv/bin/activate
+python manage.py test
+```
+
+Ensure all tests pass before deploying or merging changes.
+
+---
+
+## Deployment
+
+To deploy the application to a production environment:
+
+1. **Set `DEBUG=False`:** Update your environment variables to set `DEBUG=False`.
+
+2. **Configure Allowed Hosts:** Appropriately set the `ALLOWED_HOSTS` variable.
+
+3. **Use a Production-Ready Web Server:** Deploy with Gunicorn or Daphne.
+
+4. **Secure Environment Variables:** Utilize Docker secrets or environment managers.
+
+5. **Enable HTTPS:** Set up SSL certificates for secure communication.
+
+6. **Monitor with Sentry:** Ensure Sentry is active for error tracking.
+
+7. **Use a Process Manager:** Manage Celery workers and other services with Supervisor or systemd.
+
+8. **Scale Services:** Adjust Kafka brokers, Celery workers, and other services based on load.
+
+Refer to the Django Deployment Checklist for detailed guidelines.
+
+---
+
+## Contributing
+
+Contributions are welcome! Follow these steps to contribute:
+
+1. **Fork the Repository:**
+
+   Click the "Fork" button on the repository page.
+
+2. **Clone Your Fork:**
+
+   ```bash
+   git clone https://github.com/yourusername/SocialNetworkDjango.git
+   cd SocialNetworkDjango
+   ```
+
+3. **Create a New Branch:**
+
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
+
+4. **Make Changes and Commit:**
+
+   ```bash
+   git add .
+   git commit -m "Add some feature"
+   ```
+
+5. **Push to Your Fork:**
+
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
+
+6. **Create a Pull Request:**
+
+   Navigate to your fork on GitHub and click "Compare & pull request."
+
+Ensure your code follows the project's coding standards and includes relevant tests.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+## Contact
+
+For inquiries or support, reach out to [divanster@mail.com].
+
+---
+
+## Acknowledgments
+
+- [Django](https://www.djangoproject.com/)
+- [React](https://reactjs.org/)
+- [GraphQL](https://graphql.org/)
+- [Kafka](https://kafka.apache.org/)
+- [Celery](https://celeryproject.org/)
+- [Docker](https://www.docker.com/)
+- [Sentry](https://sentry.io/)
+- [Bootstrap](https://getbootstrap.com/)
+- [GitHub Actions](https://github.com/features/actions)
+
+---
+
+**Notes:**
+
+1. **Banner Image:** Replace `https://your-banner-image-url.com/banner.png` with the actual URL of your project's banner image to enhance visual appeal.
+
+2. **Repository URL:** Ensure the clone command points to your actual GitHub repository.
+
+3. **Environment Variables:** Carefully set all necessary environment variables in both `backend/.env` and `frontend/.env` files. Avoid committing sensitive information to version control.
+
+4. **Optional Services:** If utilizing services like Elasticsearch, Twilio, or FCM for push notifications, uncomment and configure the relevant sections in `settings.py` and `docker-compose.yml` as needed.
+
+5. **Docker Architecture:** The `docker-compose.yml` is tailored for `linux/arm64` architecture. Adjust the platform settings if deploying on a different architecture.
+
+6. **Health Checks:** Docker Compose includes health checks to ensure all services are operational before starting dependent services. Monitor these to troubleshoot any startup issues.
+
+7. **Security Settings:** The `settings.py` is configured with robust security measures for production. Ensure `DEBUG` is set to `False` and all security settings are appropriately configured when deploying.
+
+8. **Testing:** Regularly run your test suites to maintain code quality and catch issues early.
+
+9. **Continuous Integration:** Leverage GitHub Actions to automate testing, building, and deployment processes, ensuring a smooth CI/CD pipeline.
+
+10. **WebSocket Management:** Implement proper cleanup and reconnection logic in your frontend to handle WebSocket connections efficiently, as detailed in your `useWebSocket` hook logs.
+
+
+
