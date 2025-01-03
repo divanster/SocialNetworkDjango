@@ -6,7 +6,7 @@ from comments.models import Comment
 from reactions.models import Reaction
 from albums.models import Album
 from stories.models import Story
-from .tasks import send_newsfeed_event_task
+from kafka_app.tasks import send_newsfeed_event_task
 
 logger = logging.getLogger(__name__)
 

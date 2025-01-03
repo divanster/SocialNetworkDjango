@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import FriendRequest, Friendship
-from .tasks import process_friend_event
+from kafka_app.tasks import process_friend_event
 import logging
 
 logger = logging.getLogger(__name__)

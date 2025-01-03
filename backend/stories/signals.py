@@ -2,7 +2,7 @@ import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Story
-from .tasks import send_story_event_to_kafka  # Import the Celery task
+from kafka_app.tasks.stories_tasks import send_story_event_to_kafka  # Import the Celery task
 
 # Initialize logger
 logger = logging.getLogger(__name__)

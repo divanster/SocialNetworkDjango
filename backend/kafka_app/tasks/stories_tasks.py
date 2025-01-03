@@ -14,6 +14,43 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
+def send_story_event_to_kafka(self, story_id, event_type):
+    """
+    Celery task to send story events to Kafka.
+    """
+    try:
+        from stories.models import Story
+        story = Story.objects.get(id=story_id)
+        message = {
+            "story_id": str(story.id),
+            "user_id": str(story.user_id),
+            "content": story.content[:50] + '...' if len(story.content) > 50 else story.content,
+            "media_type": story.media_type,
+            "event": event_type,
+            "created_at": story.created_at.isoformat(),
+        }
+        producer = KafkaProducerClient()
+        kafka_topic = settings.KAFKA_TOPICS.get('STORY_EVENTS', 'story-events')
+        producer.send_message(kafka_topic, message)
+        logger.info(f"Sent Kafka message for story {event_type} with ID: {story.id}")
+
+    except Story.DoesNotExist:
+        logger.error(f"Story with ID {story_id} does not exist.")
+    except KafkaTimeoutError as e:
+        logger.error(f"Kafka timeout error while sending story {event_type}: {e}")
+        self.retry(exc=e)
+    except Exception as e:
+        logger.error(f"Error sending Kafka message for story {event_type}: {e}")
+        self.retry(exc=e)
+    finally:
+        if producer:
+            try:
+                producer.close()
+            except Exception as e:
+                logger.error(f"Error while closing Kafka producer: {e}")
+
+
+@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
 def deactivate_expired_stories(self):
     """
     Celery task to deactivate expired stories and send events to Kafka.

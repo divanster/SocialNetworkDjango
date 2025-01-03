@@ -3,7 +3,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Comment
-from .tasks import process_comment_event_task
+from kafka_app.tasks import process_comment_event_task
 import logging
 
 logger = logging.getLogger(__name__)

@@ -3,7 +3,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Reaction
-from .tasks import send_reaction_event_to_kafka  # Import the Celery task
+from kafka_app.tasks.reaction_tasks import process_reaction_event_task  # Import the Celery task
 from notifications.models import Notification
 import logging
 
@@ -24,7 +24,7 @@ def create_reaction_notification(sender, instance, created, **kwargs):
                 object_id=instance.object_id
             )
         # Trigger the Celery task for Kafka event
-        send_reaction_event_to_kafka.delay(instance.id, 'created')
+        process_reaction_event_task.delay(instance.id, 'created')
         logger.info(
             f"Triggered Celery task for created reaction event with ID {instance.id}")
 
@@ -32,6 +32,6 @@ def create_reaction_notification(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=Reaction)
 def delete_reaction_event(sender, instance, **kwargs):
     # Trigger the Celery task for Kafka event on deletion
-    send_reaction_event_to_kafka.delay(instance.id, 'deleted')
+    process_reaction_event_task.delay(instance.id, 'deleted')
     logger.info(
         f"Triggered Celery task for deleted reaction event with ID {instance.id}")

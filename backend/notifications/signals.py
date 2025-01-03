@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Notification
-from .tasks import process_notification_event_task  # Import the Celery task
+from kafka_app.tasks import process_notification_event_task 
 import logging
 
 logger = logging.getLogger(__name__)

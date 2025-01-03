@@ -6,7 +6,7 @@ from tagging.models import TaggedItem
 from notifications.models import Notification
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from .tasks import send_tagging_event_to_kafka
+from kafka_app.tasks import send_tagging_event_to_kafka
 from django.db.models.signals import pre_delete
 
 

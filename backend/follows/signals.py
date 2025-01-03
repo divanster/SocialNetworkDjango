@@ -4,7 +4,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.db import transaction
 from .models import Follow
-from .tasks import process_follow_event_task
+from kafka_app.tasks import process_follow_event_task
 import logging
 
 logger = logging.getLogger(__name__)

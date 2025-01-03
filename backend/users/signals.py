@@ -4,7 +4,7 @@ import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from users.models import CustomUser, UserProfile
-from .tasks import process_user_event_task  # Import the Celery task
+from kafka_app.tasks import process_user_event_task  # Import the Celery task
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from utils.group_names import get_user_group_name  # New import

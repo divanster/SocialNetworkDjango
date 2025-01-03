@@ -1,12 +1,18 @@
+# backend/kafka_app/tasks/notification_tasks.py
+
+
 from celery import shared_task
+
+from core.task_utils import BaseTask
 from kafka_app.producer import KafkaProducerClient
 from kafka.errors import KafkaTimeoutError
+
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
 def process_notification_event_task(self, notification_id, event_type):
     """
     Celery task to process notification events and send them to Kafka.

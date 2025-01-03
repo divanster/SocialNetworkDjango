@@ -4,7 +4,7 @@ import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from albums.models import Album, Photo  # Import the updated Django models
-from albums.tasks import process_album_event_task, process_photo_event_task
+from kafka_app.tasks import process_album_event_task, process_photo_event_task
 from core.choices import VisibilityChoices  # Import visibility choices
 
 logger = logging.getLogger(__name__)

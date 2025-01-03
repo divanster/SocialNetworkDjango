@@ -6,7 +6,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import Post
 from tagging.models import TaggedItem
-from .tasks import send_post_event_to_kafka
+from kafka_app.tasks import process_post_event_task
 from core.utils import get_friends  # Import the utility function for getting friends
 import logging
 
@@ -24,7 +24,7 @@ def post_saved(sender, instance, created, **kwargs):
             event_type = 'post_updated'
 
         # Trigger the Celery task to send the event to Kafka
-        send_post_event_to_kafka.delay(instance.id, event_type)
+        process_post_event_task.delay(instance.id, event_type)
         logger.info(
             f"Triggered Celery task for post {event_type} event with ID {instance.id}")
 
@@ -90,7 +90,7 @@ def post_deleted(sender, instance, **kwargs):
         event_type = 'post_deleted'
 
         # Trigger the Celery task to send the deleted event to Kafka
-        send_post_event_to_kafka.delay(instance.id, event_type)
+        process_post_event_task.delay(instance.id, event_type)
         logger.info(
             f"Triggered Celery task for deleted post event with ID {instance.id}")
 
@@ -174,7 +174,7 @@ def tagged_item_saved(sender, instance, created, **kwargs):
                 logger.info(f"Real-time tagging update sent for post ID {post.id}")
 
                 # Trigger the Celery task to send the tagging event to Kafka
-                send_post_event_to_kafka.delay(
+                process_post_event_task.delay(
                     post.id,
                     'tagged' if created else 'untagged',
                     tagged_user_ids=[instance.tagged_user_id]
