@@ -100,7 +100,7 @@ INSTALLED_APPS = [
     'newsfeed.apps.NewsfeedConfig',
     'social.apps.SocialConfig',
     'kafka_app.apps.KafkaAppConfig',
-    'websocket',  # WebSocket-related app
+    'websocket.apps.WebSocketConfig',
 ]
 
 # =====================

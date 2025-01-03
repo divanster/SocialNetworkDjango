@@ -7,7 +7,7 @@ from django.conf import settings
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from backend.core.task_utils import BaseTask
+from core.task_utils import BaseTask
 from kafka_app.producer import KafkaProducerClient
 from users.services import create_notification
 

@@ -10,7 +10,7 @@ from .models import CustomUser, UserProfile
 from .serializers import CustomUserSerializer, UserProfileSerializer, \
     TokenRefreshSerializer
 from rest_framework.generics import CreateAPIView
-from users.tasks import send_welcome_email, send_profile_update_notification
+from kafka_app.tasks import send_welcome_email, send_profile_update_notification
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication

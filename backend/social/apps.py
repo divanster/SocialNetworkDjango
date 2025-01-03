@@ -8,14 +8,10 @@ class SocialConfig(AppConfig):
 
     def ready(self):
         """
-        Import modules to ensure Celery tasks and Django signals are registered.
-        These imports are critical for tasks and signals to function as expected.
+        Import modules to ensure Django signals are registered.
+        Celery tasks are managed within kafka_app.
         """
-        try:
-            import social.tasks  # Register Celery tasks
-        except ImportError as e:
-            raise ImportError(f"Error importing tasks for app 'social': {e}")
-
+        # Removed the import since 'social.tasks' does not exist
         try:
             import social.signals  # Register signals
         except ImportError as e:

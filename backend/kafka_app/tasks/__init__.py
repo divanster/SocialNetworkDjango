@@ -11,6 +11,7 @@ from .social_tasks import process_post_event_task
 from .stories_tasks import deactivate_expired_stories
 from .tagging_tasks import send_tagging_event_to_kafka, consume_tagging_events
 from .user_tasks import process_user_event_task, send_welcome_email, send_profile_update_notification
+from .notification_tasks import process_notification_event_task
 
 # Import worker shutdown signal handler
 from celery.signals import worker_shutdown

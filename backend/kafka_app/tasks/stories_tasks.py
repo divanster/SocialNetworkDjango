@@ -7,7 +7,7 @@ from django.conf import settings
 from datetime import timedelta
 from django.utils import timezone
 
-from backend.core.task_utils import BaseTask
+from core.task_utils import BaseTask
 from kafka_app.producer import KafkaProducerClient
 
 logger = logging.getLogger(__name__)

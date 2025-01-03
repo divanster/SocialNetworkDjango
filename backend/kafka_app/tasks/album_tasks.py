@@ -5,7 +5,7 @@ from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
-from backend.core.task_utils import BaseTask
+from core.task_utils import BaseTask
 from kafka_app.producer import KafkaProducerClient
 from core.choices import VisibilityChoices
 
