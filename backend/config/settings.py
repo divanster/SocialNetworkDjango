@@ -24,7 +24,8 @@ if not SECRET_KEY:
 DEBUG = env.bool('DEBUG', default=False)
 
 # List of allowed hosts that can make requests to this Django instance
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'web', 'backend'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',
+                         default=['localhost', '127.0.0.1', 'web', 'backend'])
 
 # =====================
 # Kafka Configuration
@@ -32,7 +33,8 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'we
 
 # Kafka broker URL for event-driven architecture
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='centralized_consumer_group')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID',
+                              default='centralized_consumer_group')
 
 # Kafka topics for different events parsed from a comma-separated list
 KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
@@ -53,9 +55,11 @@ AUTHENTICATION_BACKENDS = [
     # 'social_core.backends.facebook.FacebookOAuth2',
 ]
 
+
 # Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
+
 
 # =====================
 # Installed Applications
@@ -242,7 +246,8 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework Configuration
 # =====================
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',  # Updated to use custom handler
+    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
+    # Updated to use custom handler
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -343,7 +348,6 @@ CORS_ALLOW_METHODS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-
 # =====================
 # GraphQL Settings
 # =====================
@@ -416,9 +420,12 @@ if SENTRY_DSN:
 # Content Security Policy (CSP) Settings
 # =====================
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_IMG_SRC = ("'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
-CSP_STYLE_SRC = ("'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_SCRIPT_SRC = (
+"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+CSP_IMG_SRC = (
+"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+CSP_STYLE_SRC = (
+"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
@@ -565,7 +572,6 @@ LOGGING = {
 #     },
 # }
 # HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
-
 
 
 # from . import cron_jobs

@@ -1,8 +1,10 @@
+# backend/schema.py
+
 import graphene
 from graphene_django.types import DjangoObjectType
 from django.contrib.auth import get_user_model
 
-# Your other schema imports
+# Import your app schemas
 import albums.schema
 import users.schema
 import stories.schema
@@ -70,7 +72,7 @@ class Mutation(
     notifications.schema.Mutation,
     reactions.schema.Mutation,
     tagging.schema.Mutation,
-    # newsfeed.schema.Mutation,
+    newsfeed.schema.Mutation,
     social.schema.Mutation,
     messenger.schema.Mutation,
     graphene.ObjectType,
@@ -78,5 +80,8 @@ class Mutation(
     pass
 
 
-# Define the schema
-schema = graphene.Schema(query=Query, mutation=Mutation)
+# Define the schema without middleware (handled in CustomGraphQLView)
+schema = graphene.Schema(
+    query=Query,
+    mutation=Mutation,
+)
