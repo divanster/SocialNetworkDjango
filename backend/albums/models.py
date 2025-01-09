@@ -1,17 +1,20 @@
+# backend/albums/models.py
+
 import logging
+import uuid
+import os
 from django.db import models
 from django.contrib.auth import get_user_model
 from core.models.base_models import UUIDModel, BaseModel, SoftDeleteModel, SoftDeleteManager
 from django.contrib.contenttypes.fields import GenericRelation
 from tagging.models import TaggedItem
-from core.choices import VisibilityChoices  # Import visibility choices
-import uuid
-import os
-from core.utils import get_friends
+from core.choices import VisibilityChoices  # Ensure this is correctly defined in core/choices.py
+from core.utils import get_friends  # Ensure this function is defined in core/utils.py
 
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
+
 
 def album_image_file_path(instance, filename):
     """
@@ -83,8 +86,8 @@ class Album(UUIDModel, SoftDeleteModel, BaseModel):
             models.UniqueConstraint(fields=['user', 'title'], name='unique_user_album_title')
         ]
         indexes = [
-            models.Index(fields=['user'], name='user_idx'),
-            models.Index(fields=['visibility']),
+            models.Index(fields=['user'], name='album_user_idx'),
+            models.Index(fields=['visibility'], name='album_visibility_idx'),
         ]
 
     def __str__(self):

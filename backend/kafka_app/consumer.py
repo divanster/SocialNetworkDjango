@@ -139,6 +139,12 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             finally:
                 self.close()
 
+    def start(self):
+        """
+        Start consuming messages from Kafka.
+        """
+        self.consume_messages()
+
     def process_message(self, message):
         """
         Process incoming Kafka messages.

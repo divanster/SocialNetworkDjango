@@ -8,7 +8,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFail
 from django.contrib.auth.models import AnonymousUser
 import logging
 
-from config.validation import DepthLimitRule  # Import your DepthLimitRule
+from core.graphql_validation import DepthLimitRule  # Import your DepthLimitRule
 from graphql.validation import specified_rules  # Import default validation rules
 
 logger = logging.getLogger(__name__)
@@ -64,3 +64,9 @@ class CustomGraphQLView(GraphQLView):
             request.user = AnonymousUser()
 
         return super().parse_body(request)
+
+    def execute_graphql_request(self, request, data, view_kwargs):
+        logger.info(f"GraphQL Request Data: {data}")
+        response = super().execute_graphql_request(request, data, view_kwargs)
+        logger.info(f"GraphQL Response Status: {response.status_code}")
+        return response

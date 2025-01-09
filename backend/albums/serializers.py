@@ -1,10 +1,16 @@
+# backend/albums/serializers.py
+
+import logging
 from rest_framework import serializers
 from albums.models import Album, Photo
-from tagging.serializers import TaggedItemSerializer
+from tagging.serializers import TaggedItemSerializer  # Ensure this serializer exists
 from django.contrib.auth import get_user_model
 from core.choices import VisibilityChoices
+from rest_framework.exceptions import ValidationError  # Import ValidationError
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -67,6 +73,7 @@ class PhotoSerializer(serializers.ModelSerializer):
                     tagged_by=tagged_by
                 )
             except User.DoesNotExist:
+                logger.warning(f"User with ID {user_id} does not exist. Skipping tagging.")
                 continue  # Ignore if user does not exist
 
 
@@ -165,4 +172,5 @@ class AlbumSerializer(serializers.ModelSerializer):
                     tagged_by=tagged_by
                 )
             except User.DoesNotExist:
+                logger.warning(f"User with ID {user_id} does not exist. Skipping tagging.")
                 continue  # Ignore if user does not exist

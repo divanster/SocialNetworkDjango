@@ -1,5 +1,7 @@
 import graphene
 from graphene_django.types import DjangoObjectType
+
+from friends.models import Block
 from .models import Message
 from django.contrib.auth import get_user_model
 from graphql import GraphQLError
@@ -51,7 +53,7 @@ class Query(graphene.ObjectType):
 # Define Mutations for Sending and Marking Messages
 class SendMessage(graphene.Mutation):
     class Arguments:
-        receiver_id = graphene.Int(required=True)  # ID of the user to send the message to
+        receiver_id = graphene.UUID(required=True)  # Changed to UUID for consistency
         content = graphene.String(required=True)  # Content of the message
 
     message = graphene.Field(MessageType)
@@ -65,6 +67,10 @@ class SendMessage(graphene.Mutation):
             receiver = User.objects.get(id=receiver_id)
         except User.DoesNotExist:
             raise GraphQLError("Receiver not found.")
+
+        # Check if the sender has blocked the receiver
+        if Block.objects.filter(blocker=user, blocked=receiver).exists():
+            raise GraphQLError("You have blocked this user and cannot send messages to them.")
 
         message = Message.objects.create(sender=user, receiver=receiver, content=content)
         return SendMessage(message=message)

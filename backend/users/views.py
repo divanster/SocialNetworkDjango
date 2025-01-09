@@ -79,19 +79,29 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """
         return super().retrieve(request, *args, **kwargs)
 
-    def update(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
-        Custom update method with rate limiting applied.
+        Performs a soft delete of the user profile.
         """
+        instance = self.get_object()
+        instance.delete()  # Soft delete
+        logger.info(f"Soft-deleted UserProfile with ID: {instance.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        @ratelimit(key='user', rate='5/h', block=True)
-        def perform_update(serializer):
-            profile = serializer.save(user=self.request.user)
-            send_profile_update_notification.delay(profile.user.id)
-            logger.info(
-                f"Profile updated for user {profile.user.id}, notification task scheduled.")
-
-        return super().update(request, *args, **kwargs)
+    @action(detail=True, methods=['post'], url_path='restore', permission_classes=[IsAuthenticated])
+    def restore(self, request, pk=None):
+        """
+        Restores a soft-deleted user profile.
+        """
+        try:
+            profile = UserProfile.all_objects.get(pk=pk, is_deleted=True)
+            profile.restore()
+            serializer = self.get_serializer(profile)
+            logger.info(f"Restored UserProfile with ID: {profile.id}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except UserProfile.DoesNotExist:
+            logger.error(f"UserProfile with ID {pk} does not exist or is not deleted.")
+            return Response({"detail": "UserProfile not found or not deleted."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):
@@ -121,6 +131,30 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         Retrieves a specific user by UUID.
         """
         return super().retrieve(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Performs a soft delete of the user.
+        """
+        instance = self.get_object()
+        instance.delete()  # Soft delete
+        logger.info(f"Soft-deleted CustomUser with ID: {instance.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='restore', permission_classes=[IsAuthenticated])
+    def restore(self, request, pk=None):
+        """
+        Restores a soft-deleted user.
+        """
+        try:
+            user = CustomUser.all_objects.get(pk=pk, is_deleted=True)
+            user.restore()
+            serializer = self.get_serializer(user)
+            logger.info(f"Restored CustomUser with ID: {user.id}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            logger.error(f"CustomUser with ID {pk} does not exist or is not deleted.")
+            return Response({"detail": "User not found or not deleted."}, status=status.HTTP_404_NOT_FOUND)
 
     @action(
         detail=False,

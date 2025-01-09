@@ -18,13 +18,14 @@ def send_story_event_to_kafka(self, story_id, event_type):
     """
     Celery task to send story events to Kafka.
     """
+    producer = None
     try:
         from stories.models import Story
         story = Story.objects.get(id=story_id)
         message = {
             "story_id": str(story.id),
             "user_id": str(story.user_id),
-            "content": story.content[:50] + '...' if len(story.content) > 50 else story.content,
+            "content": story.content[:50] + '...' if story.content and len(story.content) > 50 else story.content,
             "media_type": story.media_type,
             "event": event_type,
             "created_at": story.created_at.isoformat(),
@@ -55,13 +56,14 @@ def deactivate_expired_stories(self):
     """
     Celery task to deactivate expired stories and send events to Kafka.
     """
+    producer = None
     try:
         logger.info("Started deactivating expired stories...")
         expiration_time = timezone.now() - timedelta(hours=24)
 
         from stories.models import Story
 
-        expired_stories = Story.objects.filter(is_active=True, created_at__lt=expiration_time)
+        expired_stories = Story.objects.filter(is_active=True, created_at__lt=expiration_time, is_deleted=False)
         total_stories = expired_stories.count()
 
         if total_stories > 0:
@@ -93,3 +95,9 @@ def deactivate_expired_stories(self):
     except Exception as e:
         logger.error(f"An error occurred while deactivating expired stories: {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
+    finally:
+        if producer:
+            try:
+                producer.close()
+            except Exception as e:
+                logger.error(f"Error while closing Kafka producer: {e}")

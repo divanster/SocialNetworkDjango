@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from .models import Notification
 from django.contrib.auth import get_user_model
+from friends.models import Block  # Import Block model to validate sender-receiver relationships
 from drf_spectacular.utils import extend_schema_field
 
 User = get_user_model()
-
 
 class NotificationSerializer(serializers.ModelSerializer):
     """
@@ -47,13 +47,37 @@ class NotificationSerializer(serializers.ModelSerializer):
         """
         Retrieve the content object's URL if it exists.
         """
-        return obj.get_content_object_url()
+        if obj.content_object:
+            return obj.content_object.get_absolute_url()  # Assumes related objects have get_absolute_url
+        return None
+
+    def validate_receiver(self, value):
+        """
+        Ensure that the receiver is not blocked by the sender.
+        """
+        sender = self.context['request'].user
+        if Block.objects.filter(blocker=sender, blocked=value).exists():
+            raise serializers.ValidationError("You have blocked this user and cannot send notifications to them.")
+        return value
 
     def create(self, validated_data):
         """
-        Creates a Notification instance.
+        Creates a Notification instance with the sender set to the authenticated user.
         """
-        return super().create(validated_data)
+        sender = self.context['request'].user
+        receiver = validated_data.get('receiver')
+        notification_type = validated_data.get('notification_type')
+        text = validated_data.get('text', '')
+
+        notification = Notification.objects.create(
+            sender=sender,
+            receiver=receiver,
+            notification_type=notification_type,
+            text=text,
+            content_type=validated_data.get('content_type'),
+            object_id=validated_data.get('object_id')
+        )
+        return notification
 
     def update(self, instance, validated_data):
         """
@@ -71,11 +95,3 @@ class NotificationCountSerializer(serializers.Serializer):
         min_value=0,
         help_text="The number of unread notifications."
     )
-
-    def validate_count(self, value):
-        """
-        Ensure the count value is non-negative.
-        """
-        if value < 0:
-            raise serializers.ValidationError("Count cannot be negative.")
-        return value

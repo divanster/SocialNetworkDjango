@@ -34,7 +34,6 @@ def process_album_event_task(self, album_id, event_type):
 
         # Respect visibility when constructing the Kafka message
         if album.visibility == VisibilityChoices.PRIVATE:
-            # If it's private, don't send a Kafka event
             logger.info(f"[TASK] Skipping Kafka message for private album with ID {album_id}")
             return
 
@@ -90,7 +89,6 @@ def process_photo_event_task(self, photo_id, event_type):
 
         # Respect visibility of the parent album when constructing the Kafka message
         if photo.album.visibility == VisibilityChoices.PRIVATE:
-            # If the album is private, don't send a Kafka event for the photo
             logger.info(f"[TASK] Skipping Kafka message for photo in private album with ID {photo_id}")
             return
 

@@ -1,5 +1,3 @@
-# backend/kafka_app/tasks/friend_tasks.py
-
 import logging
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
@@ -18,7 +16,7 @@ def process_friend_event(self, friend_event_id, event_type, is_friendship=False)
 
     Args:
         self: Celery task instance.
-        friend_event_id (int): ID of the friend event.
+        friend_event_id (UUID): ID of the friend event.
         event_type (str): Type of the event, e.g., 'created', 'deleted'.
         is_friendship (bool): Indicates if the event is a friendship or a friend request.
 
@@ -26,13 +24,13 @@ def process_friend_event(self, friend_event_id, event_type, is_friendship=False)
         None
     """
     try:
-        from follows.models import FriendRequest, Friendship  # Local import to avoid AppRegistryNotReady errors
+        from friends.models import FriendRequest, Friendship  # Updated import
         producer = KafkaProducerClient()
 
         # Create message data for Kafka based on the type of event
         if event_type == 'deleted':
             message = {
-                "friend_event_id": friend_event_id,
+                "friend_event_id": str(friend_event_id),
                 "action": "deleted"
             }
         else:
@@ -41,9 +39,9 @@ def process_friend_event(self, friend_event_id, event_type, is_friendship=False)
                 friendship = Friendship.objects.get(id=friend_event_id)
                 message = {
                     "friendship_id": str(friendship.id),
-                    "user1_id": friendship.user1.id,
-                    "user2_id": friendship.user2.id,
-                    "created_at": str(friendship.created_at),
+                    "user1_id": str(friendship.user1.id),
+                    "user2_id": str(friendship.user2.id),
+                    "created_at": friendship.created_at.isoformat(),
                     "event": event_type
                 }
             else:
@@ -51,10 +49,10 @@ def process_friend_event(self, friend_event_id, event_type, is_friendship=False)
                 friend_request = FriendRequest.objects.get(id=friend_event_id)
                 message = {
                     "friend_request_id": str(friend_request.id),
-                    "sender_id": friend_request.sender.id,
-                    "receiver_id": friend_request.receiver.id,
+                    "sender_id": str(friend_request.sender.id),
+                    "receiver_id": str(friend_request.receiver.id),
                     "status": friend_request.status,
-                    "created_at": str(friend_request.created_at),
+                    "created_at": friend_request.created_at.isoformat(),
                     "event": event_type
                 }
 

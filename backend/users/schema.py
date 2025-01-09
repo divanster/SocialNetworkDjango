@@ -7,6 +7,9 @@ from graphql_jwt.decorators import login_required, staff_member_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_email
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -15,14 +18,14 @@ User = get_user_model()
 class UserProfileType(DjangoObjectType):
     class Meta:
         model = UserProfile
-        fields = "__all__"
+        exclude = ('is_deleted', 'deleted_at')  # Exclude soft-deletion fields
 
 
 # Define GraphQL Types for CustomUser
 class UserType(DjangoObjectType):
     class Meta:
         model = CustomUser
-        fields = ("id", "email", "username", "is_active", "is_staff")
+        exclude = ('is_deleted', 'deleted_at')  # Exclude soft-deletion fields
 
     # Custom fields for profile data
     first_name = graphene.String()
@@ -64,24 +67,26 @@ def get_authenticated_user(info):
 class Query(graphene.ObjectType):
     all_users = graphene.List(UserType, page=graphene.Int(required=False),
                               page_size=graphene.Int(required=False))
-    user_by_id = graphene.Field(UserType, id=graphene.Int(required=True))
+    user_by_id = graphene.Field(UserType, id=graphene.UUID(required=True))
     user_profile_by_id = graphene.Field(UserProfileType,
-                                        user_id=graphene.Int(required=True))
+                                        user_id=graphene.UUID(required=True))
     current_user = graphene.Field(UserType)
 
     # Resolve all users (restricted to admin users)
     @staff_member_required
     def resolve_all_users(self, info, page=1, page_size=10, **kwargs):
         offset = (page - 1) * page_size
-        return User.objects.select_related("profile").all()[offset:offset + page_size]
+        return CustomUser.objects.select_related("profile").all()[offset:offset + page_size]
 
     # Resolve a specific user by ID
     def resolve_user_by_id(self, info, id):
-        return get_object_or_404(User, id=id)
+        user = get_object_or_404(CustomUser.all_objects, id=id, is_deleted=False)
+        return user
 
     # Resolve a specific user's profile by user ID
     def resolve_user_profile_by_id(self, info, user_id):
-        return get_object_or_404(UserProfile, user_id=user_id)
+        profile = get_object_or_404(UserProfile.all_objects, user_id=user_id, is_deleted=False)
+        return profile
 
     # Resolve the currently logged-in user's information
     @login_required
@@ -108,17 +113,24 @@ class CreateUser(graphene.Mutation):
         if len(password) < 8:
             raise GraphQLError("Password must be at least 8 characters long.")
 
-        if User.objects.filter(email=email).exists():
+        if CustomUser.all_objects.filter(email=email).exists():
             raise GraphQLError("A user with this email already exists.")
 
-        if User.objects.filter(username=username).exists():
+        if CustomUser.all_objects.filter(username=username).exists():
             raise GraphQLError("A user with this username already exists.")
 
-        user = User.objects.create_user(email=email, username=username,
-                                        password=password)
+        user = CustomUser.objects.create_user(
+            email=email,
+            username=username,
+            password=password
+        )
 
         # Ensure a UserProfile is created for the new user
         UserProfile.objects.create(user=user)
+
+        # Send welcome email via Celery task
+        from kafka_app.tasks import send_welcome_email
+        send_welcome_email.delay(user.id)
 
         return CreateUser(user=user)
 
@@ -138,23 +150,38 @@ class UpdateUserProfile(graphene.Mutation):
     @login_required
     def mutate(self, info, **kwargs):
         user = get_authenticated_user(info)
-        user_profile, _ = UserProfile.objects.get_or_create(user=user)
-        updated_fields = []
+        try:
+            user_profile = UserProfile.objects.get(user=user, is_deleted=False)
+        except UserProfile.DoesNotExist:
+            raise GraphQLError("UserProfile does not exist or is deleted.")
 
+        updated_fields = []
         for key, value in kwargs.items():
             if value is not None:
                 setattr(user_profile, key, value)
                 updated_fields.append(key)
 
-        user_profile.clean()
+        # Validate the user_profile
+        try:
+            user_profile.clean()
+        except ValidationError as e:
+            raise GraphQLError(e.message_dict)
+
         user_profile.save()
+
+        # Trigger notification task
+        from kafka_app.tasks import send_profile_update_notification
+        send_profile_update_notification.delay(user.id)
+
+        logger.info(f"Profile updated for user {user.id}, notification task scheduled.")
+
         return UpdateUserProfile(user_profile=user_profile,
                                  updated_fields=updated_fields)
 
 
 class DeleteUser(graphene.Mutation):
     class Arguments:
-        user_id = graphene.Int(required=True)
+        user_id = graphene.UUID(required=True)
 
     success = graphene.Boolean()
 
@@ -164,14 +191,34 @@ class DeleteUser(graphene.Mutation):
             raise GraphQLError(
                 "Permission denied. Only admin or the user themselves can delete their account.")
 
-        user_to_delete = get_object_or_404(User, id=user_id)
-        user_to_delete.delete()
-        return DeleteUser(success=True)
+        try:
+            user_to_delete = CustomUser.all_objects.get(id=user_id, is_deleted=False)
+            user_to_delete.delete()  # Soft delete
+            logger.info(f"Soft-deleted CustomUser with ID: {user_to_delete.id}")
+            return DeleteUser(success=True)
+        except CustomUser.DoesNotExist:
+            raise GraphQLError("User not found or already deleted.")
+
+
+class RestoreUser(graphene.Mutation):
+    class Arguments:
+        user_id = graphene.UUID(required=True)
+
+    user = graphene.Field(UserType)
+
+    def mutate(self, info, user_id):
+        try:
+            user = CustomUser.all_objects.get(id=user_id, is_deleted=True)
+            user.restore()  # Restore soft-deleted user
+            logger.info(f"Restored CustomUser with ID: {user.id}")
+            return RestoreUser(user=user)
+        except CustomUser.DoesNotExist:
+            raise GraphQLError("User not found or not deleted.")
 
 
 class DeleteUserProfile(graphene.Mutation):
     class Arguments:
-        user_id = graphene.Int(required=True)
+        user_id = graphene.UUID(required=True)
 
     success = graphene.Boolean()
 
@@ -181,9 +228,29 @@ class DeleteUserProfile(graphene.Mutation):
             raise GraphQLError(
                 "Permission denied. Only admin or the user themselves can delete the profile.")
 
-        user_profile = get_object_or_404(UserProfile, user_id=user_id)
-        user_profile.delete()
-        return DeleteUserProfile(success=True)
+        try:
+            user_profile = UserProfile.all_objects.get(user_id=user_id, is_deleted=False)
+            user_profile.delete()  # Soft delete
+            logger.info(f"Soft-deleted UserProfile with ID: {user_profile.id}")
+            return DeleteUserProfile(success=True)
+        except UserProfile.DoesNotExist:
+            raise GraphQLError("UserProfile not found or already deleted.")
+
+
+class RestoreUserProfile(graphene.Mutation):
+    class Arguments:
+        user_id = graphene.UUID(required=True)
+
+    user_profile = graphene.Field(UserProfileType)
+
+    def mutate(self, info, user_id):
+        try:
+            user_profile = UserProfile.all_objects.get(user_id=user_id, is_deleted=True)
+            user_profile.restore()
+            logger.info(f"Restored UserProfile with ID: {user_profile.id}")
+            return RestoreUserProfile(user_profile=user_profile)
+        except UserProfile.DoesNotExist:
+            raise GraphQLError("UserProfile not found or not deleted.")
 
 
 # Mutation Class to Group All Mutations for User and UserProfile
@@ -191,7 +258,9 @@ class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     update_user_profile = UpdateUserProfile.Field()
     delete_user = DeleteUser.Field()
+    restore_user = RestoreUser.Field()
     delete_user_profile = DeleteUserProfile.Field()
+    restore_user_profile = RestoreUserProfile.Field()
 
 
 # Create the schema combining Query and Mutation

@@ -1,10 +1,7 @@
-# notifications/signals.py
-
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Notification
-from kafka_app.tasks.notification_tasks import \
-    process_notification_event_task
+from kafka_app.tasks.notification_tasks import process_notification_event_task
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,8 +9,17 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=Notification)
 def notification_saved(sender, instance, created, **kwargs):
-    event_type = 'created' if created else 'updated'
-    # Trigger the Celery task to process the notification event
+    """
+    Signal to handle notification creation and updates.
+    Triggers a Celery task to process the event.
+    """
+    if instance.is_deleted:
+        # If the notification is soft-deleted via save(), treat it as a 'deleted' event
+        event_type = 'deleted'
+    else:
+        event_type = 'created' if created else 'updated'
+
+    # Trigger Celery task to process notification event
     try:
         process_notification_event_task.delay(instance.id, event_type)
         logger.debug(
@@ -25,7 +31,11 @@ def notification_saved(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=Notification)
 def notification_deleted(sender, instance, **kwargs):
-    # Trigger the Celery task to process the notification deletion
+    """
+    Signal to handle notification deletion.
+    Triggers a Celery task to process the 'deleted' event.
+    """
+    # Trigger Celery task to process deleted notification event
     try:
         process_notification_event_task.delay(instance.id, 'deleted')
         logger.debug(

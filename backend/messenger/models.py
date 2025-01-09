@@ -1,12 +1,18 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from core.models.base_models import UUIDModel, BaseModel
+from core.models.base_models import SoftDeleteModel, UUIDModel, BaseModel
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
-class Message(UUIDModel, BaseModel):
+
+class Message(SoftDeleteModel, UUIDModel, BaseModel):
     """
     Stores messages sent between users using PostgreSQL.
+    Implements soft deletion instead of hard deletion.
     """
     sender = models.ForeignKey(
         User,
@@ -41,3 +47,4 @@ class Message(UUIDModel, BaseModel):
         if not self.is_read:
             self.is_read = True
             self.save()
+            logger.info(f"Message {self.id} marked as read.")

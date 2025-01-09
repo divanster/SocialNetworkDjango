@@ -1,6 +1,6 @@
-# backend/kafka_app/tasks/messenger_tasks.py
-
 import logging
+from datetime import timezone
+
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from django.conf import settings
@@ -18,7 +18,7 @@ def process_message_event_task(self, message_id, event_type):
 
     Args:
         self: Celery task instance.
-        message_id (int): The ID of the message.
+        message_id (UUID): The UUID of the message.
         event_type (str): Type of event (e.g., "created", "updated", "deleted").
 
     Returns:
@@ -30,8 +30,9 @@ def process_message_event_task(self, message_id, event_type):
 
         if event_type == 'deleted':
             message = {
-                "message_id": message_id,
-                "event": "deleted"
+                "message_id": str(message_id),
+                "event": "deleted",
+                "deleted_at": timezone.now().isoformat()
             }
         else:
             message_instance = Message.objects.select_related('sender', 'receiver').get(id=message_id)
@@ -42,7 +43,9 @@ def process_message_event_task(self, message_id, event_type):
                 "receiver_id": str(message_instance.receiver.id),
                 "receiver_username": message_instance.receiver.username,
                 "content": message_instance.content,
-                "timestamp": message_instance.timestamp.isoformat(),
+                "created_at": message_instance.created_at.isoformat(),
+                "updated_at": message_instance.updated_at.isoformat(),
+                "is_read": message_instance.is_read,
                 "event": event_type
             }
 

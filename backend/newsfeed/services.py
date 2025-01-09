@@ -15,15 +15,26 @@ def process_newsfeed_event(data):
     try:
         event_type = data.get('event_type')
         if event_type == 'post_created':
-            # Logic for updating the newsfeed based on a new post
-            logger.info(f"[NEWSFEED] Updating feed for new post: {data}")
+            # Example: Add new post to the user's feed
+            post = Post.objects.get(id=data.get('id'))
+            # Logic to add post to feed
+            logger.info(f"[NEWSFEED] Added new post to feed: {post.id}")
         elif event_type == 'comment_posted':
-            # Logic for updating the newsfeed based on a new comment
-            logger.info(f"[NEWSFEED] Updating feed for new comment: {data}")
+            comment = Comment.objects.get(id=data.get('id'))
+            # Logic to add comment to feed
+            logger.info(f"[NEWSFEED] Added new comment to feed: {comment.id}")
         elif event_type == 'reaction_added':
-            # Logic for updating the newsfeed based on a new reaction
-            logger.info(f"[NEWSFEED] Updating feed for new reaction: {data}")
+            reaction = Reaction.objects.get(id=data.get('id'))
+            # Logic to add reaction to feed
+            logger.info(f"[NEWSFEED] Added new reaction to feed: {reaction.id}")
         else:
             logger.warning(f"[NEWSFEED] Unknown event type: {event_type}")
+    except Post.DoesNotExist:
+        logger.error(f"[NEWSFEED] Post with ID {data.get('id')} does not exist.")
+    except Comment.DoesNotExist:
+        logger.error(f"[NEWSFEED] Comment with ID {data.get('id')} does not exist.")
+    except Reaction.DoesNotExist:
+        logger.error(f"[NEWSFEED] Reaction with ID {data.get('id')} does not exist.")
     except Exception as e:
         logger.error(f"[NEWSFEED] Error updating newsfeed: {e}")
+

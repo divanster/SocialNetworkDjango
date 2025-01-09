@@ -1,14 +1,14 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth import get_user_model
-from core.models.base_models import BaseModel
+from core.models.base_models import SoftDeleteModel, UUIDModel, BaseModel
 
 # Get the custom User model
 User = get_user_model()
 
 
 # FriendRequest model to manage friend requests between users
-class FriendRequest(BaseModel):
+class FriendRequest(SoftDeleteModel, UUIDModel, BaseModel):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
         ACCEPTED = 'accepted', 'Accepted'
@@ -48,10 +48,12 @@ class FriendRequest(BaseModel):
     def accept(self):
         if self.status == self.Status.PENDING:
             # Ensure neither user is blocked
-            if Block.objects.filter(models.Q(blocker=self.sender, blocked=self.receiver) |
-                                    models.Q(blocker=self.receiver, blocked=self.sender)).exists():
-                raise ValidationError("Cannot accept a friend request involving "
-                                      "blocked users.")
+            if Block.objects.filter(
+                    models.Q(blocker=self.sender, blocked=self.receiver) |
+                    models.Q(blocker=self.receiver, blocked=self.sender)
+            ).exists():
+                raise ValidationError(
+                    "Cannot accept a friend request involving blocked users.")
 
             self.status = self.Status.ACCEPTED
             self.save()
@@ -69,7 +71,7 @@ class FriendRequest(BaseModel):
 
 
 # Friendship model to manage active friendships
-class Friendship(BaseModel):
+class Friendship(SoftDeleteModel, UUIDModel, BaseModel):
     user1 = models.ForeignKey(
         User,
         related_name='friendships_initiated',
@@ -97,7 +99,7 @@ class Friendship(BaseModel):
 
 
 # Block model to manage blocking between users
-class Block(BaseModel):
+class Block(SoftDeleteModel, UUIDModel, BaseModel):
     blocker = models.ForeignKey(
         User,
         related_name='blocks_initiated',
@@ -107,7 +109,7 @@ class Block(BaseModel):
         User,
         related_name='blocked_by',
         on_delete=models.CASCADE,
-        null=True,  # Add this to handle existing rows without this field
+        null=True,  # Handle existing rows without this field
         blank=True
     )
 

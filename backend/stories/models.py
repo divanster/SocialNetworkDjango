@@ -1,9 +1,13 @@
+# backend/stories/models.py
+import logging
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
-from core.models.base_models import UUIDModel, BaseModel
+from core.models.base_models import BaseModel, UUIDModel, SoftDeleteModel
 from tagging.models import TaggedItem
 from core.choices import VisibilityChoices  # Import visibility choices
+from django.utils import timezone  # Correct import for timezone
 
 User = get_user_model()
 
@@ -24,16 +28,20 @@ def get_friends(user):
 class StoryQuerySet(models.QuerySet):
     def visible_to_user(self, user):
         if user.is_anonymous:
-            return self.filter(visibility=VisibilityChoices.PUBLIC, is_active=True)
+            return self.filter(visibility=VisibilityChoices.PUBLIC, is_active=True, is_deleted=False)
         else:
-            public_stories = self.filter(visibility=VisibilityChoices.PUBLIC,
-                                         is_active=True)
+            public_stories = self.filter(
+                visibility=VisibilityChoices.PUBLIC,
+                is_active=True,
+                is_deleted=False
+            )
             friends_stories = self.filter(
                 visibility=VisibilityChoices.FRIENDS,
                 user__in=get_friends(user),
-                is_active=True
+                is_active=True,
+                is_deleted=False
             )
-            own_stories = self.filter(user=user)
+            own_stories = self.filter(user=user, is_deleted=False)
             return public_stories | friends_stories | own_stories
 
 
@@ -45,7 +53,11 @@ class StoryManager(models.Manager):
         return self.get_queryset().visible_to_user(user)
 
 
-class Story(UUIDModel, BaseModel):
+class Story(UUIDModel, BaseModel, SoftDeleteModel):
+    """
+    Represents a user's story, which can include text, images, or videos.
+    Inherits from UUIDModel, BaseModel, and SoftDeleteModel to utilize UUIDs, timestamps, and soft deletion.
+    """
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -112,9 +124,27 @@ class Story(UUIDModel, BaseModel):
         """
         self.is_active = False
         self.save()
+        logger = logging.getLogger(__name__)
+        logger.info(f"Story with ID {self.id} has been deactivated.")
 
     def add_view(self, user):
         """
         Add a user to the list of those who have viewed the story.
         """
         self.viewed_by.add(user)
+        logger = logging.getLogger(__name__)
+        logger.info(f"User {user.id} viewed Story {self.id}.")
+
+    def _cascade_soft_delete(self):
+        """
+        Override this method in subclasses to perform cascading soft deletes.
+        Currently, there are no related objects to cascade.
+        """
+        pass
+
+    def _cascade_restore(self):
+        """
+        Override this method in subclasses to perform cascading restores.
+        Currently, there are no related objects to restore.
+        """
+        pass

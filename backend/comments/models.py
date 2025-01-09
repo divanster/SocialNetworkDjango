@@ -1,20 +1,21 @@
 # backend/comments/models.py
-from datetime import timezone
 
 from django.db import models
 from django.contrib.auth import get_user_model
-from core.models.base_models import BaseModel, UUIDModel
+from core.models.base_models import BaseModel, UUIDModel, SoftDeleteModel
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from tagging.models import TaggedItem
+from django.utils import timezone  # Correct import for timezone
 
 # Get the custom User model
 User = get_user_model()
 
 
-class Comment(UUIDModel, BaseModel):
+class Comment(UUIDModel, BaseModel, SoftDeleteModel):
     """
     Represents a comment made by a user on any content.
+    Inherits from UUIDModel, BaseModel, and SoftDeleteModel to utilize UUIDs, timestamps, and soft deletion.
     """
     user = models.ForeignKey(
         User,
@@ -40,9 +41,18 @@ class Comment(UUIDModel, BaseModel):
     def __str__(self):
         return f"Comment by {self.user.username} on {self.content_object}"
 
-    # def save(self, *args, **kwargs):
-    #     """
-    #     Override save method to automatically update the `updated_at` field on every update.
-    #     """
-    #     self.updated_at = timezone.now()  # Update the timestamp
-    #     return super().save(*args, **kwargs)
+    # Removed unnecessary save method since BaseModel handles updated_at via auto_now=True
+
+    def _cascade_soft_delete(self):
+        """
+        Override this method in subclasses to perform cascading soft deletes.
+        Currently, there are no related objects to cascade.
+        """
+        pass
+
+    def _cascade_restore(self):
+        """
+        Override this method in subclasses to perform cascading restores.
+        Currently, there are no related objects to restore.
+        """
+        pass

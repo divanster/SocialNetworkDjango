@@ -2,26 +2,37 @@
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.db import transaction
-from .models import Follow
-from kafka_app.tasks import process_follow_event_task
+
+from follows.models import Follow
+from kafka_app.tasks import process_follow_event_task  # Import the Celery task
 import logging
 
 logger = logging.getLogger(__name__)
 
-
+# Signal for Follow model when a follow is created or updated
 @receiver(post_save, sender=Follow)
-def follow_created(sender, instance, created, **kwargs):
-    if created:
-        transaction.on_commit(
-            lambda: process_follow_event_task.delay(instance.id, 'created'))
-        logger.info(
-            f"[SIGNAL] Triggered Celery task for follow created with ID {instance.id}")
+def follow_saved(sender, instance, created, **kwargs):
+    try:
+        # Define the event type based on the follow state
+        event_type = 'follow_created' if created else 'follow_updated'
 
+        # Trigger the Celery task to send the event to Kafka
+        process_follow_event_task.delay(instance.id, event_type)
+        logger.info(f"Triggered follow event for Follow ID {instance.id}, Event Type {event_type}")
 
+    except Exception as e:
+        logger.error(f"Error handling follow event for Follow ID {instance.id}: {e}")
+
+# Signal for Follow model when a follow is deleted
 @receiver(post_delete, sender=Follow)
 def follow_deleted(sender, instance, **kwargs):
-    transaction.on_commit(
-        lambda: process_follow_event_task.delay(instance.id, 'deleted'))
-    logger.info(
-        f"[SIGNAL] Triggered Celery task for follow deleted with ID {instance.id}")
+    try:
+        # Define the event type for deleted follow
+        event_type = 'follow_deleted'
+
+        # Trigger the Celery task to send the deleted event to Kafka
+        process_follow_event_task.delay(instance.id, event_type)
+        logger.info(f"Triggered follow deleted event for Follow ID {instance.id}")
+
+    except Exception as e:
+        logger.error(f"Error handling follow deletion for Follow ID {instance.id}: {e}")

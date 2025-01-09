@@ -1,4 +1,4 @@
-# backend/migration_questioner.py
+# backend/core/management/commands/migration_questioner.py
 from django.db.migrations.questioner import MigrationQuestioner
 
 

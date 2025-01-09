@@ -1,8 +1,11 @@
+# backend/follows/schema.py
+
 import graphene
 from graphene_django.types import DjangoObjectType
 from .models import Follow
 from django.contrib.auth import get_user_model
 from graphql import GraphQLError
+from .services import process_follow_event, notify_user_about_follow, publish_follow_event
 
 # Get the custom User model
 User = get_user_model()
@@ -57,11 +60,15 @@ class CreateFollow(graphene.Mutation):
         except User.DoesNotExist:
             raise GraphQLError("User to follow does not exist.")
 
-        if Follow.objects.filter(follower=user, followed=followed).exists():
+        if Follow.objects.filter(follower=user, followed=followed, is_deleted=False).exists():
             raise GraphQLError("You are already following this user.")
 
         # Create the follow relationship
         follow = Follow.objects.create(follower=user, followed=followed)
+
+        # Process the follow event (notify user and publish to Kafka)
+        process_follow_event({'follow_id': follow.id})
+
         return CreateFollow(follow=follow)
 
 
@@ -77,17 +84,49 @@ class DeleteFollow(graphene.Mutation):
             raise GraphQLError("Authentication required to unfollow a user.")
 
         try:
-            follow = Follow.objects.get(follower=user, followed_id=followed_id)
-            follow.delete()
+            follow = Follow.objects.get(follower=user, followed_id=followed_id, is_deleted=False)
+            follow.delete()  # Soft delete
+
+            # Process the follow event (publish to Kafka)
+            process_follow_event({'follow_id': follow.id})
+
             return DeleteFollow(success=True)
         except Follow.DoesNotExist:
             raise GraphQLError("Follow relationship does not exist.")
 
 
-# Mutation Class to Group All Mutations for Follow
+# Optional: RestoreFollow Mutation
+class RestoreFollow(graphene.Mutation):
+    class Arguments:
+        follow_id = graphene.Int(required=True)  # ID of the follow to restore
+
+    follow = graphene.Field(FollowType)
+
+    def mutate(self, info, follow_id):
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError("Authentication required to restore a follow relationship.")
+
+        try:
+            follow_instance = Follow.all_objects.get(id=follow_id, is_deleted=True)
+            if follow_instance.follower != user:
+                raise GraphQLError("You do not have permission to restore this follow relationship.")
+
+            follow_instance.restore()
+
+            # Process the follow event (publish to Kafka)
+            process_follow_event({'follow_id': follow_instance.id})
+
+            return RestoreFollow(follow=follow_instance)
+        except Follow.DoesNotExist:
+            raise GraphQLError("Follow relationship does not exist or is not deleted.")
+
+
+# Define Mutation Class to Group All Mutations for Follow
 class Mutation(graphene.ObjectType):
     create_follow = CreateFollow.Field()
     delete_follow = DeleteFollow.Field()
+    restore_follow = RestoreFollow.Field()  # Add this line if implementing restore
 
 
 # Create the schema combining Query and Mutation

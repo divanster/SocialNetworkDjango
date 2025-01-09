@@ -1,14 +1,20 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from core.models.base_models import UUIDModel, BaseModel
+from core.models.base_models import SoftDeleteModel, UUIDModel, BaseModel
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
-class Notification(UUIDModel, BaseModel):
+
+class Notification(SoftDeleteModel, UUIDModel, BaseModel):
     """
     Notification model for storing notification events.
+    Implements soft deletion instead of hard deletion.
     """
     NOTIFICATION_TYPES = (
         ('like', 'Like'),
@@ -79,3 +85,4 @@ class Notification(UUIDModel, BaseModel):
         if not self.is_read:
             self.is_read = True
             self.save()
+            logger.info(f"Notification {self.id} marked as read.")

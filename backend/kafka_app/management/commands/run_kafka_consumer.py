@@ -3,6 +3,7 @@
 import logging
 import signal
 import sys
+import asyncio
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -24,20 +25,26 @@ class Command(BaseCommand):
 
         consumer_app = KafkaConsumerApp(topics, group_id)
 
+        loop = asyncio.get_event_loop()
+
         # Define a graceful shutdown handler
-        def shutdown_handler(signum, frame):
+        def shutdown_handler():
             logger.info("Shutting down Kafka consumer...")
-            consumer_app.close()
-            sys.exit(0)
+            for task in asyncio.all_tasks(loop):
+                task.cancel()
 
         # Register the shutdown handler for SIGINT and SIGTERM
-        signal.signal(signal.SIGINT, shutdown_handler)
-        signal.signal(signal.SIGTERM, shutdown_handler)
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, shutdown_handler)
 
-        # Start consuming messages
         try:
-            consumer_app.consume_messages()
+            loop.run_until_complete(consumer_app.start())
+        except asyncio.CancelledError:
+            logger.info("Kafka consumer has been cancelled.")
         except Exception as e:
             logger.error(f"Unexpected error in Kafka consumer: {e}", exc_info=True)
-            consumer_app.close()
-            sys.exit(1)
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+            logger.info("Kafka consumer shutdown complete.")
+            sys.exit(0)

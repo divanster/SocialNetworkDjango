@@ -1,13 +1,15 @@
+# backend/follows/models.py
+
 from django.db import models
 from django.contrib.auth import get_user_model
-from core.models.base_models import BaseModel
+from core.models.base_models import SoftDeleteModel, BaseModel  # Ensure SoftDeleteModel is imported
 
 # Get the custom User model
 User = get_user_model()
 
 
 # Follow model to store follow relationships between users
-class Follow(BaseModel):
+class Follow(SoftDeleteModel, BaseModel):
     # ForeignKey relationships to track followers and followings
     follower = models.ForeignKey(
         User,
