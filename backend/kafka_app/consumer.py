@@ -99,7 +99,8 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             'story_shared': self.handle_story_event,
             'tag_added': self.handle_tagging_event,
             'user_registered': self.handle_user_event,
-            'notification_sent': self.handle_notification_event
+            'notification_sent': self.handle_notification_event,
+            'updated': self.handle_updated_event  # Handler for 'updated' event
         }
 
     def consume_messages(self):
@@ -116,16 +117,16 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                         continue
 
                     try:
-                        logger.info(f"Received encrypted message: {message.value}")
+                        logger.debug(f"Received encrypted message: {message.value}")
                         # Decrypt the message
                         decrypted_bytes = self.cipher_suite.decrypt(message.value)
                         decrypted_str = decrypted_bytes.decode('utf-8')
-                        logger.info(f"Decrypted message: {decrypted_str}")
+                        logger.debug(f"Decrypted message: {decrypted_str}")
                         # Parse JSON
                         message_data = json.loads(decrypted_str)
                         self.process_message(message_data)
-                    except ValidationError as e:
-                        logger.error(f"Validation error: {e}")
+                    except (ValidationError, json.JSONDecodeError) as e:
+                        logger.error(f"Message validation or JSON decoding error: {e}")
                     except Exception as e:
                         logger.error(f"Failed to process message {message.value}: {e}",
                                      exc_info=True)
@@ -264,3 +265,74 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         create_notification(data)
         self.send_to_websocket_group("notifications",
                                      {"event": "New notification", "data": data})
+
+    def handle_updated_event(self, data):
+        """
+        Handle 'updated' event type.
+        Determines the entity being updated and processes accordingly.
+        """
+        entity = data.get('entity')
+        if not entity:
+            logger.warning("Received 'updated' event without 'entity' field.")
+            return
+
+        if entity == 'post':
+            self.handle_post_update(data)
+        elif entity == 'album':
+            self.handle_album_update(data)
+        elif entity == 'comment':
+            self.handle_comment_update(data)
+        else:
+            logger.warning(f"Unknown entity type for 'updated' event: {entity}")
+
+    def handle_post_update(self, data):
+        """
+        Handle update of a social post.
+        """
+        process_social_event(data)  # Processes post updates
+        websocket_event = "Post updated"
+        self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
+
+    def handle_album_update(self, data):
+        """
+        Handle update of an album.
+        """
+        process_album_event(data)  # Processes album updates
+        websocket_event = "Album updated"
+        self.send_to_websocket_group("albums", {"event": websocket_event, "data": data})
+
+    def handle_comment_update(self, data):
+        """
+        Handle update of a comment.
+        """
+        process_comment_event(data)  # Processes comment updates
+        websocket_event = "Comment updated"
+        self.send_to_websocket_group("comments", {"event": websocket_event, "data": data})
+
+# def handle_updated_event(self, data):
+#     """
+#     Handle 'updated' event type.
+#     Determines the entity being updated and processes accordingly.
+#     """
+#     entity = data.get('entity')
+#     if not entity:
+#         logger.warning("Received 'updated' event without 'entity' field.")
+#         return
+#
+#     if entity == 'post':
+#         process_social_event(data)  # Assuming this processes post updates
+#         websocket_event = "Post updated"
+#         self.send_to_websocket_group("social",
+#                                      {"event": websocket_event, "data": data})
+#     elif entity == 'album':
+#         process_album_event(data)  # Assuming this processes album updates
+#         websocket_event = "Album updated"
+#         self.send_to_websocket_group("albums",
+#                                      {"event": websocket_event, "data": data})
+#     elif entity == 'comment':
+#         process_comment_event(data)  # Assuming this processes comment updates
+#         websocket_event = "Comment updated"
+#         self.send_to_websocket_group("comments",
+#                                      {"event": websocket_event, "data": data})
+#     else:
+#         logger.warning(f"Unknown entity type for 'updated' event: {entity}")
