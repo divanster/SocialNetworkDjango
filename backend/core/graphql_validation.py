@@ -1,4 +1,4 @@
-# backend/validation/graphql_validation.py
+# backend/graphql_validation.py
 
 from graphql.validation import ValidationRule
 from graphql.error import GraphQLError

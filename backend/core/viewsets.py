@@ -3,7 +3,7 @@
 from rest_framework import viewsets, permissions, filters
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .permissions import IsOwnerOrReadOnly
+from .permissions import IsAuthorOrReadOnly
 from .pagination import StandardResultsSetPagination
 
 
@@ -12,7 +12,7 @@ class BaseModelViewSet(viewsets.ModelViewSet):
     A base viewset that provides default `create()`, `retrieve()`,
     `update()`, `partial_update()`, `destroy()` and `list()` actions.
     """
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated, IsAuthorOrReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['^name', '^title']
@@ -27,3 +27,4 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     # Add any additional common methods or overrides here
+

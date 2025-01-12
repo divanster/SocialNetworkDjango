@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     'django_ratelimit',
     'graphql_jwt',
     'phonenumber_field',
+    'django_filters',
 
     # Custom apps
     'users.apps.UsersConfig',
@@ -248,8 +249,7 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Django REST Framework Configuration
 # =====================
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
-    # Updated to use custom handler
+    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',  # Updated to use custom handler
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -259,6 +259,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 
 # Adjust the renderer classes based on DEBUG mode
@@ -356,9 +357,17 @@ CORS_ALLOW_CREDENTIALS = True
 GRAPHENE = {
     'SCHEMA': 'schema.schema',
     'MIDDLEWARE': [
-        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+        # 'graphql_jwt.middleware.JSONWebTokenMiddleware',
     ],
 }
+
+
+# =====================
+# GraphQL Validation and Middleware Configuration
+# =====================
+
+ENABLE_GRAPHQL_VALIDATION = env.bool('ENABLE_GRAPHQL_VALIDATION', default=True)
+ENABLE_GRAPHQL_MIDDLEWARE = env.bool('ENABLE_GRAPHQL_MIDDLEWARE', default=True)
 
 # =====================
 # Email Configuration
