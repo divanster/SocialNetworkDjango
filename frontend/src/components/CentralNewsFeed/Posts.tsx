@@ -7,15 +7,15 @@ import EditPostModal from './EditPostModal'; // Ensure this component exists
 
 interface PostsProps {
   posts: PostType[];
-  onDelete: (id: number) => void;
+  onDeletePost: (id: number) => void;
   onUpdate: (updatedPost: PostType) => void;
-  deletingPostIds: number[]; // IDs of posts being deleted
-  updatingPostIds: number[]; // IDs of posts being updated
+  deletingPostIds: number[];
+  updatingPostIds: number[];
 }
 
 const Posts: React.FC<PostsProps> = ({
   posts,
-  onDelete,
+  onDeletePost,
   onUpdate,
   deletingPostIds,
   updatingPostIds,
@@ -32,6 +32,12 @@ const Posts: React.FC<PostsProps> = ({
   const handleSave = (updatedPost: PostType) => {
     onUpdate(updatedPost);
     console.log(`Post with ID ${updatedPost.id} updated.`);
+    setShowModal(false);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setCurrentPost(null);
   };
 
   return (
@@ -83,7 +89,7 @@ const Posts: React.FC<PostsProps> = ({
               variant="danger"
               onClick={() => {
                 if (window.confirm('Are you sure you want to delete this post?')) {
-                  onDelete(post.id);
+                  onDeletePost(post.id);
                 }
               }}
               disabled={deletingPostIds.includes(post.id)}
@@ -111,7 +117,7 @@ const Posts: React.FC<PostsProps> = ({
       {currentPost && (
         <EditPostModal
           show={showModal}
-          onHide={() => setShowModal(false)}
+          onHide={handleCloseModal}
           post={currentPost}
           onSave={handleSave}
         />

@@ -41,12 +41,14 @@ const NewsFeed: React.FC = () => {
   const addNewPost = (newPost: PostType) => {
     setPosts((prevPosts) => [newPost, ...prevPosts]);
     console.log('New post added:', newPost);
+    setToast({ show: true, message: 'Post created successfully!', variant: 'success' });
   };
 
   // Callback to add a new album
   const addNewAlbum = (newAlbum: AlbumType) => {
     setAlbums((prevAlbums) => [newAlbum, ...prevAlbums]);
     console.log('New album added:', newAlbum);
+    setToast({ show: true, message: 'Album created successfully!', variant: 'success' });
   };
 
   // Handler for incoming posts messages via WebSocket
@@ -82,8 +84,8 @@ const NewsFeed: React.FC = () => {
   }, []);
 
   // Establish WebSocket connections for 'posts' and 'albums'
-  useWebSocket('posts', { onMessage: handlePostsMessage });
-  useWebSocket('albums', { onMessage: handleAlbumsMessage });
+  const { sendMessage } = useWebSocket('posts', { onMessage: handlePostsMessage });
+  const { sendMessage: sendAlbumMessage } = useWebSocket('albums', { onMessage: handleAlbumsMessage });
 
   // Fetch data if we have a token and not loading
   useEffect(() => {
@@ -138,54 +140,15 @@ const NewsFeed: React.FC = () => {
 
       // Remove the post from the local state upon successful deletion
       setPosts((prev) => prev.filter((p) => p.id !== id));
-      setDeleteSuccess('Post deleted successfully.');
-      setDeleteError(null);
+      setDeleteSuccess(`Post deleted successfully.`);
+      setToast({ show: true, message: 'Post deleted successfully!', variant: 'success' });
     } catch (err) {
       console.error('Error deleting post:', err);
-      if (axios.isAxiosError(err)) {
-        setDeleteError(err.response?.data?.detail || 'Failed to delete the post.');
-      } else {
-        setDeleteError('An unexpected error occurred.');
-      }
-      setDeleteSuccess(null);
+      setDeleteError('Error deleting post.');
+      setToast({ show: true, message: 'Error deleting post.', variant: 'danger' });
     } finally {
       // Remove post ID from deleting list
-      setDeletingPostIds((prev) => prev.filter((postId) => postId !== id));
-    }
-  };
-
-  // Handler to update a post
-  const handleUpdatePost = async (updatedPost: PostType) => {
-    if (!token) {
-      setError('You must be logged in to update a post.');
-      return;
-    }
-
-    // Add post ID to updating list
-    setUpdatingPostIds((prev) => [...prev, updatedPost.id]);
-    console.log(`Attempting to update post with ID ${updatedPost.id}`);
-
-    try {
-      const response = await axios.put(`${API_URL}/social/${updatedPost.id}/`, updatedPost, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log(`Post with ID ${updatedPost.id} updated successfully:`, response.data);
-
-      // Update the post in the local state
-      setPosts((prev) => prev.map((p) => (p.id === updatedPost.id ? response.data : p)));
-      setToast({ show: true, message: 'Post updated successfully!', variant: 'success' });
-      setDeleteError(null);
-    } catch (err) {
-      console.error('Error updating post:', err);
-      if (axios.isAxiosError(err)) {
-        setDeleteError(err.response?.data?.detail || 'Failed to update the post.');
-      } else {
-        setDeleteError('An unexpected error occurred.');
-      }
-      setToast({ show: false, message: '', variant: 'success' });
-    } finally {
-      // Remove post ID from updating list
-      setUpdatingPostIds((prev) => prev.filter((postId) => postId !== updatedPost.id));
+      setDeletingPostIds((prev) => prev.filter((p) => p !== id));
     }
   };
 
@@ -196,37 +159,158 @@ const NewsFeed: React.FC = () => {
       return;
     }
 
-    console.log(`Attempting to delete album with ID ${id}`);
-
     try {
       const response = await axios.delete(`${API_URL}/albums/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log(`Album with ID ${id} deleted successfully:`, response.status);
 
+      // Remove the album from the local state upon successful deletion
       setAlbums((prev) => prev.filter((a) => a.id !== id));
+      setDeleteSuccess('Album deleted successfully.');
       setToast({ show: true, message: 'Album deleted successfully!', variant: 'success' });
-      setDeleteError(null);
     } catch (err) {
       console.error('Error deleting album:', err);
-      if (axios.isAxiosError(err)) {
-        setDeleteError(err.response?.data?.detail || 'Failed to delete the album.');
-      } else {
-        setDeleteError('An unexpected error occurred.');
-      }
+      setDeleteError('Error deleting album.');
+      setToast({ show: true, message: 'Error deleting album.', variant: 'danger' });
     }
   };
 
-  if (authLoading || dataLoading) return <p>Loading...</p>;
-  if (error) return <p>{error}</p>;
+  // Handler to update a post
+  const handleUpdatePost = async (updatedPost: PostType) => {
+    if (!token) {
+      setError('You must be logged in to update a post.');
+      return;
+    }
+
+    setUpdatingPostIds((prev) => [...prev, updatedPost.id]);
+    console.log(`Attempting to update post with ID ${updatedPost.id}`);
+
+    try {
+      const response = await axios.put(`${API_URL}/social/${updatedPost.id}/`, {
+        title: updatedPost.title,
+        content: updatedPost.content,
+        // Include other fields if necessary
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      console.log(`Post with ID ${updatedPost.id} updated successfully:`, response.status);
+
+      // Update the post in the local state
+      setPosts((prev) =>
+        prev.map((p) => (p.id === updatedPost.id ? response.data : p))
+      );
+      setToast({ show: true, message: 'Post updated successfully!', variant: 'success' });
+    } catch (err) {
+      console.error('Error updating post:', err);
+      setError('Error updating post.');
+      setToast({ show: true, message: 'Error updating post.', variant: 'danger' });
+    } finally {
+      setUpdatingPostIds((prev) => prev.filter((p) => p !== updatedPost.id));
+    }
+  };
+
+  // Handler to update an album
+  const handleUpdateAlbum = async (updatedAlbum: AlbumType) => {
+    if (!token) {
+      setError('You must be logged in to update an album.');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('title', updatedAlbum.title);
+      formData.append('description', updatedAlbum.description);
+      formData.append('visibility', updatedAlbum.visibility);
+      if (updatedAlbum.photos) {
+        Array.from(updatedAlbum.photos).forEach((photo) =>
+          formData.append('image_files', photo.image)
+        );
+      }
+
+      const response = await axios.put(`${API_URL}/albums/${updatedAlbum.id}/`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log(`Album with ID ${updatedAlbum.id} updated successfully:`, response.status);
+
+      // Update the album in the local state
+      setAlbums((prev) =>
+        prev.map((a) => (a.id === updatedAlbum.id ? response.data : a))
+      );
+      setToast({ show: true, message: 'Album updated successfully!', variant: 'success' });
+    } catch (err) {
+      console.error('Error updating album:', err);
+      setError('Error updating album.');
+      setToast({ show: true, message: 'Error updating album.', variant: 'danger' });
+    }
+  };
 
   return (
     <div className="newsfeed-container">
+      {/* Left Sidebar */}
+      <div className="left-sidebar">
+        <Profile />
+      </div>
+
+      {/* Main Feed */}
+      <div className="main-feed">
+        {/* Create Post and Create Album Components */}
+        <CreatePost onPostCreated={addNewPost} sendMessage={sendMessage} />
+        <CreateAlbum onAlbumCreated={addNewAlbum} sendAlbumMessage={sendAlbumMessage} />
+
+        {dataLoading ? (
+          <div>Loading...</div>
+        ) : (
+          <div>
+            {/* Display error messages */}
+            {error && <div className="alert alert-danger">{error}</div>}
+            {deleteError && <div className="alert alert-danger">{deleteError}</div>}
+            {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
+
+            {/* Posts Component */}
+            <Posts
+              posts={posts}
+              onDeletePost={handleDeletePost}
+              onUpdate={handleUpdatePost}
+              deletingPostIds={deletingPostIds}
+              updatingPostIds={updatingPostIds}
+            />
+
+            {/* Albums Component */}
+            {albums.length > 0 ? (
+              albums.map((album) => (
+                <Album
+                  key={album.id}
+                  album={album}
+                  onDelete={handleDeleteAlbum}
+                  onUpdate={handleUpdateAlbum} // Pass onUpdate prop here
+                />
+              ))
+            ) : (
+              <div>No albums available</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Right Sidebar */}
+      <div className="right-sidebar">
+        <FriendRequests />
+        <Birthdays />
+        <Contacts />
+      </div>
+
       {/* Toast Notifications */}
-      <ToastContainer position="top-end" className="p-3">
+      <ToastContainer position="bottom-end">
         <Toast
-          onClose={() => setToast({ ...toast, show: false })}
           show={toast.show}
+          onClose={() => setToast({ ...toast, show: false })}
           bg={toast.variant}
           delay={3000}
           autohide
@@ -234,41 +318,6 @@ const NewsFeed: React.FC = () => {
           <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
       </ToastContainer>
-
-      {/* Display delete success or error messages */}
-      {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
-      {deleteError && <div className="alert alert-danger">{deleteError}</div>}
-
-      <div className="left-sidebar">
-        <Profile />
-      </div>
-      <div className="right-sidebar">
-        <FriendRequests />
-        <Birthdays />
-        <Contacts />
-      </div>
-      <div className="central-news-feed">
-        <CreatePost onPostCreated={addNewPost} />
-        <CreateAlbum onAlbumCreated={addNewAlbum} />
-        {posts.length > 0 ? (
-          <Posts
-            posts={posts}
-            onDelete={handleDeletePost}
-            onUpdate={handleUpdatePost}
-            deletingPostIds={deletingPostIds}
-            updatingPostIds={updatingPostIds}
-          />
-        ) : (
-          <p>No posts available</p>
-        )}
-        {albums.length > 0 ? (
-          albums.map((album) => (
-            <Album key={album.id} album={album} onDelete={handleDeleteAlbum} />
-          ))
-        ) : (
-          <p>No albums available</p>
-        )}
-      </div>
     </div>
   );
 };

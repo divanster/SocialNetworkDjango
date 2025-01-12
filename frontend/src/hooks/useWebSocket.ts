@@ -1,20 +1,33 @@
 // frontend/src/hooks/useWebSocket.ts
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface WebSocketHandler {
   onMessage: (data: any) => void;
 }
 
+interface UseWebSocketReturn {
+  sendMessage: (message: string) => void;
+}
+
 export default function useWebSocket(
   groupName: string,
   { onMessage }: WebSocketHandler
-): void {
+): UseWebSocketReturn {
   const { token, loading } = useAuth();
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
+
+  // Function to send messages via WebSocket
+  const sendMessage = useCallback((message: string) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(message);
+    } else {
+      console.error('WebSocket is not open. Cannot send message.');
+    }
+  }, []);
 
   useEffect(() => {
     if (loading) {
@@ -77,4 +90,6 @@ export default function useWebSocket(
       }
     };
   }, [groupName, token, loading, onMessage]);
+
+  return { sendMessage };
 }

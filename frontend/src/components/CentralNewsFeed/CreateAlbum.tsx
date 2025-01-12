@@ -1,25 +1,26 @@
 // frontend/src/components/CentralNewsFeed/CreateAlbum.tsx
 
 import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import { Form, Button, Alert, Spinner } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
-import { Album as AlbumType } from '../../types/album'; // Import your Album type
+import { Album as AlbumType } from '../../types/album';
 
 interface CreateAlbumProps {
   onAlbumCreated: (newAlbum: AlbumType) => void;
+  sendAlbumMessage: (message: string) => void;
 }
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
-const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated }) => {
+const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated, sendAlbumMessage }) => {
   const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [saving, setSaving] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,14 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated }) => {
       setError('You must be logged in to create an album.');
       return;
     }
+
+    if (title.trim() === '' || description.trim() === '') {
+      setError('Title and description cannot be empty.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
 
     const formData = new FormData();
     formData.append('title', title);
@@ -45,61 +54,57 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated }) => {
         },
       });
 
-      const createdAlbum: AlbumType = response.data; // Adjust according to your backend response
+      const createdAlbum: AlbumType = response.data;
 
-      // Update the parent component's state
       onAlbumCreated(createdAlbum);
+      sendAlbumMessage(JSON.stringify({ type: 'new_album', data: createdAlbum }));
 
       setTitle('');
       setDescription('');
       setVisibility('public');
       setImageFiles(null);
-      setError(null);
-      setSuccess('Album created successfully!');
     } catch (err) {
       console.error('Error creating album:', err);
-      setSuccess(null);
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail || 'An error occurred');
+        setError(err.response?.data?.detail || 'An error occurred while creating the album.');
       } else {
         setError('An unexpected error occurred.');
       }
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      {/* Display errors or success messages */}
-      {error && <div className="alert alert-danger">{error}</div>}
-      {success && <div className="alert alert-success">{success}</div>}
+    <Form onSubmit={handleSubmit} className="mb-4">
+      {error && <Alert variant="danger">{error}</Alert>}
 
-      <Form.Group>
+      <Form.Group className="mb-3" controlId="formAlbumTitle">
         <Form.Label>Title</Form.Label>
         <Form.Control
           type="text"
+          placeholder="Enter album title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter album title"
           required
         />
       </Form.Group>
 
-      <Form.Group>
+      <Form.Group className="mb-3" controlId="formAlbumDescription">
         <Form.Label>Description</Form.Label>
         <Form.Control
           as="textarea"
           rows={3}
+          placeholder="Enter album description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter album description"
           required
         />
       </Form.Group>
 
-      <Form.Group>
+      <Form.Group className="mb-3" controlId="formAlbumVisibility">
         <Form.Label>Visibility</Form.Label>
-        <Form.Control
-          as="select"
+        <Form.Select
           value={visibility}
           onChange={(e) => setVisibility(e.target.value as 'public' | 'friends' | 'private')}
           required
@@ -107,10 +112,10 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated }) => {
           <option value="public">Public</option>
           <option value="friends">Friends</option>
           <option value="private">Private</option>
-        </Form.Control>
+        </Form.Select>
       </Form.Group>
 
-      <Form.Group>
+      <Form.Group className="mb-3" controlId="formAlbumImages">
         <Form.Label>Upload Photos</Form.Label>
         <Form.Control
           type="file"
@@ -123,7 +128,22 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated }) => {
         />
       </Form.Group>
 
-      <Button type="submit">Create Album</Button>
+      <Button variant="primary" type="submit" disabled={saving}>
+        {saving ? (
+          <>
+            <Spinner
+              as="span"
+              animation="border"
+              size="sm"
+              role="status"
+              aria-hidden="true"
+            />{' '}
+            Creating...
+          </>
+        ) : (
+          'Create Album'
+        )}
+      </Button>
     </Form>
   );
 };
