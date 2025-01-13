@@ -285,6 +285,4 @@ class Mutation(graphene.ObjectType):
     delete_photo = DeletePhoto.Field()
     restore_photo = RestorePhoto.Field()
 
-
-# Create the schema combining Query and Mutation
-schema = graphene.Schema(query=Query, mutation=Mutation)
+# **Do NOT define `schema = graphene.Schema(...)` here.**

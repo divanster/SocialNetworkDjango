@@ -1,10 +1,6 @@
 # backend/schema.py
 
 import graphene
-from graphene_django.types import DjangoObjectType
-from django.contrib.auth import get_user_model
-
-# Import your app schemas
 import albums.schema
 import users.schema
 import stories.schema
@@ -17,28 +13,29 @@ import tagging.schema
 import newsfeed.schema
 import social.schema
 import messenger.schema
+import graphql_jwt  # If using django-graphql-jwt
+
+from graphene_django.types import DjangoObjectType
+from django.contrib.auth import get_user_model
 
 # Get the custom User model
 User = get_user_model()
-
 
 # Define the User GraphQL type
 class UserType(DjangoObjectType):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'last_name')  # Excluded 'first_name'
-
+        fields = ('id', 'username', 'email', 'first_name', 'last_name')
 
 # Define the Query for 'me'
 class MeQuery(graphene.ObjectType):
     me = graphene.Field(UserType)
 
     def resolve_me(self, info):
-        user = info.context.get('user')
+        user = info.context.user
         if user.is_anonymous:
             raise Exception("Authentication required to view this information.")
         return user
-
 
 # Combine Queries from all the different apps
 class Query(
@@ -59,7 +56,6 @@ class Query(
 ):
     pass
 
-
 # Combine Mutations from all the different apps
 class Mutation(
     albums.schema.Mutation,
@@ -76,10 +72,12 @@ class Mutation(
     messenger.schema.Mutation,
     graphene.ObjectType,
 ):
-    pass
+    # JWT Mutations
+    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
+    verify_token = graphql_jwt.Verify.Field()
+    refresh_token = graphql_jwt.Refresh.Field()
 
-
-# Define the schema without middleware
+# Define the schema
 schema = graphene.Schema(
     query=Query,
     mutation=Mutation,
