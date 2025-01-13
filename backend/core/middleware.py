@@ -12,21 +12,21 @@ class GraphQLValidationMiddleware:
     Middleware to validate GraphQL queries against custom rules.
     """
 
-    def __init__(self, schema):
-        self.schema = schema
+    def __init__(self):
+        pass  # Initialization if needed
 
-    def resolve(self, next, root, info, **args):
+    def __call__(self, resolve, parent, info, **kwargs):
         # Access the query from the info
         try:
             query = info.context.request.body.decode('utf-8')
         except AttributeError:
             # info.context.request is not available (e.g., in Celery workers)
-            return next(root, info, **args)
+            return resolve(parent, info, **kwargs)
 
         try:
             document = parse(query)
             validation_errors = validate(
-                self.schema,
+                info.schema,  # Access the schema from info
                 document,
                 rules=[ComplexityLimitRule, DepthLimitRule]
             )
@@ -40,7 +40,7 @@ class GraphQLValidationMiddleware:
             logger.error(f"Unexpected Validation Error: {str(e)}")
             raise e
 
-        return next(root, info, **args)
+        return resolve(parent, info, **kwargs)
 
 
 class GraphQLLoggingMiddleware:
@@ -49,9 +49,9 @@ class GraphQLLoggingMiddleware:
     """
 
     def __init__(self):
-        pass
+        pass  # Initialization if needed
 
-    def resolve(self, next, root, info, **args):
+    def __call__(self, resolve, parent, info, **kwargs):
         try:
             request = info.context.request
             logger.info(f"GraphQL Request: {request.method} {request.path}")
@@ -61,7 +61,7 @@ class GraphQLLoggingMiddleware:
             pass
 
         try:
-            response = next(root, info, **args)
+            response = resolve(parent, info, **kwargs)
             try:
                 logger.info(f"GraphQL Response Status: {response.status_code}")
                 logger.debug(f"Response Data: {response.content.decode('utf-8')}")

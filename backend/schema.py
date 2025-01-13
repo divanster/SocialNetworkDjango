@@ -1,6 +1,5 @@
 # backend/schema.py
 
-import os
 import graphene
 from graphene_django.types import DjangoObjectType
 from django.contrib.auth import get_user_model
@@ -19,16 +18,16 @@ import newsfeed.schema
 import social.schema
 import messenger.schema
 
-from core.middleware import GraphQLLoggingMiddleware, GraphQLValidationMiddleware
-
 # Get the custom User model
 User = get_user_model()
+
 
 # Define the User GraphQL type
 class UserType(DjangoObjectType):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'last_name')  # Excluded 'first_name'
+
 
 # Define the Query for 'me'
 class MeQuery(graphene.ObjectType):
@@ -39,6 +38,7 @@ class MeQuery(graphene.ObjectType):
         if user.is_anonymous:
             raise Exception("Authentication required to view this information.")
         return user
+
 
 # Combine Queries from all the different apps
 class Query(
@@ -59,6 +59,7 @@ class Query(
 ):
     pass
 
+
 # Combine Mutations from all the different apps
 class Mutation(
     albums.schema.Mutation,
@@ -77,27 +78,9 @@ class Mutation(
 ):
     pass
 
-# Determine if middleware should be enabled
-ENABLE_MIDDLEWARE = os.getenv('ENABLE_GRAPHQL_MIDDLEWARE', 'true').lower() in ['true', '1', 'yes']
 
-# Define the middleware list based on the environment variable
-middleware = []
-if ENABLE_MIDDLEWARE:
-    middleware = [
-        GraphQLValidationMiddleware(schema=None),  # Placeholder, will set after schema creation
-        GraphQLLoggingMiddleware(),
-        # Add other middleware here if needed
-    ]
-
-# Define the schema with conditional middleware
+# Define the schema without middleware
 schema = graphene.Schema(
     query=Query,
     mutation=Mutation,
-    middleware=middleware if middleware else None,
 )
-
-# After schema is defined, set it in validation middleware
-if ENABLE_MIDDLEWARE:
-    for mw in middleware:
-        if isinstance(mw, GraphQLValidationMiddleware):
-            mw.schema = schema

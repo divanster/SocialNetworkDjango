@@ -2,12 +2,13 @@
 
 from graphql.validation import ValidationRule
 from graphql.error import GraphQLError
+from django.conf import settings
 
 
 class ComplexityLimitRule(ValidationRule):
     def __init__(self, context):
         super().__init__(context)
-        self.max_complexity = 100  # Define your maximum allowed complexity
+        self.max_complexity = getattr(settings, 'GRAPHQL_MAX_COMPLEXITY', 100)  # Define your maximum allowed complexity
         self.current_complexity = 0
         self.complexity_map = {
             'user': 2,
@@ -40,7 +41,7 @@ class ComplexityLimitRule(ValidationRule):
 class DepthLimitRule(ValidationRule):
     def __init__(self, context):
         super().__init__(context)
-        self.max_depth = 10  # Set your desired maximum depth here
+        self.max_depth = getattr(settings, 'GRAPHQL_MAX_DEPTH', 10)  # Set your desired maximum depth here
         self.current_depth = 0
         self.max_reached = 0
 

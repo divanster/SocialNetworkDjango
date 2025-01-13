@@ -356,11 +356,17 @@ CORS_ALLOW_CREDENTIALS = True
 # =====================
 GRAPHENE = {
     'SCHEMA': 'schema.schema',
-    'MIDDLEWARE': [
-        # 'graphql_jwt.middleware.JSONWebTokenMiddleware',
-    ],
+    # 'MIDDLEWARE': [
+    #     'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    # ],
 }
 
+GRAPHQL_JWT = {
+    'JWT_VERIFY_EXPIRATION': True,
+    'JWT_EXPIRATION_DELTA': timedelta(hours=1),
+    'JWT_REFRESH_EXPIRATION_DELTA': timedelta(days=7),
+    # Add other settings as needed
+}
 
 # =====================
 # GraphQL Validation and Middleware Configuration
