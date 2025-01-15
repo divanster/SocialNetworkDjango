@@ -7,11 +7,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.pagination import PageNumberPagination
 
-from .serializers import (
-    AggregatedFeedSerializer, PostSerializer, CommentSerializer, ReactionSerializer,
-    AlbumSerializer, TaggedItemSerializer, FriendRequestSerializer,
-    FriendshipSerializer, StorySerializer
-)
+from social.serializers import PostSerializer
+from comments.serializers import CommentSerializer
+from reactions.serializers import ReactionSerializer
+from albums.serializers import AlbumSerializer
+from tagging.serializers import TaggedItemSerializer
+from friends.serializers import FriendRequestSerializer, FriendshipSerializer
+from stories.serializers import StorySerializer
+from .serializers import AggregatedFeedSerializer  # Only if defined in newsfeed/serializers.py
+
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
@@ -104,8 +108,7 @@ class AggregatedFeedView(APIView):
             logger.debug(f"Fetched friendships count: {friendships.count()}")
 
             # Serialize friend requests and friendships
-            friend_request_serializer = FriendRequestSerializer(friend_requests,
-                                                                many=True)
+            friend_request_serializer = FriendRequestSerializer(friend_requests, many=True)
             friendship_serializer = FriendshipSerializer(friendships, many=True)
 
             # Fetch stories visible to the user
@@ -139,5 +142,4 @@ class AggregatedFeedView(APIView):
 
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            return Response({"detail": f"An unexpected error occurred: {str(e)}"},
-                            status=500)
+            return Response({"detail": f"An unexpected error occurred: {str(e)}"}, status=500)

@@ -6,7 +6,7 @@ from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
 from core.task_utils import BaseTask
-from kafka_app.producer import KafkaProducerClient
+from kafka_app.services import KafkaService
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
     """
     try:
         from tagging.models import TaggedItem  # Local import to prevent circular dependencies
-        producer = KafkaProducerClient()
+        producer = KafkaService()
 
         if event_type == 'deleted':
             message = {
@@ -36,26 +36,27 @@ def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
         else:
             tagged_item = TaggedItem.objects.select_related('tagged_user', 'tagged_by').get(id=tagged_item_id)
             message = {
-                "tagged_item_id": tagged_item.id,
+                "tagged_item_id": str(tagged_item.id),            # Ensure 'id' is string
                 "tagged_user_id": str(tagged_item.tagged_user.id),
                 "content_type": str(tagged_item.content_type),
                 "object_id": str(tagged_item.object_id),
                 "tagged_by_id": str(tagged_item.tagged_by.id),
                 "created_at": tagged_item.created_at.isoformat(),
                 "event": event_type,
+                # Include 'id' within 'data' if necessary
             }
 
-        kafka_topic = settings.KAFKA_TOPICS.get('TAGGING_EVENTS', 'tagging-events')
-        producer.send_message(kafka_topic, message)
-        logger.info(f"Sent Kafka message for tagging event {event_type}: {message}")
+        kafka_topic_key = 'TAGGING_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
+        logger.info(f"[TASK] Sent Kafka message for tagging event '{event_type}': {message}")
 
     except TaggedItem.DoesNotExist:
-        logger.error(f"TaggedItem with ID {tagged_item_id} does not exist.")
+        logger.error(f"[TASK] TaggedItem with ID {tagged_item_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(f"Kafka timeout error while sending tagging {event_type}: {e}")
+        logger.error(f"[TASK] Kafka timeout error while sending tagging {event_type}: {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(f"Error sending Kafka message: {e}")
+        logger.error(f"[TASK] Error sending Kafka message: {e}")
         self.retry(exc=e, countdown=60)
 
 
@@ -66,8 +67,8 @@ def consume_tagging_events(self):
     """
     try:
         # Placeholder implementation
-        logger.warning("The consume_tagging_events task is not implemented.")
+        logger.warning("[TASK] The consume_tagging_events task is not implemented.")
         # Implement Kafka consumer logic here if needed
     except Exception as e:
-        logger.error(f"Error consuming tagging events: {e}")
+        logger.error(f"[TASK] Error consuming tagging events: {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff

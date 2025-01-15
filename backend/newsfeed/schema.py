@@ -1,3 +1,5 @@
+# newsfeed/schema.py
+
 import graphene
 from graphene_django.types import DjangoObjectType
 from albums.models import Album

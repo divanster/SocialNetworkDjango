@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import FriendRequest, Friendship
-from kafka_app.tasks import process_friend_event
+from kafka_app.tasks import process_friend_event_task
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ def friend_request_saved(sender, instance, created, **kwargs):
         event_type = 'created' if created else 'updated'
 
         # Trigger Celery task to process the friend request event
-        process_friend_event.delay(instance.id, event_type, is_friendship=False)
+        process_friend_event_task.delay(instance.id, event_type, is_friendship=False)
         logger.info(
             f"Triggered Celery task for friend request {event_type} with ID {instance.id}"
         )
@@ -32,7 +32,7 @@ def friend_request_deleted(sender, instance, **kwargs):
     """
     if not instance.is_deleted:
         # Trigger Celery task to process the friend request deleted event
-        process_friend_event.delay(instance.id, 'deleted', is_friendship=False)
+        process_friend_event_task.delay(instance.id, 'deleted', is_friendship=False)
         logger.info(
             f"Triggered Celery task for deleted friend request with ID {instance.id}"
         )
@@ -47,13 +47,13 @@ def friendship_saved(sender, instance, created, **kwargs):
     if not instance.is_deleted:
         if created:
             # Trigger Celery task to process the friendship created event
-            process_friend_event.delay(instance.id, 'created', is_friendship=True)
+            process_friend_event_task.delay(instance.id, 'created', is_friendship=True)
             logger.info(
                 f"Triggered Celery task for friendship created with ID {instance.id}"
             )
         else:
             # Handle updates if necessary
-            process_friend_event.delay(instance.id, 'updated', is_friendship=True)
+            process_friend_event_task.delay(instance.id, 'updated', is_friendship=True)
             logger.info(
                 f"Triggered Celery task for friendship updated with ID {instance.id}"
             )
@@ -67,7 +67,7 @@ def friendship_deleted(sender, instance, **kwargs):
     """
     if not instance.is_deleted:
         # Trigger Celery task to process the friendship deleted event
-        process_friend_event.delay(instance.id, 'deleted', is_friendship=True)
+        process_friend_event_task.delay(instance.id, 'deleted', is_friendship=True)
         logger.info(
             f"Triggered Celery task for deleted friendship with ID {instance.id}"
         )

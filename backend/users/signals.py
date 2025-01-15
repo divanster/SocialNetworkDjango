@@ -12,7 +12,7 @@ from utils.group_names import get_user_group_name  # New import
 from core.signals import soft_delete, restore  # Import custom signals
 
 from stories.models import Story
-from kafka_app.tasks.stories_tasks import send_story_event_to_kafka  # Import the Celery task
+from kafka_app.tasks.stories_tasks import send_story_shared_event_task  # Import the Celery task
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def story_saved(sender, instance, created, **kwargs):
         )
 
         # Trigger Celery task to send story event to Kafka
-        send_story_event_to_kafka.delay(instance.id, event_type)
+        send_story_shared_event_task.delay(instance.id, event_type)
 
     except Exception as e:
         logger.error(f"Error in story_saved signal: {e}")
@@ -161,7 +161,7 @@ def story_soft_deleted(sender, instance, **kwargs):
         )
 
         # Trigger Celery task to send story soft-deleted event to Kafka
-        send_story_event_to_kafka.delay(instance.id, 'soft_deleted')
+        send_story_shared_event_task.delay(instance.id, 'soft_deleted')
 
     except Exception as e:
         logger.error(f"Error in story_soft_deleted signal: {e}")
@@ -183,7 +183,7 @@ def story_restored(sender, instance, **kwargs):
         )
 
         # Trigger Celery task to send story restored event to Kafka
-        send_story_event_to_kafka.delay(instance.id, 'restored')
+        send_story_shared_event_task.delay(instance.id, 'restored')
 
     except Exception as e:
         logger.error(f"Error in story_restored signal: {e}")

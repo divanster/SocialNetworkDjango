@@ -1,16 +1,50 @@
+# backend/kafka_app/tasks/friend_tasks.py
+
 import logging
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
 from core.task_utils import BaseTask
-from kafka_app.producer import KafkaProducerClient
+from kafka_app.services import KafkaService
+from friends.models import FriendRequest, Friendship
 
 logger = logging.getLogger(__name__)
 
 
+def _get_friendship_data(friendship):
+    """
+    Extract relevant data from the friendship instance.
+    """
+    return {
+        'friendship_id': str(friendship.id),
+        'user1_id': str(friendship.user1.id),
+        'user1_username': friendship.user1.username,
+        'user2_id': str(friendship.user2.id),
+        'user2_username': friendship.user2.username,
+        'created_at': friendship.created_at.isoformat(),
+        # Add other relevant fields as needed
+    }
+
+
+def _get_friend_request_data(friend_request):
+    """
+    Extract relevant data from the friend request instance.
+    """
+    return {
+        'friend_request_id': str(friend_request.id),
+        'sender_id': str(friend_request.sender.id),
+        'sender_username': friend_request.sender.username,
+        'receiver_id': str(friend_request.receiver.id),
+        'receiver_username': friend_request.receiver.username,
+        'status': friend_request.status,
+        'created_at': friend_request.created_at.isoformat(),
+        # Add other relevant fields as needed
+    }
+
+
 @shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
-def process_friend_event(self, friend_event_id, event_type, is_friendship=False):
+def process_friend_event_task(self, friend_event_id, event_type, is_friendship=False):
     """
     Celery task to process friend events (friend requests or friendships) and send them to Kafka.
 
@@ -24,42 +58,28 @@ def process_friend_event(self, friend_event_id, event_type, is_friendship=False)
         None
     """
     try:
-        from friends.models import FriendRequest, Friendship  # Updated import
-        producer = KafkaProducerClient()
-
-        # Create message data for Kafka based on the type of event
-        if event_type == 'deleted':
-            message = {
-                "friend_event_id": str(friend_event_id),
-                "action": "deleted"
-            }
+        if is_friendship:
+            friendship = Friendship.objects.get(id=friend_event_id)
+            data = _get_friendship_data(friendship)
+            model_name = 'Friendship'
         else:
-            if is_friendship:
-                # Fetch Friendship instance and create a message
-                friendship = Friendship.objects.get(id=friend_event_id)
-                message = {
-                    "friendship_id": str(friendship.id),
-                    "user1_id": str(friendship.user1.id),
-                    "user2_id": str(friendship.user2.id),
-                    "created_at": friendship.created_at.isoformat(),
-                    "event": event_type
-                }
-            else:
-                # Fetch FriendRequest instance and create a message
-                friend_request = FriendRequest.objects.get(id=friend_event_id)
-                message = {
-                    "friend_request_id": str(friend_request.id),
-                    "sender_id": str(friend_request.sender.id),
-                    "receiver_id": str(friend_request.receiver.id),
-                    "status": friend_request.status,
-                    "created_at": friend_request.created_at.isoformat(),
-                    "event": event_type
-                }
+            friend_request = FriendRequest.objects.get(id=friend_event_id)
+            data = _get_friend_request_data(friend_request)
+            model_name = 'FriendRequest'
 
-        # Get Kafka topic from settings
-        kafka_topic = settings.KAFKA_TOPICS.get('FRIEND_EVENTS', 'friend-events')
-        producer.send_message(kafka_topic, message)
+        # Construct the standardized Kafka message
+        message = {
+            'app': 'friends',  # Assuming the app label is 'friends'
+            'event_type': event_type,
+            'model_name': model_name,
+            'id': str(friend_event_id),
+            'data': data,
+        }
 
+        # Send message to Kafka using KafkaService
+        kafka_topic_key = 'FRIEND_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic = settings.KAFKA_TOPICS.get(kafka_topic_key, 'friend-events')  # Fallback to default
+        KafkaService().send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for {event_type}: {message}")
 
     except (FriendRequest.DoesNotExist, Friendship.DoesNotExist) as e:

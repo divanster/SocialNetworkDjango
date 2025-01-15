@@ -6,10 +6,41 @@ from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
 from core.task_utils import BaseTask
-from kafka_app.producer import KafkaProducerClient
+from kafka_app.services import KafkaService
 from core.choices import VisibilityChoices
+from albums.models import Album, Photo  # Ensure correct model imports
 
 logger = logging.getLogger(__name__)
+
+
+def _get_album_data(album):
+    """
+    Extract relevant data from the album instance.
+    """
+    return {
+        'id': str(album.id),  # Include 'id' within 'data'
+        'title': album.title,
+        'description': album.description,
+        'tagged_user_ids': [str(tagged_user.id) for tagged_user in album.tags.all()],
+        'visibility': album.visibility,
+        'user_id': str(album.user.id),
+        # Add other relevant fields as needed
+    }
+
+
+def _get_photo_data(photo):
+    """
+    Extract relevant data from the photo instance.
+    """
+    return {
+        'id': str(photo.id),  # Include 'id' within 'data'
+        'album_id': str(photo.album.id) if photo.album else None,
+        'description': photo.description,
+        'tagged_user_ids': [str(tagged_user.id) for tagged_user in photo.tags.all()],
+        'visibility': photo.album.visibility if photo.album else None,
+        'user_id': str(photo.album.user.id) if photo.album else None,
+        # Add other relevant fields as needed
+    }
 
 
 @shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
@@ -26,10 +57,6 @@ def process_album_event_task(self, album_id, event_type):
         None
     """
     try:
-        from albums.models import Album  # Local import to avoid circular imports
-        producer = KafkaProducerClient()
-
-        # Fetching the album by ID using Django ORM
         album = Album.objects.get(pk=album_id)
 
         # Respect visibility when constructing the Kafka message
@@ -37,25 +64,19 @@ def process_album_event_task(self, album_id, event_type):
             logger.info(f"[TASK] Skipping Kafka message for private album with ID {album_id}")
             return
 
-        # Use reverse relation to get tagged users
-        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in album.tags.all()]
-
-        # Constructing the message for Kafka
+        # Construct the standardized Kafka message
         message = {
-            'event': event_type,
-            'album': str(album.pk),
-            'title': album.title,
-            'description': album.description,
-            'tagged_user_ids': tagged_user_ids,
-            'visibility': album.visibility,
-            'user': str(album.user.pk)
+            'app': album._meta.app_label,     # e.g., 'albums'
+            'event_type': event_type,         # e.g., 'created'
+            'model_name': 'Album',            # Name of the model
+            'id': str(album.id),              # UUID as string
+            'data': _get_album_data(album),   # Event-specific data
         }
 
-        # Send message to Kafka if visibility is public or friends
-        if album.visibility in [VisibilityChoices.PUBLIC, VisibilityChoices.FRIENDS]:
-            kafka_topic = settings.KAFKA_TOPICS.get('ALBUM_EVENTS', 'album-events')
-            producer.send_message(kafka_topic, message)
-            logger.info(f"[TASK] Successfully sent Kafka message for album event {event_type}: {message}")
+        # Send message to Kafka using KafkaService
+        kafka_topic_key = 'ALBUM_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
+        logger.info(f"[TASK] Successfully sent Kafka message for album event '{event_type}': {message}")
 
     except Album.DoesNotExist:
         logger.error(f"[TASK] Album with ID {album_id} does not exist.")
@@ -81,10 +102,6 @@ def process_photo_event_task(self, photo_id, event_type):
         None
     """
     try:
-        from albums.models import Photo  # Local import to avoid circular imports
-        producer = KafkaProducerClient()
-
-        # Fetching the photo by ID using Django ORM
         photo = Photo.objects.get(pk=photo_id)
 
         # Respect visibility of the parent album when constructing the Kafka message
@@ -92,25 +109,19 @@ def process_photo_event_task(self, photo_id, event_type):
             logger.info(f"[TASK] Skipping Kafka message for photo in private album with ID {photo_id}")
             return
 
-        # Use reverse relation to get tagged users
-        tagged_user_ids = [tagged_item.tagged_user_id for tagged_item in photo.tags.all()]
-
-        # Constructing the message for Kafka
+        # Construct the standardized Kafka message
         message = {
-            'event': event_type,
-            'photo': str(photo.pk),
-            'album': str(photo.album.pk) if photo.album else None,
-            'description': photo.description,
-            'tagged_user_ids': tagged_user_ids,
-            'visibility': photo.album.visibility,
-            'user': str(photo.album.user.pk)
+            'app': photo.album._meta.app_label,  # e.g., 'albums'
+            'event_type': event_type,             # e.g., 'created'
+            'model_name': 'Photo',                # Name of the model
+            'id': str(photo.id),                  # UUID as string
+            'data': _get_photo_data(photo),       # Event-specific data
         }
 
-        # Send message to Kafka if visibility is public or friends
-        if photo.album.visibility in [VisibilityChoices.PUBLIC, VisibilityChoices.FRIENDS]:
-            kafka_topic = settings.KAFKA_TOPICS.get('PHOTO_EVENTS', 'photo-events')
-            producer.send_message(kafka_topic, message)
-            logger.info(f"[TASK] Successfully sent Kafka message for photo event {event_type}: {message}")
+        # Send message to Kafka using KafkaService
+        kafka_topic_key = 'PHOTO_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
+        logger.info(f"[TASK] Successfully sent Kafka message for photo event '{event_type}': {message}")
 
     except Photo.DoesNotExist:
         logger.error(f"[TASK] Photo with ID {photo_id} does not exist.")

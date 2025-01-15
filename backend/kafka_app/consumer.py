@@ -4,7 +4,7 @@ import os
 import logging
 import json
 import time
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from kafka.errors import KafkaError
 from django.db import close_old_connections
 from django.conf import settings
@@ -12,12 +12,10 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from cryptography.fernet import Fernet
 
-# Set up Django settings (this MUST be done before importing any Django models or services)
+# Set up Django settings (must be done before importing any Django models or services)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-# Now initialize Django
 import django
-
 django.setup()
 
 # Import service handlers
@@ -34,16 +32,9 @@ from tagging.services import process_tagging_event
 from users.services import process_user_event
 from notifications.services import create_notification
 
+from kafka_app.schemas import EventData  # Ensure correct import
+
 logger = logging.getLogger(__name__)
-
-
-# Define the Pydantic model for message validation
-class EventData(BaseModel):
-    event_type: str
-    data: dict
-
-    class Config:
-        min_anystr_length = 1  # Ensure non-empty strings
 
 
 class BaseKafkaConsumer:
@@ -57,7 +48,7 @@ class BaseKafkaConsumer:
         self.group_id = group_id
         self.consumer = KafkaConsumer(
             *self.topics,
-            bootstrap_servers=settings.KAFKA_BROKER_URL,
+            bootstrap_servers=[settings.KAFKA_BROKER_URL],
             auto_offset_reset='earliest',
             enable_auto_commit=True,
             group_id=self.group_id,
@@ -100,20 +91,19 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             'tag_added': self.handle_tagging_event,
             'user_registered': self.handle_user_event,
             'notification_sent': self.handle_notification_event,
+            'post_created': self.handle_post_created,  # Added handler
             'updated': self.handle_updated_event  # Handler for 'updated' event
         }
 
     def consume_messages(self):
         while True:
             try:
-                logger.info(
-                    f"Started consuming messages from topics: {', '.join(self.topics)}")
+                logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
                 for message in self.consumer:
                     close_old_connections()
 
                     if not message.value:
-                        logger.warning(
-                            f"Received an empty message from topic {message.topic}, skipping.")
+                        logger.warning(f"Received an empty message from topic {message.topic}, skipping.")
                         continue
 
                     try:
@@ -128,11 +118,9 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                     except (ValidationError, json.JSONDecodeError) as e:
                         logger.error(f"Message validation or JSON decoding error: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to process message {message.value}: {e}",
-                                     exc_info=True)
+                        logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
             except KafkaError as e:
-                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
-                             exc_info=True)
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
                 time.sleep(10)
             except Exception as e:
                 logger.error(f"Unexpected error: {e}", exc_info=True)
@@ -168,12 +156,10 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                 handler(event_data.data)
 
                 # Forward the message to a WebSocket group if applicable
-                group_name = event_data.data.get("group_name",
-                                                 "default")  # Use 'default' if no group_name is provided
+                group_name = event_data.data.get("group_name", "default")  # Use 'default' if no group_name is provided
                 self.send_to_websocket_group(group_name, event_data.data)
             except Exception as e:
-                logger.error(f"Error processing event '{event_type}': {e}",
-                             exc_info=True)
+                logger.error(f"Error processing event '{event_type}': {e}", exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
 
@@ -192,38 +178,31 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     # Handlers for different event types
     def handle_messenger_event(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger",
-                                     {"event": "New message", "data": data})
+        self.send_to_websocket_group("messenger", {"event": "New message", "data": data})
 
     def handle_newsfeed_event(self, data):
         process_newsfeed_event(data)
-        self.send_to_websocket_group("newsfeed",
-                                     {"event": "Newsfeed updated", "data": data})
+        self.send_to_websocket_group("newsfeed", {"event": "Newsfeed updated", "data": data})
 
     def handle_album_event(self, data):
         process_album_event(data)
-        self.send_to_websocket_group("albums",
-                                     {"event": "New album created", "data": data})
+        self.send_to_websocket_group("albums", {"event": "New album created", "data": data})
 
     def handle_comment_event(self, data):
         process_comment_event(data)
-        self.send_to_websocket_group("comments",
-                                     {"event": "New comment posted", "data": data})
+        self.send_to_websocket_group("comments", {"event": "New comment posted", "data": data})
 
     def handle_follow_event(self, data):
         process_follow_event(data)
-        self.send_to_websocket_group("follows",
-                                     {"event": "New follow event", "data": data})
+        self.send_to_websocket_group("follows", {"event": "New follow event", "data": data})
 
     def handle_friend_event(self, data):
         process_friend_event(data)
-        self.send_to_websocket_group("friends",
-                                     {"event": "New friend added", "data": data})
+        self.send_to_websocket_group("friends", {"event": "New friend added", "data": data})
 
     def handle_reaction_event(self, data):
         process_reaction_event(data)
-        self.send_to_websocket_group("reactions",
-                                     {"event": "New reaction added", "data": data})
+        self.send_to_websocket_group("reactions", {"event": "New reaction added", "data": data})
 
     def handle_social_event(self, data):
         process_social_event(data)
@@ -243,28 +222,23 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         else:
             websocket_event = f"Social event: {event_type}"
 
-        self.send_to_websocket_group("social",
-                                     {"event": websocket_event, "data": data})
+        self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
 
     def handle_story_event(self, data):
         process_story_event(data)
-        self.send_to_websocket_group("stories",
-                                     {"event": "New story shared", "data": data})
+        self.send_to_websocket_group("stories", {"event": "New story shared", "data": data})
 
     def handle_tagging_event(self, data):
         process_tagging_event(data)
-        self.send_to_websocket_group("tagging",
-                                     {"event": "New tag added", "data": data})
+        self.send_to_websocket_group("tagging", {"event": "New tag added", "data": data})
 
     def handle_user_event(self, data):
         process_user_event(data)
-        self.send_to_websocket_group("users",
-                                     {"event": "New user registered", "data": data})
+        self.send_to_websocket_group("users", {"event": "New user registered", "data": data})
 
     def handle_notification_event(self, data):
         create_notification(data)
-        self.send_to_websocket_group("notifications",
-                                     {"event": "New notification", "data": data})
+        self.send_to_websocket_group("notifications", {"event": "New notification", "data": data})
 
     def handle_updated_event(self, data):
         """
@@ -285,6 +259,15 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         else:
             logger.warning(f"Unknown entity type for 'updated' event: {entity}")
 
+    def handle_post_created(self, data):
+        """
+        Handle the 'post_created' event.
+        """
+        process_social_event(data)  # Assuming this function handles 'post_created'
+        # Optionally, send a specific WebSocket notification
+        websocket_event = "New post created"
+        self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
+        logger.info(f"Handled 'post_created' event for Post ID: {data.get('id')}")
     def handle_post_update(self, data):
         """
         Handle update of a social post.
@@ -308,31 +291,3 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         process_comment_event(data)  # Processes comment updates
         websocket_event = "Comment updated"
         self.send_to_websocket_group("comments", {"event": websocket_event, "data": data})
-
-# def handle_updated_event(self, data):
-#     """
-#     Handle 'updated' event type.
-#     Determines the entity being updated and processes accordingly.
-#     """
-#     entity = data.get('entity')
-#     if not entity:
-#         logger.warning("Received 'updated' event without 'entity' field.")
-#         return
-#
-#     if entity == 'post':
-#         process_social_event(data)  # Assuming this processes post updates
-#         websocket_event = "Post updated"
-#         self.send_to_websocket_group("social",
-#                                      {"event": websocket_event, "data": data})
-#     elif entity == 'album':
-#         process_album_event(data)  # Assuming this processes album updates
-#         websocket_event = "Album updated"
-#         self.send_to_websocket_group("albums",
-#                                      {"event": websocket_event, "data": data})
-#     elif entity == 'comment':
-#         process_comment_event(data)  # Assuming this processes comment updates
-#         websocket_event = "Comment updated"
-#         self.send_to_websocket_group("comments",
-#                                      {"event": websocket_event, "data": data})
-#     else:
-#         logger.warning(f"Unknown entity type for 'updated' event: {entity}")

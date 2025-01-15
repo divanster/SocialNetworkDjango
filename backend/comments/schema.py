@@ -82,5 +82,5 @@ class Mutation(graphene.ObjectType):
     create_comment = CreateComment.Field()
 
 
-# Create the schema combining Query and Mutation.
+# Create the schema combining Query and Mutation
 schema = graphene.Schema(query=Query, mutation=Mutation)

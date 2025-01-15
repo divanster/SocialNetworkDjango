@@ -4,100 +4,65 @@ import logging
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
 from django.conf import settings
-from datetime import timedelta
-from django.utils import timezone
 
 from core.task_utils import BaseTask
-from kafka_app.producer import KafkaProducerClient
+from kafka_app.services import KafkaService
+from stories.models import Story  # Ensure correct model import
 
 logger = logging.getLogger(__name__)
 
 
+def _get_story_data(story):
+    """
+    Extract relevant data from the story instance.
+    """
+    return {
+        'id': str(story.id),              # Include 'id' within 'data'
+        'title': story.title,
+        'content': story.content,
+        'user_id': str(story.user.id),
+        'username': story.user.username,
+        'visibility': story.visibility,
+        'created_at': story.created_at.isoformat(),
+        # Add other relevant fields as needed
+    }
+
+
 @shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
-def send_story_event_to_kafka(self, story_id, event_type):
+def send_story_shared_event_task(self, story_id, event_type):
     """
     Celery task to send story events to Kafka.
+
+    Args:
+        self: Celery task instance.
+        story_id (UUID): The ID of the story.
+        event_type (str): Type of event to be processed (e.g., "shared", "deleted").
+
+    Returns:
+        None
     """
-    producer = None
     try:
-        from stories.models import Story
-        story = Story.objects.get(id=story_id)
+        story = Story.objects.get(pk=story_id)
+
+        # Construct the standardized Kafka message
         message = {
-            "story_id": str(story.id),
-            "user_id": str(story.user_id),
-            "content": story.content[:50] + '...' if story.content and len(story.content) > 50 else story.content,
-            "media_type": story.media_type,
-            "event": event_type,
-            "created_at": story.created_at.isoformat(),
+            'app': story._meta.app_label,      # e.g., 'stories'
+            'event_type': event_type,          # e.g., 'shared'
+            'model_name': 'Story',             # Name of the model
+            'id': str(story.id),               # UUID as string
+            'data': _get_story_data(story),    # Event-specific data
         }
-        producer = KafkaProducerClient()
-        kafka_topic = settings.KAFKA_TOPICS.get('STORY_EVENTS', 'story-events')
-        producer.send_message(kafka_topic, message)
-        logger.info(f"Sent Kafka message for story {event_type} with ID: {story.id}")
+
+        # Send message to Kafka using KafkaService
+        kafka_topic_key = 'STORY_EVENTS'      # Ensure this key exists in settings.KAFKA_TOPICS
+        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
+        logger.info(f"[TASK] Successfully sent Kafka message for story event '{event_type}': {message}")
 
     except Story.DoesNotExist:
-        logger.error(f"Story with ID {story_id} does not exist.")
+        logger.error(f"[TASK] Story with ID {story_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(f"Kafka timeout error while sending story {event_type}: {e}")
-        self.retry(exc=e)
-    except Exception as e:
-        logger.error(f"Error sending Kafka message for story {event_type}: {e}")
-        self.retry(exc=e)
-    finally:
-        if producer:
-            try:
-                producer.close()
-            except Exception as e:
-                logger.error(f"Error while closing Kafka producer: {e}")
-
-
-@shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
-def deactivate_expired_stories(self):
-    """
-    Celery task to deactivate expired stories and send events to Kafka.
-    """
-    producer = None
-    try:
-        logger.info("Started deactivating expired stories...")
-        expiration_time = timezone.now() - timedelta(hours=24)
-
-        from stories.models import Story
-
-        expired_stories = Story.objects.filter(is_active=True, created_at__lt=expiration_time, is_deleted=False)
-        total_stories = expired_stories.count()
-
-        if total_stories > 0:
-            producer = KafkaProducerClient()
-
-            for story in expired_stories.iterator(chunk_size=500):
-                try:
-                    story.is_active = False
-                    story.save()
-
-                    message = {
-                        "story_id": str(story.id),
-                        "event": "deactivated",
-                        "user_id": str(story.user_id),
-                        "created_at": story.created_at.isoformat(),
-                    }
-                    kafka_topic = settings.KAFKA_TOPICS.get('STORY_EVENTS', 'story-events')
-                    producer.send_message(kafka_topic, message)
-                    logger.info(f"Sent Kafka message for deactivated story with ID: {story.id}")
-
-                except Exception as e:
-                    logger.error(f"Error deactivating story with ID '{story.id}': {e}")
-                    continue
-
-            logger.info(f"Successfully deactivated {total_stories} expired stories.")
-        else:
-            logger.info("No expired stories found to deactivate.")
-
-    except Exception as e:
-        logger.error(f"An error occurred while deactivating expired stories: {e}")
+        logger.error(f"[TASK] Kafka timeout error while sending story '{event_type}': {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
-    finally:
-        if producer:
-            try:
-                producer.close()
-            except Exception as e:
-                logger.error(f"Error while closing Kafka producer: {e}")
+    except Exception as e:
+        logger.error(f"[TASK] Error sending Kafka message for story '{story_id}': {e}")
+        self.retry(exc=e, countdown=60)

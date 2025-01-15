@@ -1,7 +1,7 @@
 # backend/core/utils.py
 
 # Kafka producer utility
-from kafka_app.producer import KafkaProducerClient
+from kafka_app.services import KafkaService
 from django.contrib.auth import get_user_model
 from friends.models import Friendship, User, Block
 from django.db import models
@@ -11,7 +11,7 @@ def get_kafka_producer():
     """
     Returns a shared instance of KafkaProducerClient for all apps.
     """
-    return KafkaProducerClient()
+    return KafkaService()
 
 
 def get_friends(user):

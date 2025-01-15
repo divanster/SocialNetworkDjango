@@ -1,4 +1,4 @@
-# newsfeed/services.py
+# backend/newsfeed/services.py
 
 import logging
 from social.models import Post
@@ -37,4 +37,3 @@ def process_newsfeed_event(data):
         logger.error(f"[NEWSFEED] Reaction with ID {data.get('id')} does not exist.")
     except Exception as e:
         logger.error(f"[NEWSFEED] Error updating newsfeed: {e}")
-

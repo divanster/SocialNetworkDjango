@@ -3,7 +3,7 @@
 import logging
 from .models import Follow
 from notifications.services import create_notification
-from kafka_app.producer import KafkaProducerClient  # Kafka producer import
+from kafka_app.services import KafkaService  # Kafka producer import
 from django.conf import settings
 import json
 
@@ -57,7 +57,7 @@ def publish_follow_event(follow, event_type):
     Publishes follow events to Kafka.
     """
     try:
-        producer = KafkaProducerClient()
+        producer = KafkaService()
         message = {
             "event_type": event_type,
             "data": {

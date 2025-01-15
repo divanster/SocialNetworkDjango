@@ -42,6 +42,28 @@ KAFKA_TOPICS = dict(
     item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item
 )
 
+# Required Kafka topics to ensure all necessary topics are defined
+REQUIRED_KAFKA_TOPICS = {
+    'USER_EVENTS': 'user-events',
+    'NOTIFICATIONS': 'notifications',
+    'ALBUM_EVENTS': 'album-events',
+    'COMMENT_EVENTS': 'comment-events',
+    'FOLLOW_EVENTS': 'follow-events',
+    'FRIEND_EVENTS': 'friend-events',
+    'NEWSFEED_EVENTS': 'newsfeed-events',
+    'REACTION_EVENTS': 'reaction-events',
+    'SOCIAL_EVENTS': 'social-events',
+    'TAGGING_EVENTS': 'tagging-events',
+    'PHOTO_EVENTS': 'photo-events',
+    # Add other topics as needed...
+}
+
+# Check for missing Kafka topics
+missing_topics = [topic for topic in REQUIRED_KAFKA_TOPICS if topic not in KAFKA_TOPICS]
+if missing_topics:
+    raise ImproperlyConfigured(f"Missing Kafka topics in KAFKA_TOPICS: {', '.join(missing_topics)}")
+
+
 # Kafka encryption key for securing messages
 KAFKA_ENCRYPTION_KEY = env('KAFKA_ENCRYPTION_KEY', default=None)
 
