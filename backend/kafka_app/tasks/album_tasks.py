@@ -7,6 +7,8 @@ from django.conf import settings
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import ALBUM_EVENTS, ALBUM_CREATED, ALBUM_UPDATED, ALBUM_DELETED, PHOTO_EVENTS
+
 from core.choices import VisibilityChoices
 from albums.models import Album, Photo  # Ensure correct model imports
 
@@ -51,7 +53,7 @@ def process_album_event_task(self, album_id, event_type):
     Args:
         self: Celery task instance.
         album_id (str): The ID of the album.
-        event_type (str): Type of event to be processed (e.g., "created", "updated", "deleted").
+        event_type (str): Type of event to be processed (e.g., ALBUM_CREATED, ALBUM_UPDATED, ALBUM_DELETED).
 
     Returns:
         None
@@ -67,14 +69,14 @@ def process_album_event_task(self, album_id, event_type):
         # Construct the standardized Kafka message
         message = {
             'app': album._meta.app_label,     # e.g., 'albums'
-            'event_type': event_type,         # e.g., 'created'
+            'event_type': event_type,         # e.g., ALBUM_CREATED
             'model_name': 'Album',            # Name of the model
             'id': str(album.id),              # UUID as string
             'data': _get_album_data(album),   # Event-specific data
         }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'ALBUM_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic_key = ALBUM_EVENTS  # Use constant from constants.py
         KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
         logger.info(f"[TASK] Successfully sent Kafka message for album event '{event_type}': {message}")
 
@@ -91,43 +93,17 @@ def process_album_event_task(self, album_id, event_type):
 @shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
 def process_photo_event_task(self, photo_id, event_type):
     """
-    Celery task to process photo events and send messages to Kafka.
-
-    Args:
-        self: Celery task instance.
-        photo_id (str): The ID of the photo.
-        event_type (str): Type of event to be processed (e.g., "created", "updated", "deleted").
-
-    Returns:
-        None
+    Celery task to process photo events and send them to Kafka.
     """
     try:
-        photo = Photo.objects.get(pk=photo_id)
-
-        # Respect visibility of the parent album when constructing the Kafka message
-        if photo.album.visibility == VisibilityChoices.PRIVATE:
-            logger.info(f"[TASK] Skipping Kafka message for photo in private album with ID {photo_id}")
-            return
-
-        # Construct the standardized Kafka message
+        # Your logic to handle photo events
         message = {
-            'app': photo.album._meta.app_label,  # e.g., 'albums'
-            'event_type': event_type,             # e.g., 'created'
-            'model_name': 'Photo',                # Name of the model
-            'id': str(photo.id),                  # UUID as string
-            'data': _get_photo_data(photo),       # Event-specific data
+            'event_type': event_type,
+            'photo_id': str(photo_id),
+            # Add more relevant fields
         }
-
-        # Send message to Kafka using KafkaService
-        kafka_topic_key = 'PHOTO_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
-        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
-        logger.info(f"[TASK] Successfully sent Kafka message for photo event '{event_type}': {message}")
-
-    except Photo.DoesNotExist:
-        logger.error(f"[TASK] Photo with ID {photo_id} does not exist.")
-    except KafkaTimeoutError as e:
-        logger.error(f"[TASK] Kafka timeout occurred while processing photo {photo_id} for event {event_type}: {e}")
-        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
+        KafkaService().send_message(PHOTO_EVENTS, message)
+        logger.info(f"Processed photo event {event_type} for photo ID {photo_id}")
     except Exception as e:
-        logger.error(f"[TASK] Unexpected error occurred while sending Kafka message for photo {photo_id}: {e}")
-        self.retry(exc=e, countdown=60)
+        logger.error(f"Error processing photo event {event_type} for photo ID {photo_id}: {e}")
+        self.retry(exc=e)

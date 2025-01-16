@@ -1,4 +1,4 @@
-# Use a Debian-based image for better compatibility
+# Stage 1: Base Image
 FROM python:3.11-slim AS base
 
 # Set environment variables
@@ -22,18 +22,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip
 RUN pip install --upgrade pip
 
-# Stage 1: Builder
+# Stage 2: Builder
 FROM base AS builder
+
+# Copy only requirements to leverage Docker cache
 COPY ./requirements.txt ./requirements.dev.txt /app/
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir -r requirements.dev.txt
 
-# Stage 2: Production
+# Stage 3: Production
 FROM base AS production
 
+# Copy installed Python packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
-COPY . /app
+
+# Copy the application code
+COPY . /app/
+
+# Install production dependencies if any (optional)
+# RUN pip install --no-cache-dir -r requirements.txt
 
 # Create a non-root user and adjust permissions
 RUN useradd -m django-user && \
@@ -50,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health/ || exit 1
 
 # Entry point
-CMD ["sh", "-c", "gunicorn --workers=2 --bind 0.0.0.0:8000 config.wsgi:application"]
+CMD ["gunicorn", "--workers=2", "--bind", "0.0.0.0:8000", "config.wsgi:application"]

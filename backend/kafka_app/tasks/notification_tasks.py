@@ -8,6 +8,7 @@ from django.conf import settings
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import NOTIFICATIONS, NOTIFICATION_SENT, NOTIFICATION_DELETED
 from notifications.models import Notification  # Ensure correct model import
 
 logger = logging.getLogger(__name__)
@@ -21,14 +22,14 @@ def process_notification_event_task(self, notification_id, event_type):
     Args:
         self: Celery task instance.
         notification_id (UUID): The UUID of the notification.
-        event_type (str): Type of event (e.g., "created", "updated", "deleted").
+        event_type (str): Type of event (e.g., NOTIFICATION_SENT, NOTIFICATION_DELETED).
 
     Returns:
         None
     """
     try:
         # Prepare the message based on the event type
-        if event_type == 'deleted':
+        if event_type == NOTIFICATION_DELETED:
             message = {
                 'app': 'notifications',  # Assuming the app label is 'notifications'
                 'event_type': event_type,
@@ -61,7 +62,7 @@ def process_notification_event_task(self, notification_id, event_type):
             }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'NOTIFICATIONS'  # Adjusted to match .env
+        kafka_topic_key = NOTIFICATIONS  # Use constant from constants.py
         kafka_topic = settings.KAFKA_TOPICS.get(kafka_topic_key, 'notifications')  # Fallback to 'notifications'
         KafkaService().send_message(kafka_topic, message)
         logger.info(f"Sent Kafka message for notification {event_type}: {message}")

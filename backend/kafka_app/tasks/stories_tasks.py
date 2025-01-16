@@ -7,6 +7,7 @@ from django.conf import settings
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import STORY_EVENTS, STORY_SHARED  # Import constants
 from stories.models import Story  # Ensure correct model import
 
 logger = logging.getLogger(__name__)
@@ -32,31 +33,24 @@ def _get_story_data(story):
 def send_story_shared_event_task(self, story_id, event_type):
     """
     Celery task to send story events to Kafka.
-
-    Args:
-        self: Celery task instance.
-        story_id (UUID): The ID of the story.
-        event_type (str): Type of event to be processed (e.g., "shared", "deleted").
-
-    Returns:
-        None
     """
     try:
         story = Story.objects.get(pk=story_id)
 
         # Construct the standardized Kafka message
+        specific_event_type = f"story_{event_type}"  # e.g., 'story_shared'
         message = {
-            'app': story._meta.app_label,      # e.g., 'stories'
-            'event_type': event_type,          # e.g., 'shared'
-            'model_name': 'Story',             # Name of the model
-            'id': str(story.id),               # UUID as string
-            'data': _get_story_data(story),    # Event-specific data
+            'app': story._meta.app_label,       # e.g., 'stories'
+            'event_type': specific_event_type,  # e.g., 'story_shared'
+            'model_name': 'Story',              # Name of the model
+            'id': str(story.id),                # UUID as string
+            'data': _get_story_data(story),     # Event-specific data
         }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'STORY_EVENTS'      # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic_key = STORY_EVENTS          # Use constant
         KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
-        logger.info(f"[TASK] Successfully sent Kafka message for story event '{event_type}': {message}")
+        logger.info(f"[TASK] Successfully sent Kafka message for story event '{specific_event_type}': {message}")
 
     except Story.DoesNotExist:
         logger.error(f"[TASK] Story with ID {story_id} does not exist.")

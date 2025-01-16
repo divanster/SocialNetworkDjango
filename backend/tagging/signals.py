@@ -1,16 +1,21 @@
 # backend/tagging/signals.py
 
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
 from tagging.models import TaggedItem
 from notifications.models import Notification
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from kafka_app.tasks import send_tagging_event_to_kafka
+from kafka_app.tasks.tagging_tasks import send_tagging_event_to_kafka  # Updated import
 from django.db.models.signals import pre_delete
 
-
 import logging
+
+from kafka_app.constants import (
+    TAGGING_CREATED,
+    TAGGING_DELETED,
+    TAGGING_EVENTS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +52,7 @@ def tagged_item_created(sender, instance, created, **kwargs):
         )
 
         # Trigger Celery task to send the tagging event to Kafka
-        send_tagging_event_to_kafka.delay(instance.id, 'created')
+        send_tagging_event_to_kafka.delay(str(instance.id), TAGGING_CREATED)
 
         logger.info(f"TaggedItem created: {instance}")
 
@@ -61,7 +66,7 @@ def tagged_item_deleted(sender, instance, **kwargs):
     )
 
     # Trigger Celery task to send the tagging event to Kafka
-    send_tagging_event_to_kafka.delay(instance.id, 'deleted')
+    send_tagging_event_to_kafka.delay(str(instance.id), TAGGING_DELETED)
 
     logger.info(f"TaggedItem deleted: {instance}")
 

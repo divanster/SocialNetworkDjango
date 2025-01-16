@@ -6,12 +6,20 @@ from django.dispatch import receiver
 
 from core.choices import VisibilityChoices
 from stories.models import Story
-from kafka_app.tasks.stories_tasks import send_story_event_to_kafka
+from kafka_app.tasks.stories_tasks import send_story_shared_event_task  # Updated import
 from core.signals import soft_delete, restore  # Import custom signals
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from utils.group_names import get_user_group_name  # Import utility function
+
+from kafka_app.constants import (
+    STORY_CREATED,
+    STORY_UPDATED,
+    STORY_SOFT_DELETED,
+    STORY_RESTORED,
+    STORY_EVENTS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +40,7 @@ def story_created_or_updated(sender, instance, created, **kwargs):
         created (bool): A boolean indicating if the instance is being created.
         **kwargs: Additional keyword arguments.
     """
-    event_type = 'created' if created else 'updated'
+    event_type = STORY_CREATED if created else STORY_UPDATED
 
     try:
         # Respect the visibility setting
@@ -41,7 +49,7 @@ def story_created_or_updated(sender, instance, created, **kwargs):
             return
 
         # Trigger Celery task for story creation or update
-        send_story_event_to_kafka.delay(str(instance.pk), event_type)
+        send_story_shared_event_task.delay(str(instance.pk), event_type)
         logger.info(
             f"[SIGNAL] Triggered Celery task for story {event_type} with ID {instance.pk}"
         )
@@ -83,7 +91,7 @@ def story_soft_deleted(sender, instance, **kwargs):
     """
     try:
         # Trigger Celery task to handle the story soft deletion event
-        send_story_event_to_kafka.delay(str(instance.pk), 'soft_deleted')
+        send_story_shared_event_task.delay(str(instance.pk), STORY_SOFT_DELETED)
         logger.info(
             f"[SIGNAL] Triggered Celery task for story soft deletion with ID {instance.pk}"
         )
@@ -98,7 +106,7 @@ def story_soft_deleted(sender, instance, **kwargs):
             {
                 'type': 'story_notification',
                 'message': message,
-                'event': 'soft_deleted',
+                'event': STORY_SOFT_DELETED,
                 'story_id': str(instance.id),
                 'user_id': str(instance.user.id),
                 'username': instance.user.username,
@@ -125,7 +133,7 @@ def story_restored(sender, instance, **kwargs):
     """
     try:
         # Trigger Celery task to handle the story restoration event
-        send_story_event_to_kafka.delay(str(instance.pk), 'restored')
+        send_story_shared_event_task.delay(str(instance.pk), STORY_RESTORED)
         logger.info(
             f"[SIGNAL] Triggered Celery task for story restoration with ID {instance.pk}"
         )
@@ -140,7 +148,7 @@ def story_restored(sender, instance, **kwargs):
             {
                 'type': 'story_notification',
                 'message': message,
-                'event': 'restored',
+                'event': STORY_RESTORED,
                 'story_id': str(instance.id),
                 'user_id': str(instance.user.id),
                 'username': instance.user.username,

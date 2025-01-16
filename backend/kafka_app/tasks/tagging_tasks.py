@@ -6,6 +6,7 @@ from kafka.errors import KafkaTimeoutError
 from django.conf import settings
 
 from core.task_utils import BaseTask
+from kafka_app.constants import TAGGING_EVENTS, TAG_ADDED, TAG_REMOVED, TAGGING_CREATED, TAGGING_DELETED
 from kafka_app.services import KafkaService
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
     Args:
         self: Celery task instance.
         tagged_item_id (int): The ID of the TaggedItem.
-        event_type (str): Type of event (e.g., "created", "deleted").
+        event_type (str): Type of event (e.g., TAGGING_CREATED, TAGGING_DELETED).
 
     Returns:
         None
@@ -28,10 +29,10 @@ def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
         from tagging.models import TaggedItem  # Local import to prevent circular dependencies
         producer = KafkaService()
 
-        if event_type == 'deleted':
+        if event_type == TAGGING_DELETED:
             message = {
                 "tagged_item_id": tagged_item_id,
-                "event": "deleted"
+                "event": event_type
             }
         else:
             tagged_item = TaggedItem.objects.select_related('tagged_user', 'tagged_by').get(id=tagged_item_id)
@@ -46,7 +47,7 @@ def send_tagging_event_to_kafka(self, tagged_item_id, event_type):
                 # Include 'id' within 'data' if necessary
             }
 
-        kafka_topic_key = 'TAGGING_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic_key = TAGGING_EVENTS  # Use constant from constants.py
         KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
         logger.info(f"[TASK] Sent Kafka message for tagging event '{event_type}': {message}")
 

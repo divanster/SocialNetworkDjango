@@ -8,6 +8,7 @@ from django.conf import settings
 from core.choices import VisibilityChoices
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import COMMENT_EVENTS, COMMENT_CREATED, COMMENT_UPDATED, COMMENT_DELETED
 from comments.models import Comment  # Ensure correct model import
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def process_comment_event_task(self, comment_id, event_type):
     Args:
         self: Celery task instance.
         comment_id (str): The ID of the comment.
-        event_type (str): Type of event to be processed (e.g., "created", "updated", "deleted").
+        event_type (str): Type of event to be processed (e.g., COMMENT_CREATED, COMMENT_UPDATED, COMMENT_DELETED).
 
     Returns:
         None
@@ -52,14 +53,14 @@ def process_comment_event_task(self, comment_id, event_type):
         # Construct the standardized Kafka message
         message = {
             'app': comment._meta.app_label,    # e.g., 'comments'
-            'event_type': event_type,          # e.g., 'created'
+            'event_type': event_type,          # e.g., COMMENT_CREATED
             'model_name': 'Comment',           # Name of the model
             'id': str(comment.id),             # UUID as string
             'data': _get_comment_data(comment),# Event-specific data
         }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'COMMENT_EVENTS'    # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic_key = COMMENT_EVENTS    # Use constant from constants.py
         KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
         logger.info(f"[TASK] Successfully sent Kafka message for comment event '{event_type}': {message}")
 

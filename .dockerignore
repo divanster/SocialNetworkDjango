@@ -1,8 +1,8 @@
-# Ignore Python bytecode files
+# Python bytecode
 **/__pycache__/
 **/*.py[cod]
 
-# Ignore virtual environment directories
+# Virtual environments
 venv/
 ENV/
 env/
@@ -10,32 +10,31 @@ env.bak/
 venv.bak/
 .venv/
 
-# Ignore local development settings and files
+# Local development settings and files
 .settings/
-db.sqlite3  # Ignore local SQLite database
+db.sqlite3
 
-# Ignore media and static files generated during development or runtime
+# Media and static files
 media/
 static/
 vol/
-vol/
 .vol/
 
-# Ignore log files
+# Log files
 *.log
 
-# Ignore system-specific files
+# System-specific files
 .DS_Store
 Thumbs.db
 
-# Ignore IDE and editor specific files
-.idea/          # PyCharm project files
-.vscode/        # Visual Studio Code project files
+# IDE and editor directories
+.idea/
+.vscode/
 
-# Ignore version control directories
-.git
-.hg
-.svn
+# Version control directories
+.git/
+.hg/
+.svn/
 
-# Ignore node_modules (assuming you have a frontend project with Node.js)
+# Node modules (if applicable)
 node_modules/

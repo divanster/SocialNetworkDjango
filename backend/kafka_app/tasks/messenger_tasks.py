@@ -7,6 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from core.task_utils import BaseTask
+from kafka_app.constants import MESSENGER_EVENTS, MESSAGE_CREATED, MESSAGE_UPDATED, MESSAGE_DELETED
 from kafka_app.services import KafkaService
 from messenger.models import Message  # Ensure correct model import
 
@@ -39,13 +40,13 @@ def process_message_event_task(self, message_id, event_type):
     Args:
         self: Celery task instance.
         message_id (UUID): The UUID of the message.
-        event_type (str): Type of event (e.g., "created", "updated", "deleted").
+        event_type (str): Type of event (e.g., MESSAGE_CREATED, MESSAGE_UPDATED, MESSAGE_DELETED).
 
     Returns:
         None
     """
     try:
-        if event_type == 'deleted':
+        if event_type == MESSAGE_DELETED:
             # Create a message for deleted events with just the object ID and event type
             message = {
                 'app': 'messenger',  # Assuming the app label is 'messenger'
@@ -67,9 +68,8 @@ def process_message_event_task(self, message_id, event_type):
             }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'MESSENGER_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
-        kafka_topic = settings.KAFKA_TOPICS.get(kafka_topic_key, 'messenger-events')  # Fallback to default
-        KafkaService().send_message(kafka_topic, message)
+        kafka_topic_key = MESSENGER_EVENTS  # Use constant from constants.py
+        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
         logger.info(f"Sent Kafka message for message {event_type}: {message}")
 
     except Message.DoesNotExist:

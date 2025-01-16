@@ -12,6 +12,7 @@ def get_user_group_name(user_id):
     """
     return f"user_{user_id}"
 
+
 def get_general_group_name():
     """
     Generate a general WebSocket group name.

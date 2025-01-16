@@ -7,6 +7,7 @@ from django.conf import settings
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import REACTION_EVENTS, REACTION_CREATED, REACTION_UPDATED, REACTION_DELETED, REACTION_ADDED
 from reactions.models import Reaction  # Ensure correct model import
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def process_reaction_event_task(self, reaction_id, event_type):
     Args:
         self: Celery task instance.
         reaction_id (UUID): The ID of the reaction.
-        event_type (str): Type of event to be processed (e.g., "created", "deleted").
+        event_type (str): Type of event to be processed (e.g., REACTION_CREATED, REACTION_DELETED).
 
     Returns:
         None
@@ -52,7 +53,7 @@ def process_reaction_event_task(self, reaction_id, event_type):
         }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'REACTION_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic_key = REACTION_EVENTS  # Use constant from constants.py
         KafkaService().send_message(kafka_topic_key, message)
         logger.info(f"Sent Kafka message for reaction {event_type}: {message}")
 

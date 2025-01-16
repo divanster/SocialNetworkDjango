@@ -7,6 +7,7 @@ from django.conf import settings
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import FOLLOW_EVENTS, FOLLOW_CREATED, FOLLOW_DELETED
 from follows.models import Follow  # Ensure correct model import
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def process_follow_event_task(self, follow_id, event_type):
     Args:
         self: Celery task instance.
         follow_id (int): ID of the follow event.
-        event_type (str): Type of the event, either 'created' or 'deleted'.
+        event_type (str): Type of the event, either FOLLOW_CREATED or FOLLOW_DELETED.
 
     Returns:
         None
@@ -44,7 +45,7 @@ def process_follow_event_task(self, follow_id, event_type):
         follow = Follow.objects.get(id=follow_id)
 
         # Construct the standardized Kafka message
-        if event_type == 'deleted':
+        if event_type == FOLLOW_DELETED:
             message = {
                 'app': follow._meta.app_label,
                 'event_type': event_type,
@@ -62,7 +63,7 @@ def process_follow_event_task(self, follow_id, event_type):
             }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'FOLLOW_EVENTS'    # Ensure this key exists in settings.KAFKA_TOPICS
+        kafka_topic_key = FOLLOW_EVENTS    # Use constant from constants.py
         KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
         logger.info(f"[KAFKA] Successfully sent follow {event_type} event to topic '{kafka_topic_key}': {message}")
 

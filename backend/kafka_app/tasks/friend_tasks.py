@@ -7,6 +7,7 @@ from django.conf import settings
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService
+from kafka_app.constants import FRIEND_EVENTS, FRIEND_ADDED, FRIEND_REMOVED
 from friends.models import FriendRequest, Friendship
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ def process_friend_event_task(self, friend_event_id, event_type, is_friendship=F
     Args:
         self: Celery task instance.
         friend_event_id (UUID): ID of the friend event.
-        event_type (str): Type of the event, e.g., 'created', 'deleted'.
+        event_type (str): Type of the event, e.g., FRIEND_ADDED, FRIEND_REMOVED.
         is_friendship (bool): Indicates if the event is a friendship or a friend request.
 
     Returns:
@@ -77,9 +78,8 @@ def process_friend_event_task(self, friend_event_id, event_type, is_friendship=F
         }
 
         # Send message to Kafka using KafkaService
-        kafka_topic_key = 'FRIEND_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
-        kafka_topic = settings.KAFKA_TOPICS.get(kafka_topic_key, 'friend-events')  # Fallback to default
-        KafkaService().send_message(kafka_topic, message)
+        kafka_topic_key = FRIEND_EVENTS  # Use constant from constants.py
+        KafkaService().send_message(kafka_topic_key, message)
         logger.info(f"Sent Kafka message for {event_type}: {message}")
 
     except (FriendRequest.DoesNotExist, Friendship.DoesNotExist) as e:

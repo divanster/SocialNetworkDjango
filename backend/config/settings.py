@@ -31,6 +31,24 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',
 # Kafka Configuration
 # =====================
 
+
+from kafka_app.constants import (
+    USER_EVENTS,
+    NOTIFICATIONS,
+    ALBUM_EVENTS,
+    COMMENT_EVENTS,
+    FOLLOW_EVENTS,
+    FRIEND_EVENTS,
+    NEWSFEED_EVENTS,
+    REACTION_EVENTS,
+    SOCIAL_EVENTS,
+    TAGGING_EVENTS,
+    PHOTO_EVENTS,
+    STORY_EVENTS,
+    # Add other event_type constants as needed
+)
+
+
 # Kafka broker URL for event-driven architecture
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
 KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID',
@@ -44,17 +62,18 @@ KAFKA_TOPICS = dict(
 
 # Required Kafka topics to ensure all necessary topics are defined
 REQUIRED_KAFKA_TOPICS = {
-    'USER_EVENTS': 'user-events',
-    'NOTIFICATIONS': 'notifications',
-    'ALBUM_EVENTS': 'album-events',
-    'COMMENT_EVENTS': 'comment-events',
-    'FOLLOW_EVENTS': 'follow-events',
-    'FRIEND_EVENTS': 'friend-events',
-    'NEWSFEED_EVENTS': 'newsfeed-events',
-    'REACTION_EVENTS': 'reaction-events',
-    'SOCIAL_EVENTS': 'social-events',
-    'TAGGING_EVENTS': 'tagging-events',
-    'PHOTO_EVENTS': 'photo-events',
+    USER_EVENTS: 'user-events',
+    NOTIFICATIONS: 'notifications',
+    ALBUM_EVENTS: 'album-events',
+    COMMENT_EVENTS: 'comment-events',
+    FOLLOW_EVENTS: 'follow-events',
+    FRIEND_EVENTS: 'friend-events',
+    NEWSFEED_EVENTS: 'newsfeed-events',
+    REACTION_EVENTS: 'reaction-events',
+    SOCIAL_EVENTS: 'social-events',
+    TAGGING_EVENTS: 'tagging-events',
+    PHOTO_EVENTS: 'photo-events',
+    STORY_EVENTS: 'story-events',
     # Add other topics as needed...
 }
 
@@ -176,6 +195,11 @@ TEMPLATES = [
         },
     },
 ]
+
+# Verify that the 'templates' directory exists
+templates_dir = os.path.join(BASE_DIR, 'templates')
+if not os.path.exists(templates_dir):
+    os.makedirs(templates_dir)
 
 # =====================
 # WSGI and ASGI Application Configuration

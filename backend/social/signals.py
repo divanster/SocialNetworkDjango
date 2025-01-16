@@ -1,14 +1,21 @@
 # backend/social/signals.py
 
+import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from .models import Post
 from tagging.models import TaggedItem
-from kafka_app.tasks import process_post_event_task
+from kafka_app.tasks.newsfeed_tasks import send_newsfeed_event_task
+from kafka_app.tasks.social_tasks import process_post_event_task  # Updated import
 from core.utils import get_friends  # Import the utility function for getting friends
-import logging
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+from kafka_app.constants import (
+    TAGGING_CREATED,
+    TAGGING_DELETED,
+    SOCIAL_EVENTS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +25,13 @@ logger = logging.getLogger(__name__)
 def post_saved(sender, instance, created, **kwargs):
     try:
         # Define specific event types
-        if created:
-            event_type = 'post_created'
-        else:
-            event_type = 'post_updated'
+        event_type = 'created' if created else 'updated'  # Consider defining SOCIAL_EVENTS constants
 
         # Trigger the Celery task to send the event to Kafka
-        process_post_event_task.delay(instance.id, event_type)
+        process_post_event_task.delay(str(instance.id), event_type)
         logger.info(
-            f"Triggered Celery task for post {event_type} event with ID {instance.id}")
+            f"Triggered Celery task for post {event_type} event with ID {instance.id}"
+        )
 
         # Send real-time update via Django Channels respecting post visibility
         channel_layer = get_channel_layer()
@@ -44,7 +49,8 @@ def post_saved(sender, instance, created, **kwargs):
                 }
             )
             logger.info(
-                f"Real-time update sent via Django Channels for public post {event_type} event with ID {instance.id}")
+                f"Real-time update sent via Django Channels for public post {event_type} event with ID {instance.id}"
+            )
 
         elif instance.visibility == 'friends':
             # Notify friends of the author using utility function
@@ -61,7 +67,8 @@ def post_saved(sender, instance, created, **kwargs):
                     }
                 )
             logger.info(
-                f"Real-time update sent to friends for post {event_type} event with ID {instance.id}")
+                f"Real-time update sent to friends for post {event_type} event with ID {instance.id}"
+            )
 
         elif instance.visibility == 'private':
             # Only notify the author for their own private posts
@@ -76,23 +83,26 @@ def post_saved(sender, instance, created, **kwargs):
                 }
             )
             logger.info(
-                f"Real-time update sent to the author for private post {event_type} event with ID {instance.id}")
+                f"Real-time update sent to the author for private post {event_type} event with ID {instance.id}"
+            )
 
     except Exception as e:
         logger.error(
-            f"Error handling post {event_type} signal for post ID {instance.id}: {e}")
+            f"Error handling post {event_type} signal for post ID {instance.id}: {e}"
+        )
 
 
 @receiver(post_delete, sender=Post)
 def post_deleted(sender, instance, **kwargs):
     try:
         # Define specific event type
-        event_type = 'post_deleted'
+        event_type = 'deleted'  # Consider defining SOCIAL_EVENTS_DELETED
 
         # Trigger the Celery task to send the deleted event to Kafka
-        process_post_event_task.delay(instance.id, event_type)
+        process_post_event_task.delay(str(instance.id), event_type)
         logger.info(
-            f"Triggered Celery task for deleted post event with ID {instance.id}")
+            f"Triggered Celery task for post deleted event with ID {instance.id}"
+        )
 
         # Send real-time delete notification via Django Channels
         channel_layer = get_channel_layer()
@@ -110,7 +120,8 @@ def post_deleted(sender, instance, **kwargs):
                 }
             )
             logger.info(
-                f"Real-time delete notification sent via Django Channels for post ID {instance.id}")
+                f"Real-time delete notification sent via Django Channels for post ID {instance.id}"
+            )
 
         elif instance.visibility == 'friends':
             # Notify friends of the author using utility function
@@ -127,7 +138,8 @@ def post_deleted(sender, instance, **kwargs):
                     }
                 )
             logger.info(
-                f"Real-time delete notification sent to friends for post ID {instance.id}")
+                f"Real-time delete notification sent to friends for post ID {instance.id}"
+            )
 
         elif instance.visibility == 'private':
             # Only notify the author for their own private posts
@@ -142,11 +154,13 @@ def post_deleted(sender, instance, **kwargs):
                 }
             )
             logger.info(
-                f"Real-time delete notification sent to the author for private post {event_type} event with ID {instance.id}")
+                f"Real-time delete notification sent to the author for private post {event_type} event with ID {instance.id}"
+            )
 
     except Exception as e:
         logger.error(
-            f"Error handling post deleted signal for post ID {instance.id}: {e}")
+            f"Error handling post deleted signal for post ID {instance.id}: {e}"
+        )
 
 
 # Signals for the TaggedItem model
@@ -164,7 +178,7 @@ def tagged_item_saved(sender, instance, created, **kwargs):
                     'posts_updates',
                     {
                         'type': 'post_message',
-                        'event': 'tagged' if created else 'untagged',
+                        'event': TAGGING_CREATED if created else 'untagged',
                         'post': str(post.id),
                         'title': post.title,
                         'content': post.content,
@@ -174,14 +188,16 @@ def tagged_item_saved(sender, instance, created, **kwargs):
                 logger.info(f"Real-time tagging update sent for post ID {post.id}")
 
                 # Trigger the Celery task to send the tagging event to Kafka
-                process_post_event_task.delay(
-                    post.id,
-                    'tagged' if created else 'untagged',
-                    tagged_user_ids=[instance.tagged_user_id]
+                send_newsfeed_event_task.delay(
+                    str(post.id),
+                    TAGGING_CREATED if created else TAGGING_DELETED,
+                    'TaggedItem'
                 )
                 logger.info(
-                    f"Triggered Celery task for tagging event '{'tagged' if created else 'untagged'}' on post ID {post.id}")
+                    f"Triggered Celery task for tagging event '{TAGGING_CREATED if created else TAGGING_DELETED}' on post ID {post.id}"
+                )
 
     except Exception as e:
         logger.error(
-            f"Error handling tagged item saved signal for object ID {instance.object_id}: {e}")
+            f"Error handling tagged item saved signal for object ID {instance.object_id}: {e}"
+        )

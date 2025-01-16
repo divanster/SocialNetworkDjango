@@ -34,6 +34,26 @@ from notifications.services import create_notification
 
 from kafka_app.schemas import EventData  # Ensure correct import
 
+from kafka_app.constants import (
+    ALBUM_CREATED,
+    COMMENT_CREATED,
+    FOLLOW_CREATED,
+    FRIEND_ADDED,
+    MESSAGE_EVENT,
+    NEWSFEED_UPDATED,
+    REACTION_ADDED,
+    SOCIAL_ACTION,
+    STORY_SHARED,
+    TAG_ADDED,
+    TAG_REMOVED,
+    USER_REGISTERED,
+    NOTIFICATION_SENT,
+    POST_CREATED,
+    POST_UPDATED,
+    POST_DELETED,
+    # Add other event_type constants as needed
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -79,20 +99,22 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         Load handlers that will process different event types.
         """
         return {
-            'album_created': self.handle_album_event,
-            'comment_posted': self.handle_comment_event,
-            'follow_created': self.handle_follow_event,
-            'friend_added': self.handle_friend_event,
-            'message_event': self.handle_messenger_event,
-            'newsfeed_updated': self.handle_newsfeed_event,
-            'reaction_added': self.handle_reaction_event,
-            'social_action': self.handle_social_event,
-            'story_shared': self.handle_story_event,
-            'tag_added': self.handle_tagging_event,
-            'user_registered': self.handle_user_event,
-            'notification_sent': self.handle_notification_event,
-            'post_created': self.handle_post_created,  # Added handler
-            'updated': self.handle_updated_event  # Handler for 'updated' event
+            ALBUM_CREATED: self.handle_album_event,
+            COMMENT_CREATED: self.handle_comment_event,
+            FOLLOW_CREATED: self.handle_follow_event,
+            FRIEND_ADDED: self.handle_friend_event,
+            MESSAGE_EVENT: self.handle_messenger_event,
+            NEWSFEED_UPDATED: self.handle_newsfeed_event,
+            REACTION_ADDED: self.handle_reaction_event,
+            SOCIAL_ACTION: self.handle_social_event,
+            STORY_SHARED: self.handle_story_event,
+            TAG_ADDED: self.handle_tagging_event,
+            USER_REGISTERED: self.handle_user_event,
+            NOTIFICATION_SENT: self.handle_notification_event,
+            POST_CREATED: self.handle_post_created,
+            POST_UPDATED: self.handle_post_update,
+            POST_DELETED: self.handle_post_delete,
+            # Add other handlers as needed
         }
 
     def consume_messages(self):
@@ -176,14 +198,6 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         )
 
     # Handlers for different event types
-    def handle_messenger_event(self, data):
-        process_messenger_event(data)
-        self.send_to_websocket_group("messenger", {"event": "New message", "data": data})
-
-    def handle_newsfeed_event(self, data):
-        process_newsfeed_event(data)
-        self.send_to_websocket_group("newsfeed", {"event": "Newsfeed updated", "data": data})
-
     def handle_album_event(self, data):
         process_album_event(data)
         self.send_to_websocket_group("albums", {"event": "New album created", "data": data})
@@ -200,6 +214,14 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         process_friend_event(data)
         self.send_to_websocket_group("friends", {"event": "New friend added", "data": data})
 
+    def handle_messenger_event(self, data):
+        process_messenger_event(data)
+        self.send_to_websocket_group("messenger", {"event": "New message", "data": data})
+
+    def handle_newsfeed_event(self, data):
+        process_newsfeed_event(data)
+        self.send_to_websocket_group("newsfeed", {"event": "Newsfeed updated", "data": data})
+
     def handle_reaction_event(self, data):
         process_reaction_event(data)
         self.send_to_websocket_group("reactions", {"event": "New reaction added", "data": data})
@@ -209,15 +231,15 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         # Determine the event for WebSocket based on event_type
         event_type = data.get('event_type')
         websocket_event = ""
-        if event_type == 'post_created':
+        if event_type == POST_CREATED:
             websocket_event = "New post created"
-        elif event_type == 'post_updated':
+        elif event_type == POST_UPDATED:
             websocket_event = "Post updated"
-        elif event_type == 'post_deleted':
+        elif event_type == POST_DELETED:
             websocket_event = "Post deleted"
-        elif event_type == 'tagged':
+        elif event_type == TAG_ADDED:
             websocket_event = "New tag added"
-        elif event_type == 'untagged':
+        elif event_type == TAG_REMOVED:
             websocket_event = "Tag removed"
         else:
             websocket_event = f"Social event: {event_type}"
@@ -240,54 +262,29 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         create_notification(data)
         self.send_to_websocket_group("notifications", {"event": "New notification", "data": data})
 
-    def handle_updated_event(self, data):
-        """
-        Handle 'updated' event type.
-        Determines the entity being updated and processes accordingly.
-        """
-        entity = data.get('entity')
-        if not entity:
-            logger.warning("Received 'updated' event without 'entity' field.")
-            return
-
-        if entity == 'post':
-            self.handle_post_update(data)
-        elif entity == 'album':
-            self.handle_album_update(data)
-        elif entity == 'comment':
-            self.handle_comment_update(data)
-        else:
-            logger.warning(f"Unknown entity type for 'updated' event: {entity}")
-
     def handle_post_created(self, data):
         """
         Handle the 'post_created' event.
         """
         process_social_event(data)  # Assuming this function handles 'post_created'
-        # Optionally, send a specific WebSocket notification
         websocket_event = "New post created"
         self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
         logger.info(f"Handled 'post_created' event for Post ID: {data.get('id')}")
+
     def handle_post_update(self, data):
         """
-        Handle update of a social post.
+        Handle the 'post_updated' event.
         """
-        process_social_event(data)  # Processes post updates
+        process_social_event(data)  # Implement your logic
         websocket_event = "Post updated"
         self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
+        logger.info(f"Handled 'post_updated' event for Post ID: {data.get('id')}")
 
-    def handle_album_update(self, data):
+    def handle_post_delete(self, data):
         """
-        Handle update of an album.
+        Handle the 'post_deleted' event.
         """
-        process_album_event(data)  # Processes album updates
-        websocket_event = "Album updated"
-        self.send_to_websocket_group("albums", {"event": websocket_event, "data": data})
-
-    def handle_comment_update(self, data):
-        """
-        Handle update of a comment.
-        """
-        process_comment_event(data)  # Processes comment updates
-        websocket_event = "Comment updated"
-        self.send_to_websocket_group("comments", {"event": websocket_event, "data": data})
+        process_social_event(data)  # Implement your logic
+        websocket_event = "Post deleted"
+        self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
+        logger.info(f"Handled 'post_deleted' event for Post ID: {data.get('id')}")

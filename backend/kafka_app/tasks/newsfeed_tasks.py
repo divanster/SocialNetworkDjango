@@ -3,17 +3,27 @@
 import logging
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
-
+from kafka_app.tasks.base_task import BaseTask
 from kafka_app.services import KafkaService
-from django.conf import settings
+from kafka_app.constants import (
+    NEWSFEED_EVENTS,
+    EVENT_DELETED,
+    POST_CREATED,
+    POST_UPDATED,
+    POST_DELETED,
+    COMMENT_CREATED,
+    REACTION_CREATED,
+    ALBUM_CREATED,
+    STORY_EVENTS,  # Updated here
 
-from core.task_utils import BaseTask
-from kafka_app.services import KafkaService
+    # Add other event_type constants as needed
+)
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
 from albums.models import Album
 from stories.models import Story  # Ensure these models are correctly defined in their apps
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +34,7 @@ MODEL_MAP = {
     'Album': Album,
     'Story': Story,
 }
+
 
 def _get_instance_data(instance):
     """
@@ -48,30 +59,23 @@ def _get_instance_data(instance):
     # Add more fields as needed per model
     return data
 
+
 @shared_task(bind=True, base=BaseTask, max_retries=5, default_retry_delay=60)
 def send_newsfeed_event_task(self, object_id, event_type, model_name):
     """
     Celery task to send various newsfeed model events to Kafka.
-
-    Args:
-        self: Celery task instance.
-        object_id (UUID): The ID of the object.
-        event_type (str): Type of event (e.g., "created", "updated", "deleted").
-        model_name (str): The name of the model (e.g., "Post", "Comment").
-
-    Returns:
-        None
     """
     try:
         model = MODEL_MAP.get(model_name)
         if not model:
             raise ValueError(f"Unknown model: {model_name}")
 
-        if event_type == 'deleted':
+        if event_type == EVENT_DELETED:
             # Create a message for deleted events with just the object ID and event type
+            specific_event_type = f"{model_name.lower()}_deleted"  # e.g., 'post_deleted'
             message = {
                 'app': model._meta.app_label,
-                'event_type': event_type,
+                'event_type': specific_event_type,  # e.g., 'post_deleted'
                 'model_name': model_name,
                 'id': str(object_id),
                 'data': {}  # Empty data for deleted events
@@ -79,17 +83,19 @@ def send_newsfeed_event_task(self, object_id, event_type, model_name):
         else:
             # Fetch the instance from the database for created or updated events
             instance = model.objects.get(id=object_id)
+            # Construct a specific event_type
+            specific_event_type = f"{model_name.lower()}_{event_type}"  # e.g., 'post_created'
             message = {
                 'app': model._meta.app_label,
-                'event_type': event_type,
+                'event_type': specific_event_type,  # e.g., 'post_created'
                 'model_name': model_name,
                 'id': str(instance.id),
                 'data': _get_instance_data(instance),
             }
 
         # Send the constructed message to the Kafka topic using KafkaService
-        kafka_topic_key = 'NEWSFEED_EVENTS'  # Ensure this key exists in settings.KAFKA_TOPICS
-        KafkaService().send_message(kafka_topic_key, message)  # Pass the key
+        kafka_topic_key = NEWSFEED_EVENTS    # Use constant from constants.py
+        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
         logger.info(f"Sent Kafka message for {model_name} {event_type}: {message}")
 
     except model.DoesNotExist:
