@@ -114,6 +114,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             POST_CREATED: self.handle_post_created,
             POST_UPDATED: self.handle_post_update,
             POST_DELETED: self.handle_post_delete,
+            'created': self.handle_post_created,
             # Add other handlers as needed
         }
 
