@@ -294,8 +294,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         logger.info(f"Handled 'post_deleted' event for Post ID: {data.get('id')}")
 
     def handle_post_newsfeed_created(self, data):
-        # Handle the post_newsfeed_created event
-        process_newsfeed_event(data)  # Or other logic specific to newsfeed creation
+        process_newsfeed_event(data, event_type_override='post_newsfeed_created')
         self.send_to_websocket_group("newsfeed",
                                      {"event": "Post newsfeed created", "data": data})
         logger.info(

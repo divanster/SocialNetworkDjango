@@ -31,8 +31,8 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',
 # Kafka Configuration
 # =====================
 
-
 from kafka_app.constants import (
+    TOPIC_MAPPINGS,
     USER_EVENTS,
     NOTIFICATIONS,
     ALBUM_EVENTS,
@@ -45,22 +45,17 @@ from kafka_app.constants import (
     TAGGING_EVENTS,
     PHOTO_EVENTS,
     STORY_EVENTS,
-    # Add other event_type constants as needed
+    # You can add additional constants if needed
 )
-
 
 # Kafka broker URL for event-driven architecture
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID',
-                              default='centralized_consumer_group')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='centralized_consumer_group')
 
-# Kafka topics for different events parsed from a comma-separated list
-KAFKA_TOPICS_RAW = env('KAFKA_TOPICS', default='')
-KAFKA_TOPICS = dict(
-    item.split(':') for item in KAFKA_TOPICS_RAW.split(',') if ':' in item
-)
+# Instead of parsing from an environment variable, we now use our pre-defined mapping
+KAFKA_TOPICS = TOPIC_MAPPINGS
 
-# Required Kafka topics to ensure all necessary topics are defined
+# Define the required topics dictionary:
 REQUIRED_KAFKA_TOPICS = {
     USER_EVENTS: 'user-events',
     NOTIFICATIONS: 'notifications',
@@ -74,7 +69,7 @@ REQUIRED_KAFKA_TOPICS = {
     TAGGING_EVENTS: 'tagging-events',
     PHOTO_EVENTS: 'photo-events',
     STORY_EVENTS: 'story-events',
-    # Add other topics as needed...
+    # Add additional topics as needed...
 }
 
 # Check for missing Kafka topics

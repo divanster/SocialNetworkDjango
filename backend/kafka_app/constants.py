@@ -101,7 +101,6 @@ MESSAGE_UPDATED = 'message_updated'
 MESSAGE_DELETED = 'message_deleted'
 MESSAGE_EVENT = "message_event"
 
-
 # =========================================
 # Story Event Types
 # =========================================
@@ -120,7 +119,6 @@ NOTIFICATION_UPDATED = 'notification_updated'
 NOTIFICATION_DELETED = 'notification_deleted'
 NOTIFICATION_SENT = 'NOTIFICATION_SENT'
 
-
 # =========================================
 # Generic Event Types
 # =========================================
@@ -129,10 +127,26 @@ EVENT_UPDATED = 'updated'
 EVENT_DELETED = 'deleted'
 
 # =========================================
-# Add other event_type constants as needed
-# =========================================
-
 # Email Event Types
+# =========================================
 WELCOME_EMAIL_SENT = 'WELCOME_EMAIL_SENT'
 PROFILE_UPDATE_NOTIFIED = 'PROFILE_UPDATE_NOTIFIED'
 
+# =========================================
+# Mapping Dictionary for Kafka Topics
+# =========================================
+TOPIC_MAPPINGS = {
+    USER_EVENTS: 'user-events',
+    NOTIFICATIONS: 'notifications',
+    ALBUM_EVENTS: 'album-events',
+    COMMENT_EVENTS: 'comment-events',
+    FOLLOW_EVENTS: 'follow-events',
+    FRIEND_EVENTS: 'friend-events',
+    NEWSFEED_EVENTS: 'newsfeed-events',
+    REACTION_EVENTS: 'reaction-events',
+    SOCIAL_EVENTS: 'social-events',
+    TAGGING_EVENTS: 'tagging-events',
+    PHOTO_EVENTS: 'photo-events',
+    STORY_EVENTS: 'story-events',
+    MESSENGER_EVENTS: 'messenger-events',
+}

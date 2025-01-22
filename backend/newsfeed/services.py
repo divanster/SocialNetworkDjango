@@ -7,25 +7,22 @@ from reactions.models import Reaction
 
 logger = logging.getLogger(__name__)
 
-
-def process_newsfeed_event(data):
+def process_newsfeed_event(data, event_type_override=None):
     """
     Update the newsfeed based on incoming events.
+
+    If 'event_type' is not present in data, use event_type_override.
     """
     try:
-        event_type = data.get('event_type')
-        if event_type == 'post_created':
-            # Example: Add new post to the user's feed
+        event_type = data.get('event_type') or event_type_override
+        if event_type in ('post_created', 'post_newsfeed_created'):
             post = Post.objects.get(id=data.get('id'))
-            # Logic to add post to feed
             logger.info(f"[NEWSFEED] Added new post to feed: {post.id}")
         elif event_type == 'comment_posted':
             comment = Comment.objects.get(id=data.get('id'))
-            # Logic to add comment to feed
             logger.info(f"[NEWSFEED] Added new comment to feed: {comment.id}")
         elif event_type == 'reaction_added':
             reaction = Reaction.objects.get(id=data.get('id'))
-            # Logic to add reaction to feed
             logger.info(f"[NEWSFEED] Added new reaction to feed: {reaction.id}")
         else:
             logger.warning(f"[NEWSFEED] Unknown event type: {event_type}")
