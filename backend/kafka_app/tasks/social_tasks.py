@@ -1,8 +1,6 @@
-# backend/kafka_app/tasks/social_tasks.py
-
 import logging
 from celery import shared_task
-from kafka.errors import KafkaTimeoutError
+from kafka.errors import KafkaTimeoutError, KafkaError
 from django.conf import settings
 
 from core.task_utils import BaseTask
@@ -18,7 +16,7 @@ def _get_post_data(post):
     Extract relevant data from the post instance.
     """
     return {
-        'id': str(post.id),              # Include 'id' within 'data'
+        'id': str(post.id),  # Include 'id' within 'data'
         'content': post.content,
         'title': post.title,
         'user_id': str(post.user.id),
@@ -33,37 +31,51 @@ def _get_post_data(post):
 def process_post_event_task(self, post_id, event_type):
     """
     Celery task to process post events and send messages to Kafka.
-
-    Args:
-        self: Celery task instance.
-        post_id (str): The ID of the post.
-        event_type (str): Type of event to be processed (e.g., POST_CREATED, POST_UPDATED, POST_DELETED).
-
-    Returns:
-        None
     """
-    try:
-        post = Post.objects.get(pk=post_id)
+    logger.debug(f"Received event_type: {event_type} for post {post_id}")  # Log event_type
 
-        # Construct the standardized Kafka message
+    try:
+        # Validate event_type
+        valid_event_types = [POST_CREATED, POST_UPDATED, POST_DELETED]
+        if event_type not in valid_event_types:
+            logger.error(f"Invalid event_type '{event_type}' for post {post_id}")
+            return  # Early return if event_type is invalid
+
+        post = Post.objects.get(pk=post_id)
+        logger.debug(f"Fetched post with ID {post_id}: {post}")
+
+        # Handle different event types (currently no-op but can be added)
+        if event_type == POST_CREATED:
+            pass
+        elif event_type == POST_UPDATED:
+            pass
+        elif event_type == POST_DELETED:
+            pass
+
+        # Create Kafka message
         message = {
-            'app': post._meta.app_label,      # e.g., 'social'
-            'event_type': event_type,          # e.g., POST_CREATED
-            'model_name': 'Post',              # Name of the model
-            'id': str(post.id),                # UUID as string
-            'data': _get_post_data(post),      # Event-specific data
+            'app': post._meta.app_label,
+            'event_type': event_type,  # Ensure event_type is included
+            'model_name': 'Post',
+            'id': str(post.id),
+            'data': _get_post_data(post),
         }
 
+        logger.debug(f"Kafka message: {message}")  # Log Kafka message for debugging
+
         # Send message to Kafka using KafkaService
-        kafka_topic_key = SOCIAL_EVENTS    # Use constant from constants.py
-        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
-        logger.info(f"[TASK] Successfully sent Kafka message for post event '{event_type}': {message}")
+        kafka_topic_key = SOCIAL_EVENTS
+        KafkaService().send_message(kafka_topic_key, message)
+        logger.info(f"Successfully sent Kafka message for post event '{event_type}'.")
 
     except Post.DoesNotExist:
-        logger.error(f"[TASK] Post with ID {post_id} does not exist.")
+        logger.error(f"Post with ID {post_id} does not exist.")
     except KafkaTimeoutError as e:
-        logger.error(f"[TASK] Kafka timeout occurred while processing post {post_id} for event {event_type}: {e}")
-        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
+        logger.error(f"Kafka timeout error for post {post_id}: {e}")
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries), max_retries=5)
+    except KafkaError as e:
+        logger.error(f"Kafka error for post {post_id}: {e}")
+        self.retry(exc=e, countdown=60, max_retries=3)
     except Exception as e:
-        logger.error(f"[TASK] Unexpected error occurred while sending Kafka message for post {post_id}: {e}")
+        logger.error(f"Unexpected error processing post {post_id}: {e}")
         self.retry(exc=e, countdown=60)

@@ -1,5 +1,3 @@
-# backend/kafka_app/consumer.py
-
 import os
 import logging
 import json
@@ -56,7 +54,6 @@ from kafka_app.constants import (
 
 logger = logging.getLogger(__name__)
 
-
 class BaseKafkaConsumer:
     """
     Base Kafka Consumer class to handle connection setup and basic consumption logic.
@@ -80,7 +77,6 @@ class BaseKafkaConsumer:
     def close(self):
         self.consumer.close()
         logger.info("Kafka consumer closed.")
-
 
 class KafkaConsumerApp(BaseKafkaConsumer):
     """
@@ -115,6 +111,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             POST_UPDATED: self.handle_post_update,
             POST_DELETED: self.handle_post_delete,
             'created': self.handle_post_created,
+            'post_newsfeed_created': self.handle_post_newsfeed_created,
             # Add other handlers as needed
         }
 
@@ -168,8 +165,12 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             logger.error(f"Validation error: {e}")
             return
 
-        # Extract event type and get the handler
+        # Extract event type and validate it
         event_type = event_data.event_type
+        if not event_type:
+            logger.error(f"Received a message with missing event type: {message}")
+            return  # Skip processing if event type is missing
+
         handler = self.handlers.get(event_type)
 
         # Handle the event using the appropriate handler method
@@ -179,10 +180,12 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                 handler(event_data.data)
 
                 # Forward the message to a WebSocket group if applicable
-                group_name = event_data.data.get("group_name", "default")  # Use 'default' if no group_name is provided
+                group_name = event_data.data.get("group_name",
+                                                 "default")  # Use 'default' if no group_name is provided
                 self.send_to_websocket_group(group_name, event_data.data)
             except Exception as e:
-                logger.error(f"Error processing event '{event_type}': {e}", exc_info=True)
+                logger.error(f"Error processing event '{event_type}': {e}",
+                             exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
 
@@ -289,3 +292,11 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         websocket_event = "Post deleted"
         self.send_to_websocket_group("social", {"event": websocket_event, "data": data})
         logger.info(f"Handled 'post_deleted' event for Post ID: {data.get('id')}")
+
+    def handle_post_newsfeed_created(self, data):
+        # Handle the post_newsfeed_created event
+        process_newsfeed_event(data)  # Or other logic specific to newsfeed creation
+        self.send_to_websocket_group("newsfeed",
+                                     {"event": "Post newsfeed created", "data": data})
+        logger.info(
+            f"Handled 'post_newsfeed_created' event for Post ID: {data.get('id')}")

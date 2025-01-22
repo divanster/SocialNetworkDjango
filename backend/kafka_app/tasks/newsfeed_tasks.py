@@ -1,5 +1,3 @@
-# backend/kafka_app/tasks/newsfeed_tasks.py
-
 import logging
 from celery import shared_task
 from kafka.errors import KafkaTimeoutError
@@ -15,15 +13,12 @@ from kafka_app.constants import (
     REACTION_CREATED,
     ALBUM_CREATED,
     STORY_EVENTS,  # Updated here
-
-    # Add other event_type constants as needed
 )
 from social.models import Post
 from comments.models import Comment
 from reactions.models import Reaction
 from albums.models import Album
 from stories.models import Story  # Ensure these models are correctly defined in their apps
-
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +61,15 @@ def send_newsfeed_event_task(self, object_id, event_type, model_name):
     Celery task to send various newsfeed model events to Kafka.
     """
     try:
+        # Log the event type and object ID for debugging purposes
+        logger.debug(f"Received event_type: {event_type} for {model_name} with object_id: {object_id}")
+
+        # Validate event_type
+        if not event_type:
+            logger.error(f"Invalid event_type received for {model_name} with ID {object_id}")
+            return  # Early exit if event_type is None
+
+        # Map the model_name to the actual model
         model = MODEL_MAP.get(model_name)
         if not model:
             raise ValueError(f"Unknown model: {model_name}")
@@ -81,9 +85,14 @@ def send_newsfeed_event_task(self, object_id, event_type, model_name):
                 'data': {}  # Empty data for deleted events
             }
         else:
-            # Fetch the instance from the database for created or updated events
-            instance = model.objects.get(id=object_id)
-            # Construct a specific event_type
+            # For created or updated events, fetch the instance and construct the message
+            try:
+                instance = model.objects.get(id=object_id)
+            except model.DoesNotExist:
+                logger.error(f"{model_name} with ID {object_id} does not exist.")
+                return  # Exit if the instance is not found
+
+            # Construct the specific event type
             specific_event_type = f"{model_name.lower()}_{event_type}"  # e.g., 'post_created'
             message = {
                 'app': model._meta.app_label,
@@ -93,18 +102,19 @@ def send_newsfeed_event_task(self, object_id, event_type, model_name):
                 'data': _get_instance_data(instance),
             }
 
-        # Send the constructed message to the Kafka topic using KafkaService
-        kafka_topic_key = NEWSFEED_EVENTS    # Use constant from constants.py
-        KafkaService().send_message(kafka_topic_key, message)  # Pass the key directly
-        logger.info(f"Sent Kafka message for {model_name} {event_type}: {message}")
+        # Log the constructed message for debugging
+        logger.debug(f"Constructed Kafka message: {message}")
 
-    except model.DoesNotExist:
-        logger.error(f"{model_name} with ID {object_id} does not exist.")
+        # Send the message to Kafka
+        kafka_topic_key = NEWSFEED_EVENTS
+        KafkaService().send_message(kafka_topic_key, message)
+        logger.info(f"Successfully sent Kafka message for {model_name} {event_type}: {message}")
+
     except ValueError as e:
         logger.error(f"ValueError: {e}")
     except KafkaTimeoutError as e:
         logger.error(f"Kafka timeout error while sending newsfeed {event_type}: {e}")
         self.retry(exc=e, countdown=60 * (2 ** self.request.retries))  # Exponential backoff
     except Exception as e:
-        logger.error(f"Error sending Kafka message: {e}")
+        logger.error(f"Unexpected error while sending Kafka message for {model_name} {event_type}: {e}")
         self.retry(exc=e, countdown=60)
