@@ -1,35 +1,38 @@
 // frontend/src/App.tsx
 
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import NewsFeed from './pages/NewsFeed';
-import Login from './components/Auth/Login';
-import Signup from './components/Auth/Signup';
-import Profile from './components/LeftSidebar/Profile';
-import Navbar from './components/Navbar/Navbar';
-import NotFound from './components/NotFound';
-import Messages from './components/Messages/Messages';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import { WebSocketProvider } from './contexts/WebSocketManager';
 import { AuthProvider } from './contexts/AuthContext';
-import ErrorBoundary from './components/ErrorBoundary';
+import { Provider } from 'react-redux';
+import store from './store';
+
+const NewsFeed = lazy(() => import('./pages/NewsFeed'));
+const Albums = lazy(() => import('./pages/Albums')); // New Albums page
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Navbar />
-        <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<Navigate to="/feed" />} />
-            <Route path="/feed" element={<NewsFeed />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </ErrorBoundary>
-      </Router>
-    </AuthProvider>
+    <Provider store={store}>
+      <AuthProvider>
+        <WebSocketProvider>
+          <Router>
+            <Suspense fallback={<div>Loading...</div>}>
+              <Switch>
+                <Route path="/login" component={Login} />
+                <Route path="/signup" component={Signup} />
+                <ProtectedRoute exact path="/" component={NewsFeed} />
+                <ProtectedRoute path="/albums" component={Albums} /> {/* Protected Albums route */}
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
+          </Router>
+        </WebSocketProvider>
+      </AuthProvider>
+    </Provider>
   );
 };
 

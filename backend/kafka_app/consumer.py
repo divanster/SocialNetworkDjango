@@ -14,6 +14,7 @@ from cryptography.fernet import Fernet
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 import django
+
 django.setup()
 
 # Import service handlers
@@ -54,6 +55,7 @@ from kafka_app.constants import (
 
 logger = logging.getLogger(__name__)
 
+
 class BaseKafkaConsumer:
     """
     Base Kafka Consumer class to handle connection setup and basic consumption logic.
@@ -77,6 +79,7 @@ class BaseKafkaConsumer:
     def close(self):
         self.consumer.close()
         logger.info("Kafka consumer closed.")
+
 
 class KafkaConsumerApp(BaseKafkaConsumer):
     """
@@ -118,12 +121,14 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     def consume_messages(self):
         while True:
             try:
-                logger.info(f"Started consuming messages from topics: {', '.join(self.topics)}")
+                logger.info(
+                    f"Started consuming messages from topics: {', '.join(self.topics)}")
                 for message in self.consumer:
                     close_old_connections()
 
                     if not message.value:
-                        logger.warning(f"Received an empty message from topic {message.topic}, skipping.")
+                        logger.warning(
+                            f"Received an empty message from topic {message.topic}, skipping.")
                         continue
 
                     try:
@@ -138,9 +143,11 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                     except (ValidationError, json.JSONDecodeError) as e:
                         logger.error(f"Message validation or JSON decoding error: {e}")
                     except Exception as e:
-                        logger.error(f"Failed to process message {message.value}: {e}", exc_info=True)
+                        logger.error(f"Failed to process message {message.value}: {e}",
+                                     exc_info=True)
             except KafkaError as e:
-                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...", exc_info=True)
+                logger.error(f"Kafka consumer error: {e}. Retrying in 10 seconds...",
+                             exc_info=True)
                 time.sleep(10)
             except Exception as e:
                 logger.error(f"Unexpected error: {e}", exc_info=True)
@@ -204,31 +211,38 @@ class KafkaConsumerApp(BaseKafkaConsumer):
     # Handlers for different event types
     def handle_album_event(self, data):
         process_album_event(data)
-        self.send_to_websocket_group("albums", {"event": "New album created", "data": data})
+        self.send_to_websocket_group("albums",
+                                     {"event": "New album created", "data": data})
 
     def handle_comment_event(self, data):
         process_comment_event(data)
-        self.send_to_websocket_group("comments", {"event": "New comment posted", "data": data})
+        self.send_to_websocket_group("comments",
+                                     {"event": "New comment posted", "data": data})
 
     def handle_follow_event(self, data):
         process_follow_event(data)
-        self.send_to_websocket_group("follows", {"event": "New follow event", "data": data})
+        self.send_to_websocket_group("follows",
+                                     {"event": "New follow event", "data": data})
 
     def handle_friend_event(self, data):
         process_friend_event(data)
-        self.send_to_websocket_group("friends", {"event": "New friend added", "data": data})
+        self.send_to_websocket_group("friends",
+                                     {"event": "New friend added", "data": data})
 
     def handle_messenger_event(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger", {"event": "New message", "data": data})
+        self.send_to_websocket_group("messenger",
+                                     {"event": "New message", "data": data})
 
     def handle_newsfeed_event(self, data):
         process_newsfeed_event(data)
-        self.send_to_websocket_group("newsfeed", {"event": "Newsfeed updated", "data": data})
+        self.send_to_websocket_group("newsfeed",
+                                     {"event": "Newsfeed updated", "data": data})
 
     def handle_reaction_event(self, data):
         process_reaction_event(data)
-        self.send_to_websocket_group("reactions", {"event": "New reaction added", "data": data})
+        self.send_to_websocket_group("reactions",
+                                     {"event": "New reaction added", "data": data})
 
     def handle_social_event(self, data):
         process_social_event(data)
@@ -252,19 +266,23 @@ class KafkaConsumerApp(BaseKafkaConsumer):
 
     def handle_story_event(self, data):
         process_story_event(data)
-        self.send_to_websocket_group("stories", {"event": "New story shared", "data": data})
+        self.send_to_websocket_group("stories",
+                                     {"event": "New story shared", "data": data})
 
     def handle_tagging_event(self, data):
         process_tagging_event(data)
-        self.send_to_websocket_group("tagging", {"event": "New tag added", "data": data})
+        self.send_to_websocket_group("tagging",
+                                     {"event": "New tag added", "data": data})
 
     def handle_user_event(self, data):
         process_user_event(data)
-        self.send_to_websocket_group("users", {"event": "New user registered", "data": data})
+        self.send_to_websocket_group("users",
+                                     {"event": "New user registered", "data": data})
 
     def handle_notification_event(self, data):
         create_notification(data)
-        self.send_to_websocket_group("notifications", {"event": "New notification", "data": data})
+        self.send_to_websocket_group("notifications",
+                                     {"event": "New notification", "data": data})
 
     def handle_post_created(self, data):
         """
