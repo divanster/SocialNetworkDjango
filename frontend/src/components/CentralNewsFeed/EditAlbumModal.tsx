@@ -1,5 +1,3 @@
-// frontend/src/components/CentralNewsFeed/EditAlbumModal.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { Album as AlbumType } from '../../types/album';
@@ -19,7 +17,12 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
   const { token } = useAuth();
   const [title, setTitle] = useState<string>(album.title);
   const [description, setDescription] = useState<string>(album.description);
-  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>(album.visibility);
+  const validVisibilities = ['public', 'friends', 'private'] as const;
+  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>(
+    validVisibilities.includes(album.visibility as 'public' | 'friends' | 'private')
+      ? (album.visibility as 'public' | 'friends' | 'private')
+      : 'public'
+  );
   const [images, setImages] = useState<FileList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
@@ -28,7 +31,11 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
     if (show) {
       setTitle(album.title);
       setDescription(album.description);
-      setVisibility(album.visibility);
+      setVisibility(
+        validVisibilities.includes(album.visibility as 'public' | 'friends' | 'private')
+          ? (album.visibility as 'public' | 'friends' | 'private')
+          : 'public'
+      );
       setImages(null);
       setError(null);
     }
@@ -67,7 +74,7 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
       const updatedAlbum: AlbumType = response.data;
       onSave(updatedAlbum);
       onHide();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating album:', err);
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.detail || 'Failed to update album.');
@@ -135,6 +142,7 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
                   setImages(e.target.files);
                 }
               }}
+              accept="image/*"
             />
           </Form.Group>
         </Form>

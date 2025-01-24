@@ -1,0 +1,64 @@
+/* frontend/src/components/FeedItem/SharedItem.css */
+
+.shared-items {
+  margin-bottom: 20px;
+}
+
+.shared-item-card {
+  background-color: #2f3640;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  color: #f5f6fa;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.shared-item-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.shared-item-header img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.shared-item-header div {
+  flex: 1;
+}
+
+.shared-item-header div strong {
+  display: block;
+}
+
+.shared-item-header div span {
+  display: block;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.delete-button {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.shared-item-content p {
+  margin: 0 0 10px 0;
+}
+
+.original-content {
+  background-color: #353b48;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.original-content strong {
+  display: block;
+  margin-bottom: 5px;
+}

@@ -1,0 +1,19 @@
+/* frontend/src/components/Navbar/NotificationsDropdown.css */
+
+.notifications-dropdown .dropdown-item.unread {
+  background-color: #414b57;
+  font-weight: bold;
+}
+
+.notifications-dropdown .dropdown-item.read {
+  background-color: #2f3640;
+}
+
+.notifications-dropdown .notification-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.notifications-dropdown .notification-content span {
+  margin-bottom: 5px;
+}

@@ -1,0 +1,56 @@
+/* frontend/src/components/RightSidebar/Suggestions.css */
+
+.suggestions {
+  background-color: #2f3640;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: #f5f6fa;
+}
+
+.suggestions h4 {
+  margin-bottom: 10px;
+}
+
+.suggestions ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.suggestions li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.suggestions li img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.suggestions li div {
+  flex: 1;
+}
+
+.suggestions li div a {
+  color: #00a8ff;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.suggestions li div a:hover {
+  text-decoration: underline;
+}
+
+.suggestions li div span {
+  display: block;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.suggestions.error {
+  color: #e74c3c;
+}

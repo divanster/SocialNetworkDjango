@@ -1,24 +1,28 @@
 // frontend/src/types/post.ts
 
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  // Add other user-related fields as needed
-}
-
-export interface Image {
-  id: number;
-  image: string; // URL or path to the image
-}
-
 export interface Post {
-  id: number;
+  id: string; // Changed from number to string
   title: string;
   content: string;
-  user: User; // Updated to include 'user' as an object
-  visibility: string; // or use an enum if defined
-  created_at: string;
-  updated_at: string;
-  images?: Image[]; // Optional array of images
+  author?: {
+    id: string;
+    username: string;
+    // Add other fields if necessary
+  };
+  created_at?: string;
+  updated_at?: string;
+  // Add or remove optional fields as necessary
+  tags?: {
+    id: string; // string if you use UUID
+    name: string;
+  }[];
+  images?: {
+    id: string; // string if you use UUID
+    image: string;
+  }[];
+  ratings?: {
+    id: string; // string if you use UUID
+    value: number;
+    user: string; // string if user IDs are UUID
+  }[];
 }

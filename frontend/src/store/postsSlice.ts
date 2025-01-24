@@ -40,9 +40,9 @@ const postsSlice = createSlice({
         state.items[index] = action.payload;
       }
     },
-    deletePost(state: PostsState, action: PayloadAction<number>) {
-      state.items = state.items.filter((p) => p.id !== action.payload);
-    },
+    deletePost(state: PostsState, action: PayloadAction<string>) {
+  state.items = state.items.filter((p) => p.id !== action.payload);
+},
     // ... other reducers ...
   },
 });

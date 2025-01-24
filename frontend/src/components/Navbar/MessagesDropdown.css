@@ -1,0 +1,41 @@
+/* frontend/src/components/Navbar/MessagesDropdown.css */
+
+.messages-dropdown .dropdown-item.unread {
+  background-color: #414b57;
+  font-weight: bold;
+}
+
+.messages-dropdown .dropdown-item.read {
+  background-color: #2f3640;
+}
+
+.messages-dropdown .message-content {
+  display: flex;
+  align-items: center;
+}
+
+.messages-dropdown .message-content img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.messages-dropdown .message-content div {
+  flex: 1;
+}
+
+.messages-dropdown .message-content div strong {
+  display: block;
+}
+
+.messages-dropdown .message-content div span {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.messages-dropdown .message-content div small {
+  display: block;
+  font-size: 0.8rem;
+  color: #aaa;
+}

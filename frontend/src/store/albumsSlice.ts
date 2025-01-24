@@ -1,4 +1,4 @@
-// frontend/src/store/albumsSlice.ts
+// src/store/albumsSlice.ts
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Album } from '../types/album';
@@ -19,28 +19,28 @@ const albumsSlice = createSlice({
   name: 'albums',
   initialState,
   reducers: {
-    fetchAlbumsStart(state: AlbumsState) { // Explicit type
+    fetchAlbumsStart(state) {
       state.loading = true;
       state.error = null;
     },
-    fetchAlbumsSuccess(state: AlbumsState, action: PayloadAction<Album[]>) { // Explicit types
+    fetchAlbumsSuccess(state, action: PayloadAction<Album[]>) {
       state.items = action.payload;
       state.loading = false;
     },
-    fetchAlbumsFailure(state: AlbumsState, action: PayloadAction<string>) { // Explicit types
+    fetchAlbumsFailure(state, action: PayloadAction<string>) {
       state.loading = false;
       state.error = action.payload;
     },
-    addAlbum(state: AlbumsState, action: PayloadAction<Album>) { // Explicit types
+    addAlbum(state, action: PayloadAction<Album>) {
       state.items.unshift(action.payload);
     },
-    updateAlbum(state: AlbumsState, action: PayloadAction<Album>) { // Explicit types
+    updateAlbum(state, action: PayloadAction<Album>) {
       const index = state.items.findIndex((a) => a.id === action.payload.id);
       if (index !== -1) {
         state.items[index] = action.payload;
       }
     },
-    deleteAlbum(state: AlbumsState, action: PayloadAction<number>) { // Explicit types
+    deleteAlbum(state, action: PayloadAction<string>) { // Changed from number to string
       state.items = state.items.filter((a) => a.id !== action.payload);
     },
     // ... other reducers ...
