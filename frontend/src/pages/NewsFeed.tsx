@@ -52,39 +52,45 @@ const NewsFeed: React.FC = () => {
   };
 
   // Handler for incoming posts messages via WebSocket
-  const handlePostsMessage = useCallback((data: any) => {
-    if (data.message) {
-      setPosts((prev) => {
-        const exists = prev.some((p) => p.id === data.message.id);
-        if (!exists) {
-          console.log('New post received via WebSocket:', data.message);
-          return [data.message, ...prev];
-        }
-        return prev;
-      });
-    } else {
-      console.error('Posts WebSocket error: no "message" field');
-    }
-  }, []);
+  const handlePostsMessage = useCallback(
+    (data: any) => {
+      if (data.message) {
+        setPosts((prev) => {
+          const exists = prev.some((p) => p.id === data.message.id);
+          if (!exists) {
+            console.log('New post received via WebSocket:', data.message);
+            return [data.message, ...prev];
+          }
+          return prev;
+        });
+      } else {
+        console.error('Posts WebSocket error: no "message" field');
+      }
+    },
+    []
+  );
 
   // Handler for incoming albums messages via WebSocket
-  const handleAlbumsMessage = useCallback((data: any) => {
-    if (data.message) {
-      setAlbums((prev) => {
-        const exists = prev.some((a) => a.id === data.message.id);
-        if (!exists) {
-          console.log('New album received via WebSocket:', data.message);
-          return [data.message, ...prev];
-        }
-        return prev;
-      });
-    } else {
-      console.error('Albums WebSocket error: no "message" field');
-    }
-  }, []);
+  const handleAlbumsMessage = useCallback(
+    (data: any) => {
+      if (data.message) {
+        setAlbums((prev) => {
+          const exists = prev.some((a) => a.id === data.message.id);
+          if (!exists) {
+            console.log('New album received via WebSocket:', data.message);
+            return [data.message, ...prev];
+          }
+          return prev;
+        });
+      } else {
+        console.error('Albums WebSocket error: no "message" field');
+      }
+    },
+    []
+  );
 
   // Establish WebSocket connections for 'posts' and 'albums'
-  const { sendMessage } = useWebSocket('posts', { onMessage: handlePostsMessage });
+  const { sendMessage: sendPostMessage } = useWebSocket('posts', { onMessage: handlePostsMessage });
   const { sendMessage: sendAlbumMessage } = useWebSocket('albums', { onMessage: handleAlbumsMessage });
 
   // Fetch data if we have a token and not loading
@@ -111,7 +117,7 @@ const NewsFeed: React.FC = () => {
         console.log('Fetched posts:', response.data.posts);
         console.log('Fetched albums:', response.data.albums);
         setError(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch news feed data:', err);
         setError('Failed to fetch news feed data');
       } finally {
@@ -142,7 +148,7 @@ const NewsFeed: React.FC = () => {
       setPosts((prev) => prev.filter((p) => p.id !== id));
       setDeleteSuccess(`Post deleted successfully.`);
       setToast({ show: true, message: 'Post deleted successfully!', variant: 'success' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting post:', err);
       setDeleteError('Error deleting post.');
       setToast({ show: true, message: 'Error deleting post.', variant: 'danger' });
@@ -169,7 +175,7 @@ const NewsFeed: React.FC = () => {
       setAlbums((prev) => prev.filter((a) => a.id !== id));
       setDeleteSuccess('Album deleted successfully.');
       setToast({ show: true, message: 'Album deleted successfully!', variant: 'success' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting album:', err);
       setDeleteError('Error deleting album.');
       setToast({ show: true, message: 'Error deleting album.', variant: 'danger' });
@@ -204,7 +210,7 @@ const NewsFeed: React.FC = () => {
         prev.map((p) => (p.id === updatedPost.id ? response.data : p))
       );
       setToast({ show: true, message: 'Post updated successfully!', variant: 'success' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating post:', err);
       setError('Error updating post.');
       setToast({ show: true, message: 'Error updating post.', variant: 'danger' });
@@ -244,7 +250,7 @@ const NewsFeed: React.FC = () => {
         prev.map((a) => (a.id === updatedAlbum.id ? response.data : a))
       );
       setToast({ show: true, message: 'Album updated successfully!', variant: 'success' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating album:', err);
       setError('Error updating album.');
       setToast({ show: true, message: 'Error updating album.', variant: 'danger' });
@@ -261,11 +267,11 @@ const NewsFeed: React.FC = () => {
       {/* Main Feed */}
       <div className="main-feed">
         {/* Create Post and Create Album Components */}
-        <CreatePost onPostCreated={addNewPost} sendMessage={sendMessage} />
+        <CreatePost onPostCreated={addNewPost} sendMessage={sendPostMessage} />
         <CreateAlbum onAlbumCreated={addNewAlbum} sendAlbumMessage={sendAlbumMessage} />
 
         {dataLoading ? (
-          <div>Loading...</div>
+          <div className="text-center mt-5">Loading...</div>
         ) : (
           <div>
             {/* Display error messages */}
