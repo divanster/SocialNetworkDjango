@@ -17,7 +17,7 @@ const Login: React.FC = () => {
     try {
       const data = await login(email, password); // Call the login API
       authLogin(data.access, data.refresh); // Update the authentication state with access and refresh tokens
-      navigate('/feed');
+      navigate('/');
     } catch (err) {
       setError('Invalid email or password');
     }
