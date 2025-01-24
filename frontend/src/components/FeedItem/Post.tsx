@@ -1,47 +1,67 @@
-// frontend/src/components/CentralNewsFeed/Posts.tsx
-
 import React from 'react';
-import { Post as PostType } from '../../types/post';
 
-interface PostsProps {
-  posts: PostType[];
-  onDeletePost: (id: string) => void;            // string ID
-  onUpdatePost: (updatedPost: PostType) => void; // entire post object
-  deletingPostIds: string[];                     // string array
-  updatingPostIds: string[];                     // string array
+interface PostProps {
+  post: {
+    id: string; // Changed from number to string
+    title: string;
+    content: string;
+    author: string;
+    created_at: string;
+    updated_at: string;
+    tags?: { id: string; name: string }[]; // Updated to string
+    images?: { id: string; image: string }[]; // Updated to string
+    ratings?: { id: string; value: number; user: string }[]; // Updated to string
+  };
 }
 
-const Posts: React.FC<PostsProps> = ({
-  posts,
-  onDeletePost,
-  onUpdatePost,
-  deletingPostIds,
-  updatingPostIds,
-}) => {
+const Post: React.FC<PostProps> = ({ post }) => {
   return (
-    <div className="posts">
-      {posts.map((post) => (
-        <div key={post.id} className="post">
-          <h3>{post.title}</h3>
-          <p>{post.content}</p>
+    <div className="post">
+      <h2>{post.title}</h2>
+      <p>{post.content}</p>
+      <p>Author: {post.author}</p>
+      <p>Created: {new Date(post.created_at).toLocaleString()}</p>
+      <p>Updated: {new Date(post.updated_at).toLocaleString()}</p>
 
-          <button
-            onClick={() => onDeletePost(post.id)}
-            disabled={deletingPostIds.includes(post.id)}
-          >
-            Delete
-          </button>
-
-          <button
-            onClick={() => onUpdatePost(post)}
-            disabled={updatingPostIds.includes(post.id)}
-          >
-            Update
-          </button>
+      {/* Safeguards for undefined properties */}
+      {post.tags && post.tags.length > 0 && (
+        <div>
+          <h4>Tags:</h4>
+          <ul>
+            {post.tags.map((tag) => (
+              <li key={tag.id}>{tag.name}</li>
+            ))}
+          </ul>
         </div>
-      ))}
+      )}
+
+      {post.images && post.images.length > 0 && (
+        <div>
+          <h4>Images:</h4>
+          <ul>
+            {post.images.map((image) => (
+              <li key={image.id}>
+                <img src={image.image} alt={`Image ${image.id}`} width="100" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {post.ratings && post.ratings.length > 0 && (
+        <div>
+          <h4>Ratings:</h4>
+          <ul>
+            {post.ratings.map((rating) => (
+              <li key={rating.id}>
+                {rating.value} (User: {rating.user})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Posts;
+export default Post;

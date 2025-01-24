@@ -1,0 +1,41 @@
+/* frontend/src/components/CentralNewsFeed/CreatePosting.css */
+
+.create-posting-container {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.create-posting-textarea {
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  padding: 10px 15px;
+  resize: none;
+  height: 50px;
+  transition: border-color 0.3s;
+}
+
+.create-posting-textarea:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.create-posting-icon-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.create-posting-icon-label svg {
+  margin-right: 4px;
+}
+
+.post-attached-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-right: 10px;
+}

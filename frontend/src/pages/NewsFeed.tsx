@@ -10,8 +10,7 @@ import Profile from '../components/LeftSidebar/Profile';
 import FriendRequests from '../components/RightSidebar/FriendRequests';
 import Birthdays from '../components/RightSidebar/Birthdays';
 import Contacts from '../components/RightSidebar/Contacts';
-import CreatePost from '../components/CentralNewsFeed/CreatePost';
-import CreateAlbum from '../components/CentralNewsFeed/CreateAlbum';
+import CreatePosting from '../components/CentralNewsFeed/CreatePosting'; // Updated import
 import './NewsFeed.css';
 
 // Import your types
@@ -255,16 +254,21 @@ const NewsFeed: React.FC = () => {
   };
 
   return (
-    <div className="newsfeed-container">
+    <div className="newsfeed-container d-flex">
       {/* Left Sidebar */}
-      <div className="left-sidebar">
+      <div className="left-sidebar me-3">
         <Profile />
       </div>
 
       {/* Main Feed */}
-      <div className="main-feed">
-        <CreatePost onPostCreated={addNewPost} sendMessage={sendPostMessage} />
-        <CreateAlbum onAlbumCreated={addNewAlbum} sendAlbumMessage={sendAlbumMessage} />
+      <div className="main-feed flex-grow-1">
+        {/* CreatePosting component replaces CreatePost and CreateAlbum */}
+        <CreatePosting
+          onPostCreated={addNewPost}
+          onAlbumCreated={addNewAlbum}
+          sendMessage={sendPostMessage}
+          sendAlbumMessage={sendAlbumMessage}
+        />
 
         {dataLoading ? (
           <div className="text-center mt-5">Loading...</div>
@@ -307,7 +311,7 @@ const NewsFeed: React.FC = () => {
       </div>
 
       {/* Right Sidebar */}
-      <div className="right-sidebar">
+      <div className="right-sidebar ms-3">
         <FriendRequests />
         <Birthdays />
         <Contacts />
