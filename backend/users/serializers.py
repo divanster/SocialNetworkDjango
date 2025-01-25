@@ -1,3 +1,5 @@
+# backend/users/serializers.py
+
 from rest_framework import serializers
 from tagging.serializers import TaggedItemSerializer
 from .models import CustomUser, UserProfile
@@ -55,6 +57,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class CustomUserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=False)
+    full_name = serializers.SerializerMethodField()  # Add this field
     password = serializers.CharField(
         write_only=True,
         required=False,
@@ -71,7 +74,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            'id', 'email', 'username', 'password', 'password2', 'profile'
+            'id', 'email', 'username', 'full_name', 'password', 'password2', 'profile'
         ]
         extra_kwargs = {
             'email': {
@@ -81,6 +84,19 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 'validators': [UniqueValidator(queryset=CustomUser.objects.all())]
             },
         }
+
+    def get_full_name(self, obj):
+        """
+        Concatenate first_name and last_name from the related UserProfile.
+        If not available, fallback to username.
+        """
+        if obj.profile:
+            first_name = obj.profile.first_name or ""
+            last_name = obj.profile.last_name or ""
+            full_name = f"{first_name} {last_name}".strip()
+            if full_name:
+                return full_name
+        return obj.username
 
     def validate(self, data):
         """

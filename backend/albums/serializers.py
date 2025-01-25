@@ -8,6 +8,8 @@ from django.contrib.auth import get_user_model
 from core.choices import VisibilityChoices
 from rest_framework.exceptions import ValidationError  # Import ValidationError
 
+from users.serializers import CustomUserSerializer  # Import CustomUserSerializer
+
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
@@ -78,6 +80,7 @@ class PhotoSerializer(serializers.ModelSerializer):
 
 
 class AlbumSerializer(serializers.ModelSerializer):
+    author = CustomUserSerializer(source='user', read_only=True)  # Use CustomUserSerializer
     photos = PhotoSerializer(many=True, read_only=True)
     photos_upload = PhotoSerializer(many=True, write_only=True, required=False)
     tags = TaggedItemSerializer(many=True, read_only=True)
@@ -91,11 +94,11 @@ class AlbumSerializer(serializers.ModelSerializer):
     class Meta:
         model = Album
         fields = [
-            'id', 'user_id', 'title', 'description', 'visibility', 'created_at',
+            'id', 'user_id', 'author', 'title', 'description', 'visibility', 'created_at',
             'updated_at',
             'photos', 'photos_upload', 'tags', 'tagged_user_ids'
         ]
-        read_only_fields = ['id', 'user_id', 'created_at', 'updated_at', 'tags']
+        read_only_fields = ['id', 'user_id', 'created_at', 'updated_at', 'tags', 'author']
 
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
