@@ -1,5 +1,7 @@
 import graphene
 from graphene_django.types import DjangoObjectType
+
+from tagging.models import TaggedItem
 from .models import CustomUser, UserProfile
 from graphql import GraphQLError
 from django.contrib.auth import get_user_model
@@ -8,6 +10,9 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_email
 import logging
+import base64
+import uuid
+from django.core.files.base import ContentFile
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +57,8 @@ class UserType(DjangoObjectType):
         profile = getattr(self, 'profile', None)
         if profile and profile.profile_picture:
             return info.context.build_absolute_uri(profile.profile_picture.url)
+        elif profile and profile.profile_picture_url:
+            return profile.profile_picture_url
         return None
 
 
@@ -76,7 +83,8 @@ class Query(graphene.ObjectType):
     @staff_member_required
     def resolve_all_users(self, info, page=1, page_size=10, **kwargs):
         offset = (page - 1) * page_size
-        return CustomUser.objects.select_related("profile").all()[offset:offset + page_size]
+        return CustomUser.objects.select_related("profile").filter(is_deleted=False)[
+               offset:offset + page_size]
 
     # Resolve a specific user by ID
     def resolve_user_by_id(self, info, id):
@@ -85,7 +93,8 @@ class Query(graphene.ObjectType):
 
     # Resolve a specific user's profile by user ID
     def resolve_user_profile_by_id(self, info, user_id):
-        profile = get_object_or_404(UserProfile.all_objects, user_id=user_id, is_deleted=False)
+        profile = get_object_or_404(UserProfile.all_objects, user_id=user_id,
+                                    is_deleted=False)
         return profile
 
     # Resolve the currently logged-in user's information
@@ -101,24 +110,33 @@ class CreateUser(graphene.Mutation):
         email = graphene.String(required=True)
         username = graphene.String(required=True)
         password = graphene.String(required=True)
+        password2 = graphene.String(required=True)  # Added password2
 
     user = graphene.Field(UserType)
 
-    def mutate(self, info, email, username, password):
+    def mutate(self, info, email, username, password, password2):
+        # Validate email format
         try:
             validate_email(email)
         except ValidationError:
             raise GraphQLError("Invalid email format.")
 
+        # Validate password length
         if len(password) < 8:
             raise GraphQLError("Password must be at least 8 characters long.")
 
+        # Check if passwords match
+        if password != password2:
+            raise GraphQLError("Passwords do not match.")
+
+        # Check for unique email and username
         if CustomUser.all_objects.filter(email=email).exists():
             raise GraphQLError("A user with this email already exists.")
 
         if CustomUser.all_objects.filter(username=username).exists():
             raise GraphQLError("A user with this username already exists.")
 
+        # Create user
         user = CustomUser.objects.create_user(
             email=email,
             username=username,
@@ -137,12 +155,17 @@ class CreateUser(graphene.Mutation):
 
 class UpdateUserProfile(graphene.Mutation):
     class Arguments:
+        first_name = graphene.String()
+        last_name = graphene.String()
+        profile_picture = graphene.String()  # Base64 or URL; adjust as needed
+        relationship_status = graphene.String()
         date_of_birth = graphene.String()
         gender = graphene.String()
         phone = graphene.String()
         town = graphene.String()
         country = graphene.String()
         bio = graphene.String()
+        tagged_user_ids = graphene.List(graphene.UUID)  # Added for tag management
 
     user_profile = graphene.Field(UserProfileType)
     updated_fields = graphene.List(graphene.String)
@@ -156,10 +179,44 @@ class UpdateUserProfile(graphene.Mutation):
             raise GraphQLError("UserProfile does not exist or is deleted.")
 
         updated_fields = []
-        for key, value in kwargs.items():
+        profile_picture = kwargs.get('profile_picture')
+        if profile_picture:
+            if profile_picture.startswith('data:image'):
+                # Handle Base64-encoded image
+                try:
+                    format, imgstr = profile_picture.split(';base64,')
+                    ext = format.split('/')[-1]
+                    data = ContentFile(base64.b64decode(imgstr), name=f'{uuid.uuid4()}.{ext}')
+                    user_profile.profile_picture = data
+                    updated_fields.append('profile_picture')
+                except Exception as e:
+                    raise GraphQLError("Invalid image data.")
+            else:
+                # Assume it's a URL; validate and assign
+                # Ensure your model has a 'profile_picture_url' field
+                user_profile.profile_picture_url = profile_picture
+                updated_fields.append('profile_picture_url')
+
+        # Update other fields
+        for key in ['first_name', 'last_name', 'relationship_status',
+                    'date_of_birth', 'gender', 'phone', 'town',
+                    'country', 'bio']:
+            value = kwargs.get(key)
             if value is not None:
                 setattr(user_profile, key, value)
                 updated_fields.append(key)
+
+        # Handle tagged_user_ids
+        tagged_user_ids = kwargs.get('tagged_user_ids')
+        if tagged_user_ids is not None:
+            user_profile.tags.all().delete()
+            for user_id in tagged_user_ids:
+                TaggedItem.objects.create(
+                    content_object=user_profile,
+                    tagged_user_id=user_id,
+                    tagged_by=user
+                )
+            updated_fields.append('tagged_user_ids')
 
         # Validate the user_profile
         try:
@@ -229,7 +286,8 @@ class DeleteUserProfile(graphene.Mutation):
                 "Permission denied. Only admin or the user themselves can delete the profile.")
 
         try:
-            user_profile = UserProfile.all_objects.get(user_id=user_id, is_deleted=False)
+            user_profile = UserProfile.all_objects.get(user_id=user_id,
+                                                       is_deleted=False)
             user_profile.delete()  # Soft delete
             logger.info(f"Soft-deleted UserProfile with ID: {user_profile.id}")
             return DeleteUserProfile(success=True)
