@@ -1,29 +1,34 @@
-/* frontend/src/pages/NewsFeed.css */
-
+/* General Styles */
 body, html, #root {
     height: 100%;
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', Arial, sans-serif; /* Modern Font */
     background-color: #1c1c1c; /* Very Dark Gray */
     color: #f5f6fa; /* Light Gray Text */
 }
 
+/* Newsfeed Container */
 .newsfeed-container {
     display: flex;
     flex-direction: row;
     height: calc(100vh - 60px); /* Subtract navbar height */
     overflow: hidden;
     margin-top: 60px; /* Push content below navbar */
+    gap: 20px; /* Add gap between columns */
+    padding: 0 20px; /* Add padding to sides */
 }
 
+/* Sidebars */
 .left-sidebar,
 .right-sidebar {
     width: 250px; /* Fixed width for sidebars */
-    background-color: #2f3640; /* Dark Gray background */
+    background: linear-gradient(145deg, #2f3640, #353b48); /* Gradient Background */
     padding: 20px;
     overflow-y: auto;
     color: #f5f6fa; /* Light text for contrast */
+    border-radius: 12px; /* Rounded Corners */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle Shadow */
 }
 
 .left-sidebar {
@@ -34,21 +39,31 @@ body, html, #root {
     border-left: 1px solid #414b57; /* Medium Gray border */
 }
 
+/* Main Feed */
 .main-feed {
     flex: 1; /* Takes up remaining space */
     padding: 20px;
     overflow-y: auto;
     background-color: #353b48; /* Slightly Darker Gray for contrast */
     color: #f5f6fa; /* Light text for contrast */
+    border-radius: 12px; /* Rounded Corners */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle Shadow */
 }
 
+/* Post Cards */
 .post-card {
     background-color: #2f3640; /* Dark Gray */
     border: none;
-    border-radius: 8px;
-    padding: 15px;
+    border-radius: 12px; /* Rounded Corners */
+    padding: 20px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle Shadow */
+    transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth Hover Effect */
+}
+
+.post-card:hover {
+    transform: translateY(-2px); /* Lift on Hover */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4); /* Enhanced Shadow on Hover */
 }
 
 .post-card img {
@@ -56,10 +71,12 @@ body, html, #root {
     border-radius: 8px;
 }
 
+/* Alerts */
 .alert {
     padding: 15px;
     margin-bottom: 20px;
-    border-radius: 5px;
+    border-radius: 8px; /* Rounded Corners */
+    font-weight: 500; /* Medium Font Weight */
 }
 
 .alert-danger {
@@ -72,50 +89,37 @@ body, html, #root {
     color: #fff;
 }
 
-/* Toast Notification Styles */
+/* Toast Notifications */
 .toast-container .toast {
     background-color: #2f3640; /* Dark Gray */
     color: #f5f6fa; /* Light Text */
     border: 1px solid #414b57; /* Medium Gray */
+    border-radius: 8px; /* Rounded Corners */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle Shadow */
 }
 
-@media (max-width: 768px) {
-    .newsfeed-container {
-        flex-direction: column;
-        height: calc(100vh - 60px);
-    }
-
-    .left-sidebar,
-    .right-sidebar {
-        width: 100%;
-        height: auto;
-        border: none;
-    }
-
-    .main-feed {
-        padding: 10px;
-    }
-}
-
-/* Button Styles */
+/* Buttons */
 button {
     background-color: #00a8ff; /* Bright Accent Color */
     color: #fff;
     border: none;
     padding: 10px 15px;
-    border-radius: 5px;
+    border-radius: 8px; /* Rounded Corners */
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-weight: 500; /* Medium Font Weight */
 }
 
 button:hover {
     background-color: #0097e6;
+    transform: translateY(-1px); /* Lift on Hover */
 }
 
-/* Link Styles */
+/* Links */
 a {
     color: #00a8ff;
     text-decoration: none;
+    transition: color 0.3s ease;
 }
 
 a:hover {
@@ -123,16 +127,22 @@ a:hover {
     text-decoration: underline;
 }
 
-/* Input and Textarea Styles */
+/* Inputs and Textareas */
 input, textarea {
     background-color: #2f3640; /* Dark Gray */
     color: #f5f6fa; /* Light Text */
     border: 1px solid #414b57; /* Medium Gray */
-    border-radius: 5px;
+    border-radius: 8px; /* Rounded Corners */
     padding: 10px;
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 10px;
+    transition: border-color 0.3s ease;
+}
+
+input:focus, textarea:focus {
+    border-color: #00a8ff; /* Highlight on Focus */
+    outline: none;
 }
 
 input::placeholder,
@@ -140,7 +150,7 @@ textarea::placeholder {
     color: #aaa; /* Placeholder Text Color */
 }
 
-/* Logout Button Styles */
+/* Logout Button */
 .logout-button {
     background: none;
     border: none;
@@ -148,8 +158,30 @@ textarea::placeholder {
     cursor: pointer;
     padding: 5px 10px;
     font-size: 1rem;
+    transition: color 0.3s ease;
 }
 
 .logout-button:hover {
     color: #00a8ff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .newsfeed-container {
+        flex-direction: column;
+        height: calc(100vh - 60px);
+        padding: 0 10px; /* Reduce padding on mobile */
+    }
+
+    .left-sidebar,
+    .right-sidebar {
+        width: 100%;
+        height: auto;
+        border: none;
+        margin-bottom: 20px; /* Add space between stacked sections */
+    }
+
+    .main-feed {
+        padding: 10px;
+    }
 }

@@ -7,14 +7,17 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './MessagesDropdown.css';
 
+interface User {
+  id: number;
+  username: string;
+  full_name: string;
+  profile_picture: string | null;
+}
+
 interface Message {
   id: number;
-  sender: {
-    id: number;
-    username: string;
-    full_name: string;
-    profile_picture: string;
-  };
+  sender: User;
+  receiver: User;
   content: string;
   created_at: string;
   read: boolean;
@@ -33,22 +36,37 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch messages
+  // Fetch user messages
   const fetchUserMessages = async () => {
-    if (!token) return;
+    if (!token) {
+      setError('Authentication token is missing.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.get(`${API_URL}/messages/inbox/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMessages(response.data);
+
+      // Handle paginated response
+      const fetchedMessages: Message[] = response.data.results || response.data;
+
+      setMessages(fetchedMessages);
+
       // Update unread count based on fetched data
-      const unread = response.data.filter((msg: Message) => !msg.read).length;
+      const unread = fetchedMessages.filter((msg) => !msg.read).length;
       setUnreadCount(unread);
       setError(null);
     } catch (err: any) {
       console.error('Failed to fetch messages:', err);
-      setError('Failed to load messages.');
+      if (err.response) {
+        setError(`Error ${err.response.status}: ${err.response.data.detail || 'Failed to load messages.'}`);
+      } else if (err.request) {
+        setError('No response from server. Please check your network connection.');
+      } else {
+        setError(`Error: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -56,8 +74,8 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
 
   useEffect(() => {
     fetchUserMessages();
-    // Optionally, set up WebSocket or polling to fetch messages in real-time
-    // For example, using WebSockets:
+    // Optionally, set up WebSocket or polling for real-time updates
+    // Example with WebSocket:
     // const ws = new WebSocket(`${API_URL.replace(/^http/, 'ws')}/ws/messages/`);
     // ws.onmessage = (event) => { /* handle incoming messages */ };
     // return () => { ws.close(); };
@@ -68,7 +86,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     try {
       await axios.patch(
         `${API_URL}/messages/${id}/`,
-        { read: true },
+        { is_read: true }, // Send 'is_read' as expected by the backend
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -78,9 +96,10 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
           msg.id === id ? { ...msg, read: true } : msg
         )
       );
-      setUnreadCount((prev) => prev - 1);
+      setUnreadCount((prev) => Math.max(prev - 1, 0));
     } catch (err) {
       console.error('Failed to mark message as read:', err);
+      // Optionally, display a notification to the user
     }
   };
 
@@ -112,8 +131,12 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
             className={msg.read ? 'read' : 'unread'}
           >
             <div className="message-content">
-              <img src={msg.sender.profile_picture} alt={`${msg.sender.username}'s profile`} />
-              <div>
+              {msg.sender.profile_picture ? (
+                <img src={msg.sender.profile_picture} alt={`${msg.sender.username}'s profile`} className="profile-picture" />
+              ) : (
+                <div className="profile-placeholder">?</div>
+              )}
+              <div className="message-details">
                 <strong>{msg.sender.full_name}</strong>
                 <span>{msg.content}</span>
                 <small className="text-muted">{new Date(msg.created_at).toLocaleString()}</small>
