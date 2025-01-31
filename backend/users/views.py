@@ -1,4 +1,5 @@
-import logging
+# backend/users/views.py
+
 from rest_framework import viewsets, status, generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -7,8 +8,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from .models import CustomUser, UserProfile
-from .serializers import CustomUserSerializer, UserProfileSerializer, \
-    TokenRefreshSerializer
+from .serializers import CustomUserSerializer, UserProfileSerializer, TokenRefreshSerializer
 from rest_framework.generics import CreateAPIView
 from kafka_app.tasks import send_welcome_email, send_profile_update_notification
 from rest_framework.views import APIView
@@ -16,6 +16,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
 from django_ratelimit.decorators import ratelimit
+
+import logging
 
 # Initialize logger once at the top
 logger = logging.getLogger('users')
@@ -140,21 +142,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         instance.delete()  # Soft delete
         logger.info(f"Soft-deleted CustomUser with ID: {instance.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=True, methods=['post'], url_path='restore', permission_classes=[IsAuthenticated])
-    def restore(self, request, pk=None):
-        """
-        Restores a soft-deleted user.
-        """
-        try:
-            user = CustomUser.all_objects.get(pk=pk, is_deleted=True)
-            user.restore()
-            serializer = self.get_serializer(user)
-            logger.info(f"Restored CustomUser with ID: {user.id}")
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except CustomUser.DoesNotExist:
-            logger.error(f"CustomUser with ID {pk} does not exist or is not deleted.")
-            return Response({"detail": "User not found or not deleted."}, status=status.HTTP_404_NOT_FOUND)
 
     @action(
         detail=False,

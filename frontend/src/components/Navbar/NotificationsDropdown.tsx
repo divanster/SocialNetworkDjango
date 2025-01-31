@@ -1,25 +1,22 @@
 // frontend/src/components/Navbar/NotificationsDropdown.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavDropdown, Badge } from 'react-bootstrap';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
 import './NotificationsDropdown.css';
 
-interface User {
-  id: number;
-  username: string;
-  full_name: string;
-  profile_picture: string | null;
-}
-
 interface Notification {
-  id: number;
-  type: string;
-  content: string;
+  id: string;
+  notification_type: string;
+  text: string;
   read: boolean;
   created_at: string;
+  sender_username: string;
+  receiver_username: string;
+  content_object_url: string | null;
 }
 
 interface NotificationsDropdownProps {
@@ -35,8 +32,8 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch user notifications
-  const fetchUserNotifications = async () => {
+  // Fetch user notifications with useCallback to memoize the function
+  const fetchUserNotifications = useCallback(async () => {
     if (!token) {
       setError('Authentication token is missing.');
       setLoading(false);
@@ -69,23 +66,26 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, setUnreadCount]);
 
   useEffect(() => {
     fetchUserNotifications();
-    // Optionally, set up WebSocket or polling for real-time updates
-    // Example with WebSocket:
-    // const ws = new WebSocket(`${API_URL.replace(/^http/, 'ws')}/ws/notifications/`);
-    // ws.onmessage = (event) => { /* handle incoming notifications */ };
-    // return () => { ws.close(); };
-  }, [token]);
+  }, [fetchUserNotifications]);
+
+  // Handle real-time updates via WebSocket
+  useWebSocket<Notification>('notifications', {
+    onMessage: (data) => {
+      setNotifications((prev) => [data, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    }
+  });
 
   // Mark a notification as read
-  const markAsRead = async (id: number) => {
+  const markAsRead = async (id: string) => {
     try {
-      await axios.patch(
-        `${API_URL}/notifications/${id}/`,
-        { is_read: true }, // Send 'is_read' as expected by the backend
+      await axios.post(
+        `${API_URL}/notifications/${id}/mark-as-read/`,
+        {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -131,7 +131,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
           >
             <div className="notification-content">
               <div className="notification-details">
-                <span>{notif.content}</span>
+                <span>{notif.text}</span>
                 <small className="text-muted">{new Date(notif.created_at).toLocaleString()}</small>
               </div>
             </div>

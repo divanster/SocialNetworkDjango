@@ -1,3 +1,5 @@
+# backend/notifications/serializers.py
+
 from rest_framework import serializers
 from .models import Notification
 from django.contrib.auth import get_user_model
@@ -17,6 +19,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     sender_username = serializers.StringRelatedField(source='sender', read_only=True)
     receiver_username = serializers.StringRelatedField(source='receiver', read_only=True)
     content_object_url = serializers.SerializerMethodField()
+    read = serializers.BooleanField(source='is_read', read_only=True)  # Alias for frontend consistency
 
     class Meta:
         model = Notification
@@ -28,7 +31,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'receiver_username',
             'notification_type',
             'text',
-            'is_read',
+            'read',  # Changed from 'is_read' to 'read' for frontend compatibility
             'content_type',
             'object_id',
             'content_object_url',
@@ -40,6 +43,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'sender_username',
             'receiver_username',
             'content_object_url',
+            'read',
         ]
 
     @extend_schema_field(serializers.URLField)

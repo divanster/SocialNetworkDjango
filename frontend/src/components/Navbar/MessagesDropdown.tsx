@@ -15,12 +15,12 @@ interface User {
 }
 
 interface Message {
-  id: number;
+  id: string; // UUID as string
   sender: User;
   receiver: User;
   content: string;
+  read: boolean; // Aliased from 'is_read'
   created_at: string;
-  read: boolean;
 }
 
 interface MessagesDropdownProps {
@@ -36,7 +36,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch user messages
+  // Fetch user messages from inbox
   const fetchUserMessages = async () => {
     if (!token) {
       setError('Authentication token is missing.');
@@ -77,16 +77,20 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     // Optionally, set up WebSocket or polling for real-time updates
     // Example with WebSocket:
     // const ws = new WebSocket(`${API_URL.replace(/^http/, 'ws')}/ws/messages/`);
-    // ws.onmessage = (event) => { /* handle incoming messages */ };
+    // ws.onmessage = (event) => {
+    //   const data = JSON.parse(event.data);
+    //   setMessages(prev => [data, ...prev]);
+    //   setUnreadCount(prev => prev + 1);
+    // };
     // return () => { ws.close(); };
   }, [token]);
 
   // Mark a message as read
-  const markAsRead = async (id: number) => {
+  const markAsRead = async (id: string) => {
     try {
-      await axios.patch(
-        `${API_URL}/messages/${id}/`,
-        { is_read: true }, // Send 'is_read' as expected by the backend
+      await axios.post(
+        `${API_URL}/messages/${id}/mark-as-read/`,
+        {}, // No body needed as the view handles setting 'is_read' to True
         {
           headers: { Authorization: `Bearer ${token}` },
         }

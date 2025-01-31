@@ -1,3 +1,5 @@
+# backend/notifications/views.py
+
 from uuid import UUID
 
 from rest_framework import viewsets, permissions, generics, status
@@ -11,7 +13,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class NotificationViewSet(viewsets.GenericViewSet):
+
+class NotificationViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing Notification instances.
     Implements soft deletion and uses UUIDs as primary keys.
@@ -50,18 +53,23 @@ class NotificationViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
     @extend_schema(
-        responses={200: OpenApiResponse(description="All unread notifications marked as read.")}
+        responses={200: OpenApiResponse(
+            description="All unread notifications marked as read.")}
     )
-    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['post'],
+            permission_classes=[permissions.IsAuthenticated])
     def mark_all_as_read(self, request):
         """
         Marks all unread notifications as read for the logged-in user.
         """
-        notifications = Notification.objects.filter(receiver=request.user, is_read=False)
+        notifications = Notification.objects.filter(receiver=request.user,
+                                                    is_read=False)
         count = notifications.count()
         notifications.update(is_read=True)
-        logger.info(f"{count} notifications marked as read for user {request.user.username}.")
-        return Response({"message": f"{count} notifications marked as read."}, status=status.HTTP_200_OK)
+        logger.info(
+            f"{count} notifications marked as read for user {request.user.username}.")
+        return Response({"message": f"{count} notifications marked as read."},
+                        status=status.HTTP_200_OK)
 
     @extend_schema(
         parameters=[
@@ -74,7 +82,8 @@ class NotificationViewSet(viewsets.GenericViewSet):
         ],
         responses={200: OpenApiResponse(description="Notification marked as read.")}
     )
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=['post'],
+            permission_classes=[permissions.IsAuthenticated])
     def mark_as_read(self, request, id=None):
         """
         Marks a specific notification as read.
@@ -82,8 +91,10 @@ class NotificationViewSet(viewsets.GenericViewSet):
         notification = self.get_object()
 
         if notification.receiver != request.user:
-            logger.warning(f"User {request.user.id} attempted to mark a notification not addressed to them as read.")
-            raise PermissionDenied("You do not have permission to mark this notification as read.")
+            logger.warning(
+                f"User {request.user.id} attempted to mark a notification not addressed to them as read.")
+            raise PermissionDenied(
+                "You do not have permission to mark this notification as read.")
 
         if notification.is_read:
             logger.info(f"Notification {notification.id} is already marked as read.")
@@ -94,7 +105,8 @@ class NotificationViewSet(viewsets.GenericViewSet):
 
         try:
             notification.mark_as_read()
-            logger.info(f"Notification {notification.id} marked as read by user {request.user.username}.")
+            logger.info(
+                f"Notification {notification.id} marked as read by user {request.user.username}.")
             return Response(
                 {"message": f"Notification {id} marked as read."},
                 status=status.HTTP_200_OK
@@ -109,12 +121,14 @@ class NotificationViewSet(viewsets.GenericViewSet):
     @extend_schema(
         responses=NotificationCountSerializer
     )
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'],
+            permission_classes=[permissions.IsAuthenticated])
     def unread_count(self, request):
         """
         Returns the count of unread notifications.
         """
-        count = Notification.objects.filter(receiver=request.user, is_read=False).count()
+        count = Notification.objects.filter(receiver=request.user,
+                                            is_read=False).count()
         serializer = NotificationCountSerializer({"count": count})
         logger.info(f"User {request.user.username} has {count} unread notifications.")
         return Response(serializer.data)

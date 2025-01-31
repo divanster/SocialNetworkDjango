@@ -1,3 +1,5 @@
+# backend/messenger/views.py
+
 from uuid import UUID
 
 from django.db.models import Q
@@ -30,7 +32,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         Excludes soft-deleted messages by default.
         """
         user = self.request.user
-        return Message.objects.filter(Q(receiver=user) | Q(sender=user))
+        return Message.objects.filter(Q(receiver=user) | Q(sender=user)).order_by('-created_at')
 
     @extend_schema(
         parameters=[
@@ -71,6 +73,19 @@ class MessageViewSet(viewsets.ModelViewSet):
         """
         instance.delete()
         logger.info(f"Message soft-deleted: {instance}")
+
+    @extend_schema(
+        responses={200: 'List of inbox messages.'}
+    )
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def inbox(self, request):
+        """
+        Custom action to retrieve inbox messages (received messages only).
+        """
+        user = request.user
+        inbox_messages = Message.objects.filter(receiver=user).order_by('-created_at')
+        serializer = self.get_serializer(inbox_messages, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'],
             permission_classes=[permissions.IsAuthenticated])
@@ -126,7 +141,7 @@ class MessagesCountView(generics.GenericAPIView):
         Excludes soft-deleted messages.
         """
         user = request.user
-        message_count = Message.objects.filter(
-            Q(receiver=user) | Q(sender=user)).count()
+        message_count = Message.objects.filter(Q(receiver=user) | Q(sender=user)).count()
         serializer = self.get_serializer({"count": message_count})
-        return Response(serializer.data)
+        logger.info(f"User {user.username} has {message_count} messages.")
+        return Response(serializer.data, status=status.HTTP_200_OK)

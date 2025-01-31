@@ -15,8 +15,6 @@ django.setup()
 
 # Import the centralized WebSocket routing module
 from websocket.routing import websocket_urlpatterns  # Central WebSocket routing
-# If Kafka has additional WebSocket routes, include them here
-# from kafka_app.routing import kafka_websocket_urlpatterns
 
 # Configure logging for tracking ASGI events and debugging
 logger = logging.getLogger(__name__)
@@ -30,7 +28,6 @@ application = ProtocolTypeRouter({
     "websocket": AuthMiddlewareStack(
         URLRouter(
             websocket_urlpatterns  # Include all WebSocket routes
-            # + kafka_websocket_urlpatterns  # Uncomment if Kafka has its own WebSocket routes
         )
     ),
 })

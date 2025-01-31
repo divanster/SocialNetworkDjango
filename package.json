@@ -8,7 +8,9 @@
     "test": "echo \"Running tests on the root project\""
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0"
   },
   "dependencies": {
     "@types/react-router-bootstrap": "^0.26.6",

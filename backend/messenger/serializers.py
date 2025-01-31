@@ -1,8 +1,10 @@
-from rest_framework import serializers
+# backend/messages/serializers.py
 
-from friends.models import Block
+from rest_framework import serializers
 from .models import Message
 from django.contrib.auth import get_user_model
+from friends.models import \
+    Block  # Import Block model to validate sender-receiver relationships
 
 User = get_user_model()
 
@@ -10,15 +12,19 @@ User = get_user_model()
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.StringRelatedField(source='sender', read_only=True)
     receiver_name = serializers.StringRelatedField(source='receiver', read_only=True)
+    read = serializers.BooleanField(source='is_read',
+                                    read_only=True)  # Alias for frontend consistency
 
     class Meta:
         model = Message
         fields = [
             'id', 'sender', 'receiver', 'sender_name', 'receiver_name',
-            'content', 'created_at', 'is_read'
+            'content', 'read',
+            # Changed from 'is_read' to 'read' for frontend compatibility
+            'created_at'
         ]
         read_only_fields = [
-            'id', 'sender', 'sender_name', 'receiver_name', 'created_at'
+            'id', 'sender', 'sender_name', 'receiver_name', 'created_at', 'read'
         ]
 
     def validate_receiver(self, value):
@@ -28,7 +34,8 @@ class MessageSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         if Block.objects.filter(blocker=user, blocked=value).exists():
             raise serializers.ValidationError(
-                "You have blocked this user and cannot send messages to them.")
+                "You have blocked this user and cannot send messages to them."
+            )
         return value
 
     def create(self, validated_data):

@@ -3,17 +3,17 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-interface WebSocketHandler {
-  onMessage: (data: any) => void;
+interface WebSocketHandler<T> {
+  onMessage: (data: T) => void;
 }
 
 interface UseWebSocketReturn {
   sendMessage: (message: string) => void;
 }
 
-export default function useWebSocket(
+export default function useWebSocket<T>(
   groupName: string,
-  { onMessage }: WebSocketHandler
+  { onMessage }: WebSocketHandler<T>
 ): UseWebSocketReturn {
   const { token, loading } = useAuth();
   const socketRef = useRef<WebSocket | null>(null);
@@ -41,12 +41,12 @@ export default function useWebSocket(
     }
 
     const connect = () => {
-      const baseUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
-      const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-      const websocketUrl = `${normalizedBaseUrl}/${groupName}/?token=${token}`;
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const host = window.location.host;
+      const wsUrl = `${protocol}://${host}/ws/${groupName}/?token=${token}`;
 
-      console.log(`Connecting to WebSocket at: ${websocketUrl}`);
-      socketRef.current = new WebSocket(websocketUrl);
+      console.log(`Connecting to WebSocket at: ${wsUrl}`);
+      socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
         console.log(`WebSocket connected to group: ${groupName}`);
@@ -55,7 +55,7 @@ export default function useWebSocket(
 
       socketRef.current.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const data: T = JSON.parse(event.data);
           onMessage(data);
         } catch (error) {
           console.error(`Error parsing WebSocket message for group ${groupName}:`, error);
@@ -69,7 +69,7 @@ export default function useWebSocket(
       socketRef.current.onclose = (event) => {
         console.warn(`WebSocket connection closed for group: ${groupName}:`, event);
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const timeout = Math.pow(2, reconnectAttemptsRef.current) * 1000;
+          const timeout = Math.pow(2, reconnectAttemptsRef.current) * 1000; // Exponential backoff
           console.log(`Reconnecting to ${groupName} in ${timeout / 1000} seconds...`);
           setTimeout(() => {
             reconnectAttemptsRef.current += 1;
@@ -85,7 +85,7 @@ export default function useWebSocket(
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.close(1000, 'Component unmounted');
+        socketRef.current.close(1000, 'Component unmounted'); // 1000: Normal Closure
         console.log(`WebSocket connection closed for group: ${groupName}`);
       }
     };
