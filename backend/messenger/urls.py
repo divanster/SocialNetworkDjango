@@ -11,6 +11,5 @@ router.register(r'', MessageViewSet, basename='message')  # Register at root
 
 urlpatterns = [
     path('count/', MessagesCountView.as_view(), name='messages-count'),
-    path('inbox/', MessageViewSet.as_view({'get': 'inbox'}), name='messages-inbox'),  # Define 'inbox' endpoint
     path('', include(router.urls)),
 ]

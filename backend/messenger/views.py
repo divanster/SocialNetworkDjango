@@ -1,19 +1,22 @@
 # backend/messenger/views.py
 
 from uuid import UUID
-
+from django.db import transaction
 from django.db.models import Q
-from rest_framework import viewsets, permissions, generics, status
+from rest_framework import viewsets, permissions, generics, status, serializers
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
+from friends.models import Block
 from .models import Message
 from .serializers import MessageSerializer, MessagesCountSerializer
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from django.contrib.auth import get_user_model
 import logging
 
 logger = logging.getLogger(__name__)
-
+User = get_user_model()
 
 class MessageViewSet(viewsets.ModelViewSet):
     """
@@ -38,7 +41,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         parameters=[
             OpenApiParameter(
                 name="id",
-                type=UUID,
+                type=OpenApiTypes.UUID,
                 location=OpenApiParameter.PATH,
                 description="UUID of the message"
             ),
@@ -75,7 +78,7 @@ class MessageViewSet(viewsets.ModelViewSet):
         logger.info(f"Message soft-deleted: {instance}")
 
     @extend_schema(
-        responses={200: 'List of inbox messages.'}
+        responses={200: MessageSerializer(many=True)}
     )
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def inbox(self, request):
@@ -123,6 +126,43 @@ class MessageViewSet(viewsets.ModelViewSet):
                 {"detail": "An unexpected error occurred."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @extend_schema(
+        request=serializers.Serializer,  # Define a custom serializer if needed
+        responses={201: MessageSerializer(many=True)},
+    )
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def broadcast(self, request):
+        """
+        Custom action to broadcast a message to all users.
+        """
+        content = request.data.get('content')
+        if not content:
+            return Response({'error': 'Content is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        sender = request.user
+        receivers = User.objects.all().exclude(id=sender.id)
+        messages = []
+
+        try:
+            with transaction.atomic():
+                for receiver in receivers:
+                    # Check if sender has blocked receiver or vice versa
+                    if Block.objects.filter(blocker=sender, blocked=receiver).exists() or \
+                       Block.objects.filter(blocker=receiver, blocked=sender).exists():
+                        logger.info(f"Skipping message to {receiver.username} due to block.")
+                        continue
+
+                    msg = Message.objects.create(sender=sender, receiver=receiver, content=content)
+                    messages.append(msg)
+
+            serializer = self.get_serializer(messages, many=True)
+            logger.info(f"Broadcast message sent by {sender.username} to {len(messages)} users.")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error during broadcast: {e}")
+            return Response({'error': 'An unexpected error occurred during broadcast.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MessagesCountView(generics.GenericAPIView):
