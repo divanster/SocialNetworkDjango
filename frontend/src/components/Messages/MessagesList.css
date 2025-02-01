@@ -1,0 +1,64 @@
+/* frontend/src/components/Messages/MessagesList.css */
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.message-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.message-item:hover {
+  background-color: #f9f9f9;
+}
+
+.message-sender {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.sender-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.sender-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ccc;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  font-size: 20px;
+}
+
+.message-preview {
+  font-size: 14px;
+  color: #555;
+}
+
+.message-timestamp {
+  font-size: 12px;
+  color: #999;
+  align-self: flex-end;
+}
+
+.unread {
+  background-color: #e6f7ff;
+}
+
+.read {
+  background-color: #ffffff;
+}

@@ -1,10 +1,9 @@
-// frontend/src/App.tsx
-
+// src/App.tsx
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
-import Navbar from './components/Navbar/Navbar'; // Import Navbar component
-import ErrorBoundary from './components/ErrorBoundary'; // Import ErrorBoundary
+import Navbar from './components/Navbar/Navbar';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const NewsFeed = lazy(() => import('./pages/NewsFeed'));
 const Albums = lazy(() => import('./pages/Albums'));
@@ -12,13 +11,13 @@ const Login = lazy(() => import('./components/Auth/Login'));
 const Signup = lazy(() => import('./components/Auth/Signup'));
 const NotFound = lazy(() => import('./components/NotFound'));
 const Profile = lazy(() => import('./components/LeftSidebar/Profile'));
-const Messages = lazy(() => import('./pages/Messages')); // Import Messages.tsx
-const MessagesPage = lazy(() => import('./pages/MessagesPage')); // For individual messages
+const Messages = lazy(() => import('./pages/Messages'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage'));
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Navbar /> {/* Ensure Navbar is placed here */}
+    <>
+      <Navbar />
       <ErrorBoundary>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>
@@ -73,7 +72,7 @@ const App: React.FC = () => {
           </Routes>
         </Suspense>
       </ErrorBoundary>
-    </Router>
+    </>
   );
 };
 

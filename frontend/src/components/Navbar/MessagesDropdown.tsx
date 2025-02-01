@@ -1,29 +1,18 @@
-// frontend/src/components/Navbar/MessagesDropdown.tsx
+// src/components/Navbar/MessagesDropdown.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { NavDropdown, Badge, Modal, Button, Form } from 'react-bootstrap';
+import { NavDropdown, Badge, Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import * as api from '../../services/api'; // Corrected import path
-import { fetchInboxMessages, markMessageAsRead } from '../../services/messagesService'; // Corrected function names
-import { fetchFriendsList } from '../../services/friendsService'; // Corrected import source
+import {
+  sendMessageToUser,
+  broadcastMessageToAll,
+  markMessageAsRead,
+  fetchInboxMessages,
+  Message
+} from '../../services/messagesService';
+import { fetchFriendsList, User } from '../../services/friendsService';
 import './MessagesDropdown.css';
-
-interface User {
-  id: number;
-  username: string;
-  full_name: string;
-  profile_picture: string | null;
-}
-
-interface Message {
-  id: string; // UUID as string
-  sender: User;
-  receiver: User;
-  content: string;
-  read: boolean; // Aliased from 'is_read'
-  created_at: string;
-}
 
 interface MessagesDropdownProps {
   unreadCount: number;
@@ -39,6 +28,8 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   // Modal state
   const [showModal, setShowModal] = useState<boolean>(false);
   const [friends, setFriends] = useState<User[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState<boolean>(false);
+  const [friendsError, setFriendsError] = useState<string | null>(null);
   const [selectedReceiver, setSelectedReceiver] = useState<string>(''); // User ID or 'all'
   const [messageContent, setMessageContent] = useState<string>('');
   const [sending, setSending] = useState<boolean>(false);
@@ -76,12 +67,17 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
 
   // Fetch friends list
   const fetchFriendsListFunc = useCallback(async () => {
+    setFriendsLoading(true);
     try {
       const fetchedFriends: User[] = await fetchFriendsList();
-      setFriends(fetchedFriends);
+      console.log('Fetched Friends:', fetchedFriends); // Debugging
+      setFriends(Array.isArray(fetchedFriends) ? fetchedFriends : []);
+      setFriendsError(null);
     } catch (err: any) {
       console.error('Failed to fetch friends:', err);
-      // Handle error (optional)
+      setFriendsError('Failed to load friends.');
+    } finally {
+      setFriendsLoading(false);
     }
   }, []);
 
@@ -94,7 +90,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   // Mark a message as read
   const markAsReadHandler = async (id: string) => {
     try {
-      await api.markMessageAsReadAPI(id); // Assuming markMessageAsReadAPI is exported from api.ts
+      await markMessageAsRead(id);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === id ? { ...msg, read: true } : msg
@@ -120,10 +116,10 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     try {
       if (selectedReceiver === 'all') {
         // Broadcast message
-        await api.broadcastMessage(messageContent.trim());
+        await broadcastMessageToAll(messageContent.trim());
       } else {
         // Send to a specific user
-        await api.sendMessage(Number(selectedReceiver), messageContent.trim());
+        await sendMessageToUser(Number(selectedReceiver), messageContent.trim());
       }
       // Refresh messages after sending
       await fetchUserMessagesFunc();
@@ -160,7 +156,10 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
         </NavDropdown.Header>
         <NavDropdown.Divider />
         {loading ? (
-          <NavDropdown.ItemText>Loading...</NavDropdown.ItemText>
+          <NavDropdown.ItemText className="d-flex align-items-center">
+            <Spinner animation="border" size="sm" className="me-2" />
+            Loading...
+          </NavDropdown.ItemText>
         ) : error ? (
           <NavDropdown.ItemText className="text-danger">{error}</NavDropdown.ItemText>
         ) : messages.length === 0 ? (
@@ -197,22 +196,37 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
           <Modal.Title>Send a Message</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {sendError && <div className="alert alert-danger">{sendError}</div>}
+          {sendError && <Alert variant="danger">{sendError}</Alert>}
           <Form>
             <Form.Group controlId="recipientSelect" className="mb-3">
               <Form.Label>Recipient</Form.Label>
-              <Form.Select
-                value={selectedReceiver}
-                onChange={(e) => setSelectedReceiver(e.target.value)}
-              >
-                <option value="">Select a user</option>
-                <option value="all">Everyone</option>
-                {friends.map((friend) => (
-                  <option key={friend.id} value={friend.id}>
-                    {friend.full_name} ({friend.username})
-                  </option>
-                ))}
-              </Form.Select>
+              {friendsLoading ? (
+                <div className="d-flex align-items-center">
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Loading friends...
+                </div>
+              ) : friendsError ? (
+                <Alert variant="danger">{friendsError}</Alert>
+              ) : (
+                <Form.Select
+                  value={selectedReceiver}
+                  onChange={(e) => setSelectedReceiver(e.target.value)}
+                >
+                  <option value="">Select a user</option>
+                  <option value="all">Everyone</option>
+                  {friends && Array.isArray(friends) && friends.length > 0 ? (
+                    friends.map((friend) => (
+                      <option key={friend.id} value={friend.id}>
+                        {friend.full_name} ({friend.username})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>
+                      No friends available
+                    </option>
+                  )}
+                </Form.Select>
+              )}
             </Form.Group>
             <Form.Group controlId="messageContent" className="mb-3">
               <Form.Label>Message</Form.Label>

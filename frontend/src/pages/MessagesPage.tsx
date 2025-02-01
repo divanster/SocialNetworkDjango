@@ -1,11 +1,11 @@
-// frontend/src/pages/MessagesPage.tsx
+// src/pages/MessagesPage.tsx
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMessageById, markMessageAsRead } from '../services/messagesService';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, Button, Spinner, Alert } from 'react-bootstrap';
-import './MessagesPage.css'; // Assuming CSS is handled separately
+import './MessagesPage.css'; // Ensure this file exists or remove the import if not needed
 
 interface User {
   id: number;
@@ -49,7 +49,7 @@ const MessagesPage: React.FC = () => {
           setError(null);
         } catch (err: any) {
           console.error('Error fetching message:', err);
-          setError(err.response?.data?.detail || 'Failed to fetch message.');
+          setError(err.message || 'Failed to fetch message.');
         } finally {
           setLoading(false);
         }
