@@ -12,8 +12,9 @@ import React, {
 import axios from 'axios';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { fetchProfileData } from '../services/api'; // Ensure this path is correct
+import { useNavigate } from 'react-router-dom';
 
-// Helper function to set the Axios header
+// Helper function to set the Axios header globally
 const setAuthToken = (token: string | null): void => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -22,14 +23,11 @@ const setAuthToken = (token: string | null): void => {
   }
 };
 
-// Decode token expiration time
+// Decode token expiration time (convert seconds to milliseconds)
 const getTokenExpirationTime = (token: string): number | null => {
   try {
     const decoded = jwtDecode<JwtPayload>(token);
-    if (decoded.exp) {
-      return decoded.exp * 1000; // Convert to milliseconds
-    }
-    return null;
+    return decoded.exp ? decoded.exp * 1000 : null;
   } catch (error) {
     console.error('Failed to decode token:', error);
     return null;
@@ -78,25 +76,28 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(localStorage.getItem('access_token'));
-  const [user, setUser] = useState<User | null>(null); // Initialize user state
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
 
+  // Store refreshToken function in a ref for scheduled calls
   const refreshTokenRef = useRef<(() => Promise<string | null>) | null>(null);
 
-  // Function to schedule token refresh before expiration
+  // Schedule a token refresh 1 minute before expiration
   const scheduleTokenRefresh = useCallback((accessToken: string): void => {
     const expirationTime = getTokenExpirationTime(accessToken);
     if (expirationTime) {
-      const delay = expirationTime - Date.now() - 60000; // Refresh 1 minute before expiration
+      const delay = expirationTime - Date.now() - 60000;
+      console.log(`Scheduling token refresh in ${Math.max(delay / 1000, 0)} seconds`);
       if (delay > 0) {
         setTimeout(() => {
           refreshTokenRef.current?.();
         }, delay);
       }
     }
-  }, []); // No dependencies needed since `refreshTokenRef` is stable.
+  }, []);
 
-  // Function to log out the user
+  // Logout function: clears tokens, resets state, and redirects to login page
   const logout = useCallback(async (): Promise<void> => {
     console.log('Logging out...');
     localStorage.removeItem('access_token');
@@ -105,53 +106,77 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthToken(null);
-  }, []);
+    navigate('/login'); // Redirect to login page
+  }, [navigate]);
 
-  // Function to refresh the access token
+  // Refresh token function: uses the stored refresh token to get a new access token.
+  // If the backend rotates tokens, update the stored refresh token as well.
   const refreshToken = useCallback(async (): Promise<string | null> => {
     try {
       const storedRefreshToken = localStorage.getItem('refresh_token');
+      console.log('Stored refresh token:', storedRefreshToken);
+
       if (!storedRefreshToken) {
         console.log('No refresh token available.');
         await logout();
         return null;
       }
 
-      const response = await axios.post(`${API_URL}/token/refresh/`, {
-        refresh: storedRefreshToken,
-      });
+      // For the refresh request, explicitly clear the Authorization header.
+      const response = await axios.post(
+        `${API_URL}/token/refresh/`,
+        { refresh: storedRefreshToken },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': '', // Override any default Authorization header
+          },
+        }
+      );
+
+      console.log('Refresh token response:', response.data);
+
       const newAccessToken = response.data.access;
+      const newRefreshToken = response.data.refresh; // If backend rotates refresh tokens
       if (newAccessToken) {
         console.log('Token refreshed successfully.');
         localStorage.setItem('access_token', newAccessToken);
+        if (newRefreshToken) {
+          console.log('Refresh token rotated successfully.');
+          localStorage.setItem('refresh_token', newRefreshToken);
+        }
         setToken(newAccessToken);
         setIsAuthenticated(true);
         setAuthToken(newAccessToken);
 
         scheduleTokenRefresh(newAccessToken);
 
-        // Fetch and set the user data after refreshing the token
+        // Fetch and update the user data after refreshing the token
         const userData = await fetchProfileData();
         setUser(userData);
 
         return newAccessToken;
       } else {
+        console.log('No access token found in refresh response.');
         await logout();
         return null;
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        console.error('Error refreshing token details:', error.response.data);
+      }
       console.error('Error refreshing token:', error);
       await logout();
       return null;
     }
   }, [logout, scheduleTokenRefresh]);
 
-  // Assign the refreshToken function to the ref
+  // Save the refreshToken function in a ref so it can be invoked from scheduled callbacks
   useEffect(() => {
     refreshTokenRef.current = refreshToken;
   }, [refreshToken]);
 
-  // Function to log in the user
+  // Login function: stores tokens, sets state, schedules refresh, and fetches user data
   const login = useCallback(
     (accessToken: string, refreshTokenStr: string): void => {
       console.log('Logging in...');
@@ -163,7 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       scheduleTokenRefresh(accessToken);
 
-      // Fetch and set the user data upon login
+      // Fetch and set user data after login
       fetchProfileData()
         .then((userData) => {
           setUser(userData);
@@ -171,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         })
         .catch((error) => {
           console.error('Error fetching user data after login:', error);
-          // Optionally logout if fetching user data fails
+          // Optionally, logout if fetching user data fails
         });
     },
     [scheduleTokenRefresh]
@@ -181,17 +206,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('Initializing authentication...');
-      const accessToken = localStorage.getItem('access_token');
-      if (accessToken) {
-        const expirationTime = getTokenExpirationTime(accessToken);
+      const storedAccessToken = localStorage.getItem('access_token');
+      if (storedAccessToken) {
+        const expirationTime = getTokenExpirationTime(storedAccessToken);
         if (expirationTime && expirationTime > Date.now()) {
           console.log('Access token is valid.');
-          setToken(accessToken);
+          setToken(storedAccessToken);
           setIsAuthenticated(true);
-          setAuthToken(accessToken);
-          scheduleTokenRefresh(accessToken);
+          setAuthToken(storedAccessToken);
+          scheduleTokenRefresh(storedAccessToken);
 
-          // Fetch and set the user data
           try {
             const userData = await fetchProfileData();
             setUser(userData);
@@ -212,12 +236,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, [refreshToken, logout, scheduleTokenRefresh]);
 
-  // Axios response interceptor to handle 401 errors
+  // Axios interceptor: on 401 errors (except for the refresh endpoint), attempt token refresh.
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
+        // If the refresh request itself fails, logout immediately.
+        if (originalRequest.url?.endsWith('/token/refresh/')) {
+          await logout();
+          return Promise.reject(error);
+        }
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
           const newToken = await refreshToken();
@@ -229,11 +258,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return Promise.reject(error);
       }
     );
-
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [refreshToken]);
+  }, [refreshToken, logout]);
 
   return (
     <AuthContext.Provider

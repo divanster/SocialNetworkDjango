@@ -14,48 +14,30 @@ interface WebSocketProviderProps {
   children: ReactNode;
 }
 
-const WEBSOCKET_URL = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws/';
+const BASE_WS_URL = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
   const { token } = useAuth();
-  const sockets = useRef<{ [groupName: string]: WebSocket }>({});
-  const reconnectAttempts = useRef<{ [groupName: string]: number }>({});
+  const socketsRef = useRef<{ [groupName: string]: WebSocket }>({});
+  const reconnectAttemptsRef = useRef<{ [groupName: string]: number }>({});
   const maxReconnectAttempts = 5;
 
-  // Callback to handle WebSocket reconnection
-  const handleReconnection = useCallback(
-    (groupName: string) => {
-      if (reconnectAttempts.current[groupName] < maxReconnectAttempts) {
-        const timeout = Math.pow(2, reconnectAttempts.current[groupName]) * 1000; // Exponential backoff
-        console.log(`Reconnecting to ${groupName} in ${timeout / 1000} seconds...`);
-        setTimeout(() => {
-          reconnectAttempts.current[groupName] += 1;
-          createWebSocket(groupName, sockets.current[groupName]?.onmessage);
-        }, timeout);
-      } else {
-        console.error(`Max reconnection attempts reached for ${groupName}.`);
-      }
-    },
-    [maxReconnectAttempts]
-  );
-
-  // Function to create a new WebSocket connection
   const createWebSocket = useCallback(
     (groupName: string, onMessage: ((this: WebSocket, ev: MessageEvent<any>) => any) | null) => {
       if (!token) {
-        console.error('No authentication token provided for WebSocket connection.');
-        throw new Error('Authentication token is required.');
+        console.error(`No token -> cannot create WebSocket for group: ${groupName}`);
+        return;
       }
-
-      const websocketUrl = `${WEBSOCKET_URL}${groupName}/?token=${token}`;
+      const websocketUrl = `${BASE_WS_URL}/${groupName}/?token=${token}`;
       console.log(`Connecting to WebSocket at ${websocketUrl}`);
+
       const socket = new WebSocket(websocketUrl);
-      sockets.current[groupName] = socket;
-      reconnectAttempts.current[groupName] = reconnectAttempts.current[groupName] || 0;
+      socketsRef.current[groupName] = socket;
+      reconnectAttemptsRef.current[groupName] = reconnectAttemptsRef.current[groupName] || 0;
 
       socket.onopen = () => {
         console.log(`WebSocket connected to group: ${groupName}`);
-        reconnectAttempts.current[groupName] = 0; // Reset reconnection attempts on successful connection
+        reconnectAttemptsRef.current[groupName] = 0; // reset attempts
       };
 
       if (onMessage) {
@@ -67,41 +49,42 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       };
 
       socket.onclose = (event) => {
-        console.warn(`WebSocket connection closed for group: ${groupName}:`, event);
-        delete sockets.current[groupName];
-        handleReconnection(groupName);
+        console.warn(`WebSocket closed for group: ${groupName}:`, event);
+        delete socketsRef.current[groupName];
+        if (reconnectAttemptsRef.current[groupName] < maxReconnectAttempts) {
+          const backoff = Math.pow(2, reconnectAttemptsRef.current[groupName]) * 1000;
+          console.log(`Reconnecting to ${groupName} in ${backoff / 1000}s...`);
+          setTimeout(() => {
+            reconnectAttemptsRef.current[groupName] += 1;
+            createWebSocket(groupName, onMessage);
+          }, backoff);
+        } else {
+          console.error(`Max reconnection attempts for ${groupName}`);
+        }
       };
     },
-    [WEBSOCKET_URL, token, handleReconnection]
+    [token]
   );
 
-  // Public method to get or create a WebSocket connection
   const getSocket = useCallback(
     (groupName: string, onMessage: (data: any) => void): WebSocket => {
-      if (!groupName) {
-        console.error('WebSocket group name is undefined.');
-        throw new Error('WebSocket group name is required.');
-      }
-
-      if (!sockets.current[groupName]) {
+      if (!socketsRef.current[groupName]) {
         createWebSocket(groupName, (event: MessageEvent<any>) => {
           try {
             const data = JSON.parse(event.data);
             onMessage(data);
-          } catch (error) {
-            console.error(`Error parsing WebSocket message for group ${groupName}:`, error);
+          } catch (err) {
+            console.error(`Error parsing WS message for group ${groupName}:`, err);
           }
         });
       }
-
-      return sockets.current[groupName];
+      return socketsRef.current[groupName];
     },
     [createWebSocket]
   );
 
-  // Public method to send a message via a specific WebSocket
   const sendMessage = useCallback((groupName: string, message: string) => {
-    const socket = sockets.current[groupName];
+    const socket = socketsRef.current[groupName];
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(message);
     } else {
@@ -109,14 +92,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     }
   }, []);
 
-  // Cleanup all WebSocket connections on unmount
   useEffect(() => {
     return () => {
-      Object.entries(sockets.current).forEach(([groupName, socket]) => {
-        socket.close(1000, 'Component unmounted');
-        console.log(`WebSocket connection closed for group: ${groupName}`);
+      Object.entries(socketsRef.current).forEach(([groupName, socket]) => {
+        socket.close(1000, 'Unmounted');
+        console.log(`Closed WS for group: ${groupName}`);
       });
-      sockets.current = {};
     };
   }, []);
 
@@ -128,16 +109,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 };
 
 export const useWebSocketManager = (): WebSocketManagerContextType => {
-  const context = useContext(WebSocketManagerContext);
-  if (!context) {
+  const ctx = useContext(WebSocketManagerContext);
+  if (!ctx) {
     throw new Error('useWebSocketManager must be used within a WebSocketProvider');
   }
-  return context;
-};
-
-// Hook to simplify WebSocket usage in components
-export const useWebSocket = (groupName: string, onMessage: (data: any) => void): WebSocket => {
-  const { getSocket } = useWebSocketManager();
-  const socket = getSocket(groupName, onMessage);
-  return socket;
+  return ctx;
 };

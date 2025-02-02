@@ -1,4 +1,4 @@
-// frontend/src/hooks/useWebSocket.ts
+// src/hooks/useWebSocket.ts
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,8 @@ interface UseWebSocketReturn {
   sendMessage: (message: string) => void;
 }
 
+const BASE_WS_URL = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
+
 export default function useWebSocket<T>(
   groupName: string,
   { onMessage }: WebSocketHandler<T>
@@ -20,7 +22,6 @@ export default function useWebSocket<T>(
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
 
-  // Function to send messages via WebSocket
   const sendMessage = useCallback((message: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(message);
@@ -30,21 +31,15 @@ export default function useWebSocket<T>(
   }, []);
 
   useEffect(() => {
-    if (loading) {
-      // Authentication is still loading; do not attempt to connect yet
-      return;
-    }
-
+    if (loading) return;        // Wait for auth to finish
     if (!token) {
-      console.warn(`No token -> WebSocket connection for ${groupName} not established.`);
+      console.warn(`No token -> no WebSocket for group: ${groupName}`);
       return;
     }
 
     const connect = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const host = window.location.host;
-      const wsUrl = `${protocol}://${host}/ws/${groupName}/?token=${token}`;
-
+      // build final URL: e.g. "ws://localhost:8000/ws/posts/?token=<JWT>"
+      const wsUrl = `${BASE_WS_URL}/${groupName}/?token=${token}`;
       console.log(`Connecting to WebSocket at: ${wsUrl}`);
       socketRef.current = new WebSocket(wsUrl);
 
@@ -58,7 +53,7 @@ export default function useWebSocket<T>(
           const data: T = JSON.parse(event.data);
           onMessage(data);
         } catch (error) {
-          console.error(`Error parsing WebSocket message for group ${groupName}:`, error);
+          console.error(`Error parsing WebSocket message for ${groupName}:`, error);
         }
       };
 
@@ -67,10 +62,10 @@ export default function useWebSocket<T>(
       };
 
       socketRef.current.onclose = (event) => {
-        console.warn(`WebSocket connection closed for group: ${groupName}:`, event);
+        console.warn(`WebSocket closed for group: ${groupName} ->`, event);
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const timeout = Math.pow(2, reconnectAttemptsRef.current) * 1000; // Exponential backoff
-          console.log(`Reconnecting to ${groupName} in ${timeout / 1000} seconds...`);
+          const timeout = Math.pow(2, reconnectAttemptsRef.current) * 1000; // exponential backoff
+          console.log(`Reconnecting to ${groupName} in ${timeout / 1000}s...`);
           setTimeout(() => {
             reconnectAttemptsRef.current += 1;
             connect();
@@ -85,7 +80,7 @@ export default function useWebSocket<T>(
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.close(1000, 'Component unmounted'); // 1000: Normal Closure
+        socketRef.current.close(1000, 'Component unmounted');
         console.log(`WebSocket connection closed for group: ${groupName}`);
       }
     };

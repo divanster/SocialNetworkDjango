@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMessageById, markMessageAsRead } from '../services/messagesService';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, Button, Spinner, Alert } from 'react-bootstrap';
-import './MessagesPage.css'; // Ensure this file exists or remove the import if not needed
+
 
 interface User {
   id: number;
