@@ -1,11 +1,10 @@
-// src/pages/MessagesPage.tsx
+// frontend/src/pages/MessagesPage.tsx
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMessageById, markMessageAsRead } from '../services/messagesService';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, Button, Spinner, Alert } from 'react-bootstrap';
-
 
 interface User {
   id: number;
@@ -94,10 +93,10 @@ const MessagesPage: React.FC = () => {
                 className="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
                 style={{ width: '50px', height: '50px' }}
               >
-                {message.sender.full_name.charAt(0)}
+                {message.sender.full_name?.charAt(0) || '?'}
               </div>
             )}
-            <strong>{message.sender.full_name} ({message.sender.username})</strong>
+            <strong>{message.sender.full_name || 'Unknown'} ({message.sender.username})</strong>
           </div>
           <span className="text-muted">{new Date(message.created_at).toLocaleString()}</span>
         </Card.Header>

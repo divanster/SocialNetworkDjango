@@ -1,4 +1,4 @@
-// src/components/Navbar/MessagesDropdown.tsx
+// frontend/src/components/Navbar/MessagesDropdown.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavDropdown, Badge, Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
@@ -9,7 +9,7 @@ import {
   broadcastMessageToAll,
   markMessageAsRead,
   fetchInboxMessages,
-  Message
+  Message,
 } from '../../services/messagesService';
 import { fetchFriendsList, User } from '../../services/friendsService';
 import './MessagesDropdown.css';
@@ -30,13 +30,13 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   const [friends, setFriends] = useState<User[]>([]);
   const [friendsLoading, setFriendsLoading] = useState<boolean>(false);
   const [friendsError, setFriendsError] = useState<string | null>(null);
-  const [selectedReceiver, setSelectedReceiver] = useState<string>(''); // User ID or 'all'
+  const [selectedReceiver, setSelectedReceiver] = useState<string>(''); // userId or 'all'
   const [messageContent, setMessageContent] = useState<string>('');
   const [sending, setSending] = useState<boolean>(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   // Fetch user messages from inbox
-  const fetchUserMessagesFunc = useCallback(async () => {
+  const fetchUserMessages = useCallback(async () => {
     if (!token) {
       setError('Authentication token is missing.');
       setLoading(false);
@@ -44,36 +44,30 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     }
 
     try {
+      setLoading(true);
       const fetchedMessages: Message[] = await fetchInboxMessages();
       setMessages(fetchedMessages);
 
-      // Update unread count based on fetched data
+      // Calculate unread
       const unread = fetchedMessages.filter((msg) => !msg.read).length;
       setUnreadCount(unread);
       setError(null);
     } catch (err: any) {
       console.error('Failed to fetch messages:', err);
-      if (err.response) {
-        setError(`Error ${err.response.status}: ${err.response.data.detail || 'Failed to load messages.'}`);
-      } else if (err.request) {
-        setError('No response from server. Please check your network connection.');
-      } else {
-        setError(`Error: ${err.message}`);
-      }
+      setError('Failed to load messages.');
     } finally {
       setLoading(false);
     }
   }, [token, setUnreadCount]);
 
   // Fetch friends list
-  const fetchFriendsListFunc = useCallback(async () => {
+  const fetchFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
-      const fetchedFriends: User[] = await fetchFriendsList();
-      console.log('Fetched Friends:', fetchedFriends); // Debugging
-      setFriends(Array.isArray(fetchedFriends) ? fetchedFriends : []);
+      const data = await fetchFriendsList();
+      setFriends(Array.isArray(data) ? data : []);
       setFriendsError(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch friends:', err);
       setFriendsError('Failed to load friends.');
     } finally {
@@ -82,28 +76,24 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   }, []);
 
   useEffect(() => {
-    fetchUserMessagesFunc();
-    fetchFriendsListFunc();
-    // Optionally, set up WebSocket or polling for real-time updates
-  }, [fetchUserMessagesFunc, fetchFriendsListFunc]);
+    fetchUserMessages();
+    fetchFriends();
+  }, [fetchUserMessages, fetchFriends]);
 
-  // Mark a message as read
+  // Mark message as read
   const markAsReadHandler = async (id: string) => {
     try {
       await markMessageAsRead(id);
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === id ? { ...msg, read: true } : msg
-        )
+        prev.map((msg) => (msg.id === id ? { ...msg, read: true } : msg))
       );
       setUnreadCount((prev) => Math.max(prev - 1, 0));
     } catch (err) {
       console.error('Failed to mark message as read:', err);
-      // Optionally, display a notification to the user
     }
   };
 
-  // Handle sending a message
+  // Handle sending message
   const handleSendMessage = async () => {
     if (!selectedReceiver || !messageContent.trim()) {
       setSendError('Please select a recipient and enter a message.');
@@ -115,21 +105,21 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
 
     try {
       if (selectedReceiver === 'all') {
-        // Broadcast message
+        // Broadcast
         await broadcastMessageToAll(messageContent.trim());
       } else {
-        // Send to a specific user
+        // Send to specific user
         await sendMessageToUser(Number(selectedReceiver), messageContent.trim());
       }
-      // Refresh messages after sending
-      await fetchUserMessagesFunc();
-      // Close modal and reset form
+      // Refresh messages
+      await fetchUserMessages();
+      // Close modal
       setShowModal(false);
       setSelectedReceiver('');
       setMessageContent('');
     } catch (err: any) {
       console.error('Failed to send message:', err);
-      setSendError(err.response?.data?.error || 'Failed to send message.');
+      setSendError('Error sending message.');
     } finally {
       setSending(false);
     }
@@ -140,13 +130,11 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
       <NavDropdown
         title={
           <>
-            Messages{' '}
-            {unreadCount > 0 && <Badge bg="danger">{unreadCount}</Badge>}
+            Messages {unreadCount > 0 && <Badge bg="danger">{unreadCount}</Badge>}
           </>
         }
         id="messages-dropdown"
         align="end"
-        className="messages-dropdown"
       >
         <NavDropdown.Header className="d-flex justify-content-between align-items-center">
           <span>Messages</span>
@@ -155,13 +143,16 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
           </Button>
         </NavDropdown.Header>
         <NavDropdown.Divider />
+
         {loading ? (
-          <NavDropdown.ItemText className="d-flex align-items-center">
+          <NavDropdown.ItemText>
             <Spinner animation="border" size="sm" className="me-2" />
             Loading...
           </NavDropdown.ItemText>
         ) : error ? (
-          <NavDropdown.ItemText className="text-danger">{error}</NavDropdown.ItemText>
+          <NavDropdown.ItemText className="text-danger">
+            {error}
+          </NavDropdown.ItemText>
         ) : messages.length === 0 ? (
           <NavDropdown.ItemText>No messages.</NavDropdown.ItemText>
         ) : (
@@ -169,20 +160,31 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
             <NavDropdown.Item
               key={msg.id}
               as={Link}
-              to={`/messages/${msg.id}`} // Route to detailed message page
+              to={`/messages/${msg.id}`}
               onClick={() => !msg.read && markAsReadHandler(msg.id)}
               className={msg.read ? 'read' : 'unread'}
             >
-              <div className="message-content d-flex align-items-center">
+              <div className="d-flex align-items-center">
+                {/* Profile Picture */}
                 {msg.sender.profile_picture ? (
-                  <img src={msg.sender.profile_picture} alt={`${msg.sender.username}'s profile`} className="profile-picture me-2" />
+                  <img
+                    src={msg.sender.profile_picture}
+                    alt={msg.sender.username}
+                    className="profile-picture me-2"
+                  />
                 ) : (
                   <div className="profile-placeholder me-2">?</div>
                 )}
-                <div className="message-details flex-grow-1">
+
+                {/* Message Details */}
+                <div>
                   <strong>{msg.sender.full_name}</strong>
-                  <span className="d-block">{msg.content.substring(0, 50)}{msg.content.length > 50 ? '...' : ''}</span>
-                  <small className="text-muted">{new Date(msg.created_at).toLocaleString()}</small>
+                  <div className="text-truncate" style={{ maxWidth: '200px' }}>
+                    {msg.content}
+                  </div>
+                  <small className="text-muted">
+                    {new Date(msg.created_at).toLocaleString()}
+                  </small>
                 </div>
               </div>
             </NavDropdown.Item>
@@ -198,7 +200,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
         <Modal.Body>
           {sendError && <Alert variant="danger">{sendError}</Alert>}
           <Form>
-            <Form.Group controlId="recipientSelect" className="mb-3">
+            <Form.Group className="mb-3" controlId="recipientSelect">
               <Form.Label>Recipient</Form.Label>
               {friendsLoading ? (
                 <div className="d-flex align-items-center">
@@ -214,30 +216,25 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
                 >
                   <option value="">Select a user</option>
                   <option value="all">Everyone</option>
-                  {friends && Array.isArray(friends) && friends.length > 0 ? (
-                    friends.map((friend) => (
-                      <option key={friend.id} value={friend.id}>
-                        {friend.full_name} ({friend.username})
-                      </option>
-                    ))
-                  ) : (
-                    <option value="" disabled>
-                      No friends available
+                  {friends.map((friend) => (
+                    <option key={friend.id} value={friend.id}>
+                      {friend.full_name} ({friend.username})
                     </option>
-                  )}
+                  ))}
                 </Form.Select>
               )}
             </Form.Group>
-            <Form.Group controlId="messageContent" className="mb-3">
+
+            <Form.Group className="mb-3" controlId="messageContent">
               <Form.Label>Message</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
-                placeholder="Type your message here..."
               />
             </Form.Group>
+
             <Button variant="primary" onClick={handleSendMessage} disabled={sending}>
               {sending ? 'Sending...' : 'Send Message'}
             </Button>

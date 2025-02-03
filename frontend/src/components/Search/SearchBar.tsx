@@ -1,61 +1,33 @@
-// frontend/src/components/Search/SearchBar.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './SearchBar.css';
-import { useAuth } from '../../contexts/AuthContext';
-
-interface User {
-  id: number;
-  username: string;
-  full_name: string;
-  profile_picture: string;
-}
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const SearchBar: React.FC = () => {
-  const { token } = useAuth();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<User[]>([]);
+  const [results, setResults] = useState<any>({ users: [], posts: [], albums: [], stories: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   const fetchSearchResults = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
-      setResults([]);
+      setResults({ users: [], posts: [], albums: [], stories: [] });
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/users/search/`, {
+      const response = await axios.get(`${API_URL}/search/`, {
         params: { query: searchQuery },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
       setResults(response.data);
       setShowDropdown(true);
     } catch (error) {
       console.error('Error fetching search results:', error);
-      setResults([]);
+      setResults({ users: [], posts: [], albums: [], stories: [] });
     } finally {
       setIsLoading(false);
     }
@@ -75,27 +47,46 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <div className="search-bar" ref={searchRef}>
+    <div className="search-bar">
       <input
         type="text"
-        placeholder="Search users..."
+        placeholder="Search users, posts, albums, stories..."
         value={query}
         onChange={handleChange}
         onFocus={() => {
-          if (results.length > 0) setShowDropdown(true);
+          if (results.users.length > 0 || results.posts.length > 0 || results.albums.length > 0 || results.stories.length > 0) {
+            setShowDropdown(true);
+          }
         }}
       />
       {isLoading && <div className="loader"></div>}
-      {showDropdown && results.length > 0 && (
+      {showDropdown && (results.users.length > 0 || results.posts.length > 0 || results.albums.length > 0 || results.stories.length > 0) && (
         <ul className="search-dropdown">
-          {results.map((user) => (
+          {results.users.map((user: any) => (
             <li key={user.id}>
               <Link to={`/profile/${user.id}`} onClick={() => setShowDropdown(false)}>
-                <img src={user.profile_picture} alt={`${user.username}'s profile`} />
-                <div>
-                  <strong>{user.full_name}</strong>
-                  <span>@{user.username}</span>
-                </div>
+                <strong>{user.username}</strong>
+              </Link>
+            </li>
+          ))}
+          {results.posts.map((post: any) => (
+            <li key={post.id}>
+              <Link to={`/post/${post.id}`} onClick={() => setShowDropdown(false)}>
+                <strong>{post.title}</strong>
+              </Link>
+            </li>
+          ))}
+          {results.albums.map((album: any) => (
+            <li key={album.id}>
+              <Link to={`/album/${album.id}`} onClick={() => setShowDropdown(false)}>
+                <strong>{album.title}</strong>
+              </Link>
+            </li>
+          ))}
+          {results.stories.map((story: any) => (
+            <li key={story.id}>
+              <Link to={`/story/${story.id}`} onClick={() => setShowDropdown(false)}>
+                <strong>{story.title}</strong>
               </Link>
             </li>
           ))}

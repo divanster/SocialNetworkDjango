@@ -2,10 +2,14 @@
 
 import axios from 'axios';
 
-// API base URL from environment variable or fallback to localhost
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
-// Helper function to set Authorization header for all Axios requests
+// Set axios base URL so that relative URLs are correctly prefixed.
+axios.defaults.baseURL = API_URL;
+
+/**
+ * Set the Authorization header for all axios requests.
+ */
 export const setAuthToken = (token: string | null) => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -14,7 +18,9 @@ export const setAuthToken = (token: string | null) => {
   }
 };
 
-// Helper function to handle errors
+/**
+ * Helper function to handle API errors.
+ */
 export const handleApiError = (error: any, errorMessage: string) => {
   console.error(errorMessage, error);
   if (error.response) {
@@ -23,11 +29,16 @@ export const handleApiError = (error: any, errorMessage: string) => {
   throw error;
 };
 
+/**
+ * =====================
+ *  USER PROFILE
+ * =====================
+ */
+
 // Fetch user profile data
 export const fetchProfileData = async () => {
   try {
-    // No need to set Authorization header here since it's set globally
-    const response = await axios.get(`${API_URL}/users/users/me/`);
+    const response = await axios.get('/users/users/me/');
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching profile data');
@@ -37,10 +48,8 @@ export const fetchProfileData = async () => {
 // Update user profile data
 export const updateProfileData = async (formData: FormData) => {
   try {
-    const response = await axios.patch(`${API_URL}/users/users/me/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    const response = await axios.patch('/users/users/me/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   } catch (error) {
@@ -48,10 +57,15 @@ export const updateProfileData = async (formData: FormData) => {
   }
 };
 
-// Fetch news feed
+/**
+ * =====================
+ *  NEWS FEED
+ * =====================
+ */
+
 export const fetchNewsFeed = async () => {
   try {
-    const response = await axios.get(`${API_URL}/posts/`);
+    const response = await axios.get('/posts/');
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching news feed');
@@ -59,10 +73,15 @@ export const fetchNewsFeed = async () => {
   }
 };
 
-// Fetch notifications count
+/**
+ * =====================
+ *  NOTIFICATIONS
+ * =====================
+ */
+
 export const fetchNotificationsCount = async () => {
   try {
-    const response = await axios.get(`${API_URL}/notifications/count/`);
+    const response = await axios.get('/notifications/count/');
     return response.data.count;
   } catch (error) {
     handleApiError(error, 'Error fetching notifications count');
@@ -70,10 +89,16 @@ export const fetchNotificationsCount = async () => {
   }
 };
 
-// Fetch unread messages count
+/**
+ * =====================
+ *  MESSAGES COUNT
+ * =====================
+ */
+
+// Fetch unread messages count using the correct endpoint
 export const fetchMessagesCount = async () => {
   try {
-    const response = await axios.get(`${API_URL}/messenger/messages/count/`);
+    const response = await axios.get('/messenger/count/');
     return response.data.count;
   } catch (error) {
     handleApiError(error, 'Error fetching messages count');
@@ -81,65 +106,15 @@ export const fetchMessagesCount = async () => {
   }
 };
 
-// Send a new message
-export const sendMessage = async (receiverId: number, content: string) => {
-  try {
-    const response = await axios.post(`${API_URL}/messenger/messages/`, {
-      receiver_id: receiverId,
-      content,
-    });
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Error sending message');
-  }
-};
+/**
+ * =====================
+ *  USERS
+ * =====================
+ */
 
-// Broadcast a message to all users
-export const broadcastMessage = async (content: string) => {
-  try {
-    const response = await axios.post(`${API_URL}/messenger/messages/broadcast/`, { content });
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Error broadcasting message');
-  }
-};
-
-// Fetch a specific message by ID
-export const fetchMessageByIdAPI = async (messageId: string) => {
-  try {
-    const response = await axios.get(`${API_URL}/messenger/messages/${messageId}/`);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Error fetching message by ID');
-  }
-};
-
-// Mark a message as read
-export const markMessageAsReadAPI = async (messageId: string) => {
-  try {
-    const response = await axios.post(`${API_URL}/messenger/messages/${messageId}/mark-as-read/`, {});
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Error marking message as read');
-  }
-};
-
-// Fetch messages
-export const fetchMessages = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/messenger/messages/`);
-    console.log('API response:', response.data);
-    return response.data.results || [];
-  } catch (error) {
-    handleApiError(error, 'Error fetching messages');
-    return [];
-  }
-};
-
-// Fetch users
 export const fetchUsers = async () => {
   try {
-    const response = await axios.get(`${API_URL}/users/users/`);
+    const response = await axios.get('/users/users/');
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     handleApiError(error, 'Error fetching users');

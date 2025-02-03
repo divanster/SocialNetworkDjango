@@ -6,17 +6,26 @@ from django.db.models import Q
 from rest_framework import viewsets, permissions, generics, status, serializers
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
-
 from friends.models import Block
 from .models import Message
 from .serializers import MessageSerializer, MessagesCountSerializer
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 import logging
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+class MessagePagination(PageNumberPagination):
+    """
+    Custom pagination class for paginating the message responses.
+    """
+    page_size = 10  # Adjust page size as per your needs
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class MessageViewSet(viewsets.ModelViewSet):
     """
@@ -28,6 +37,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'  # Changed from 'pk' to 'id' for UUID fields
     lookup_url_kwarg = 'id'
+    pagination_class = MessagePagination  # Use the custom pagination class
 
     def get_queryset(self):
         """
@@ -35,7 +45,8 @@ class MessageViewSet(viewsets.ModelViewSet):
         Excludes soft-deleted messages by default.
         """
         user = self.request.user
-        return Message.objects.filter(Q(receiver=user) | Q(sender=user)).order_by('-created_at')
+        return Message.objects.filter(Q(receiver=user) | Q(sender=user)).order_by(
+            '-created_at')
 
     @extend_schema(
         parameters=[
@@ -80,13 +91,19 @@ class MessageViewSet(viewsets.ModelViewSet):
     @extend_schema(
         responses={200: MessageSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'],
+            permission_classes=[permissions.IsAuthenticated])
     def inbox(self, request):
         """
         Custom action to retrieve inbox messages (received messages only).
+        Handles pagination for efficient loading.
         """
         user = request.user
         inbox_messages = Message.objects.filter(receiver=user).order_by('-created_at')
+        page = self.paginate_queryset(inbox_messages)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(inbox_messages, many=True)
         return Response(serializer.data)
 
@@ -131,14 +148,16 @@ class MessageViewSet(viewsets.ModelViewSet):
         request=serializers.Serializer,  # Define a custom serializer if needed
         responses={201: MessageSerializer(many=True)},
     )
-    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['post'],
+            permission_classes=[permissions.IsAuthenticated])
     def broadcast(self, request):
         """
         Custom action to broadcast a message to all users.
         """
         content = request.data.get('content')
         if not content:
-            return Response({'error': 'Content is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Content is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         sender = request.user
         receivers = User.objects.all().exclude(id=sender.id)
@@ -148,16 +167,21 @@ class MessageViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 for receiver in receivers:
                     # Check if sender has blocked receiver or vice versa
-                    if Block.objects.filter(blocker=sender, blocked=receiver).exists() or \
-                       Block.objects.filter(blocker=receiver, blocked=sender).exists():
-                        logger.info(f"Skipping message to {receiver.username} due to block.")
+                    if Block.objects.filter(blocker=sender,
+                                            blocked=receiver).exists() or \
+                            Block.objects.filter(blocker=receiver,
+                                                 blocked=sender).exists():
+                        logger.info(
+                            f"Skipping message to {receiver.username} due to block.")
                         continue
 
-                    msg = Message.objects.create(sender=sender, receiver=receiver, content=content)
+                    msg = Message.objects.create(sender=sender, receiver=receiver,
+                                                 content=content)
                     messages.append(msg)
 
             serializer = self.get_serializer(messages, many=True)
-            logger.info(f"Broadcast message sent by {sender.username} to {len(messages)} users.")
+            logger.info(
+                f"Broadcast message sent by {sender.username} to {len(messages)} users.")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error(f"Error during broadcast: {e}")
@@ -181,7 +205,8 @@ class MessagesCountView(generics.GenericAPIView):
         Excludes soft-deleted messages.
         """
         user = request.user
-        message_count = Message.objects.filter(Q(receiver=user) | Q(sender=user)).count()
+        message_count = Message.objects.filter(
+            Q(receiver=user) | Q(sender=user)).count()
         serializer = self.get_serializer({"count": message_count})
         logger.info(f"User {user.username} has {message_count} messages.")
         return Response(serializer.data, status=status.HTTP_200_OK)

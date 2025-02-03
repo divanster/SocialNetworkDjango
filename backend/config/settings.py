@@ -655,13 +655,6 @@ LOGGING = {
 #         "DELETE_INACTIVE_DEVICES": False,
 #
 #
-# ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = 'django_elasticsearch_dsl.signals.RealTimeSignalProcessor'
-# Elasticsearch configuration
-# ELASTICSEARCH_DSL = {
-#     'default': {
-#         'hosts': 'localhost:9200'
-#     },
-# }
 
 # HAYSTACK_CONNECTIONS = {
 #     'default': {
@@ -669,19 +662,6 @@ LOGGING = {
 #         'URL': 'http://localhost:9200/',
 #         'INDEX_NAME': 'products',
 #     },
-# }
-# from elasticsearch_dsl import connections
-
-# connections.configure(
-#     default={'hosts': 'localhost'},
-#     dev={
-#         'hosts': ['localhost:9200'],
-#         'sniff_on_start': True
-#     }
-# )
-# # Name of the Elasticsearch index
-# ELASTICSEARCH_INDEX_NAMES = {
-#     'products/documents/product': 'products',
 # }
 
 

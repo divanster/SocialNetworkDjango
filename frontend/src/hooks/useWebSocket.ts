@@ -1,4 +1,4 @@
-// src/hooks/useWebSocket.ts
+// frontend/src/hooks/useWebSocket.ts
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,14 +31,16 @@ export default function useWebSocket<T>(
   }, []);
 
   useEffect(() => {
-    if (loading) return;        // Wait for auth to finish
+    // Wait until authentication is complete
+    if (loading) return;
     if (!token) {
-      console.warn(`No token -> no WebSocket for group: ${groupName}`);
+      console.warn(`No token provided – no WebSocket connection for group: ${groupName}`);
       return;
     }
 
     const connect = () => {
-      // build final URL: e.g. "ws://localhost:8000/ws/posts/?token=<JWT>"
+      // Build the final URL; for example:
+      // "ws://localhost:8000/ws/notifications/?token=<JWT>"
       const wsUrl = `${BASE_WS_URL}/${groupName}/?token=${token}`;
       console.log(`Connecting to WebSocket at: ${wsUrl}`);
       socketRef.current = new WebSocket(wsUrl);
@@ -53,7 +55,7 @@ export default function useWebSocket<T>(
           const data: T = JSON.parse(event.data);
           onMessage(data);
         } catch (error) {
-          console.error(`Error parsing WebSocket message for ${groupName}:`, error);
+          console.error(`Error parsing WebSocket message for group ${groupName}:`, error);
         }
       };
 
@@ -65,13 +67,13 @@ export default function useWebSocket<T>(
         console.warn(`WebSocket closed for group: ${groupName} ->`, event);
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           const timeout = Math.pow(2, reconnectAttemptsRef.current) * 1000; // exponential backoff
-          console.log(`Reconnecting to ${groupName} in ${timeout / 1000}s...`);
+          console.log(`Reconnecting to ${groupName} in ${timeout / 1000} seconds...`);
           setTimeout(() => {
             reconnectAttemptsRef.current += 1;
             connect();
           }, timeout);
         } else {
-          console.error(`Max reconnection attempts reached for ${groupName}.`);
+          console.error(`Max reconnection attempts reached for group ${groupName}.`);
         }
       };
     };
