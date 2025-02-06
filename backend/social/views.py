@@ -2,7 +2,7 @@
 
 import logging
 from rest_framework import viewsets, permissions, status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from social.models import Post, PostImage, Rating
 from social.serializers import PostSerializer, PostImageSerializer, RatingSerializer
@@ -23,54 +23,64 @@ class PostViewSet(viewsets.ModelViewSet):
     """
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
-    parser_classes = (MultiPartParser, FormParser)
+    # Add JSONParser along with MultiPartParser and FormParser so JSON requests are accepted.
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_queryset(self):
         """
         Custom queryset to return posts based on visibility settings.
         """
         user = self.request.user
-
         if user.is_authenticated:
-            # Get posts that are either public, posted by friends, or user's own posts
+            # Get posts visible to the user.
             return Post.objects.visible_to_user(user).order_by('-created_at')
         else:
-            # If the user is not authenticated, they can only see public posts
             return Post.objects.filter(visibility=VisibilityChoices.PUBLIC).order_by('-created_at')
 
     def perform_create(self, serializer):
         """
         Save the post with the user set to the current user.
-        Kafka event is handled via Django signals.
         """
         serializer.save(user=self.request.user)
         logger.info(f"Post created by user {self.request.user.id}")
 
     def perform_update(self, serializer):
         """
-        Update the post and handle authorization to make sure
-        that only the user can edit their post.
+        Update the post ensuring that only the post owner can edit.
         """
         post = self.get_object()
         if post.user != self.request.user:
-            raise permissions.PermissionDenied(
-                "You do not have permission to edit this post."
-            )
-
+            raise permissions.PermissionDenied("You do not have permission to edit this post.")
         serializer.save()
         logger.info(f"Post with ID {post.id} updated by user {self.request.user.id}")
 
     def perform_destroy(self, instance):
         """
-        Soft delete the post and ensure that only the user can delete their post.
+        Soft delete the post instead of hard deleting.
         """
         if instance.user != self.request.user:
-            raise permissions.PermissionDenied(
-                "You do not have permission to delete this post."
-            )
-
+            raise permissions.PermissionDenied("You do not have permission to delete this post.")
         instance.delete()  # Soft delete
         logger.info(f"Post with ID {instance.id} soft-deleted by user {self.request.user.id}")
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="id",
+                type="string",  # UUID as string
+                location=OpenApiParameter.PATH,
+                description="UUID of the message"
+            ),
+        ],
+        responses=PostSerializer,
+    )
+    def retrieve(self, request, id=None):
+        """
+        Retrieve a specific post by its UUID.
+        """
+        post = self.get_object()
+        serializer = self.get_serializer(post)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='restore', permission_classes=[permissions.IsAdminUser])
     def restore(self, request, pk=None):
@@ -96,6 +106,7 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(deleted_posts, many=True)
         logger.info(f"Admin user {request.user.id} retrieved all soft-deleted posts.")
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 class PostImageViewSet(viewsets.ModelViewSet):

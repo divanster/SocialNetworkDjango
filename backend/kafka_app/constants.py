@@ -3,19 +3,19 @@
 # =========================================
 # Kafka Topic Keys
 # =========================================
-USER_EVENTS = 'USER_EVENTS'
-NOTIFICATIONS = 'NOTIFICATIONS'
-ALBUM_EVENTS = 'ALBUM_EVENTS'
-COMMENT_EVENTS = 'COMMENT_EVENTS'
-FOLLOW_EVENTS = 'FOLLOW_EVENTS'
-FRIEND_EVENTS = 'FRIEND_EVENTS'
-NEWSFEED_EVENTS = 'NEWSFEED_EVENTS'
-REACTION_EVENTS = 'REACTION_EVENTS'
-SOCIAL_EVENTS = 'SOCIAL_EVENTS'
-TAGGING_EVENTS = 'TAGGING_EVENTS'
-PHOTO_EVENTS = 'PHOTO_EVENTS'
-STORY_EVENTS = 'STORY_EVENTS'
-MESSENGER_EVENTS = 'MESSENGER_EVENTS'
+USER_EVENTS = 'user_events'
+NOTIFICATIONS = 'notifications'
+ALBUM_EVENTS = 'album_events'
+COMMENT_EVENTS = 'comment_events'
+FOLLOW_EVENTS = 'follow_events'
+FRIEND_EVENTS = 'friend_events'
+NEWSFEED_EVENTS = 'newsfeed_events'
+REACTION_EVENTS = 'reaction_events'
+SOCIAL_EVENTS = 'social_events'
+TAGGING_EVENTS = 'tagging_events'
+PHOTO_EVENTS = 'photo_events'
+STORY_EVENTS = 'story_events'
+MESSENGER_EVENTS = 'messenger_events'
 
 # =========================================
 # User Event Types
@@ -24,7 +24,7 @@ USER_CREATED = 'user_created'
 USER_UPDATED = 'user_updated'
 USER_SOFT_DELETED = 'user_soft_deleted'
 USER_RESTORED = 'user_restored'
-USER_REGISTERED = 'USER_REGISTERED'
+USER_REGISTERED = 'user_registered'
 
 # =========================================
 # Album Event Types
@@ -99,7 +99,7 @@ PHOTO_DELETED = 'photo_deleted'
 MESSAGE_CREATED = 'message_created'
 MESSAGE_UPDATED = 'message_updated'
 MESSAGE_DELETED = 'message_deleted'
-MESSAGE_EVENT = "message_event"
+MESSAGE_EVENT = 'message_event'
 
 # =========================================
 # Story Event Types
@@ -117,7 +117,7 @@ STORY_RESTORED = 'story_restored'
 NOTIFICATION_CREATED = 'notification_created'
 NOTIFICATION_UPDATED = 'notification_updated'
 NOTIFICATION_DELETED = 'notification_deleted'
-NOTIFICATION_SENT = 'NOTIFICATION_SENT'
+NOTIFICATION_SENT = 'notification_sent'
 
 # =========================================
 # Generic Event Types
@@ -129,8 +129,8 @@ EVENT_DELETED = 'deleted'
 # =========================================
 # Email Event Types
 # =========================================
-WELCOME_EMAIL_SENT = 'WELCOME_EMAIL_SENT'
-PROFILE_UPDATE_NOTIFIED = 'PROFILE_UPDATE_NOTIFIED'
+WELCOME_EMAIL_SENT = 'welcome_email_sent'
+PROFILE_UPDATE_NOTIFIED = 'profile_update_notified'
 
 # =========================================
 # Mapping Dictionary for Kafka Topics

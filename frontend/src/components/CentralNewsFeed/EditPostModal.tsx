@@ -37,16 +37,16 @@ const EditPostModal: React.FC<EditPostModalProps> = ({ show, onHide, post, onSav
     setError(null);
 
     try {
-      const response = await axios.put(`${API_URL}/social/${post.id}/`, {
-        title,
-        content,
-        // Include other fields if necessary
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
+      const response = await axios.put(
+        `${API_URL}/social/${post.id}/`,
+        { title, content },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const updatedPost: PostType = response.data;
       onSave(updatedPost);
@@ -102,14 +102,7 @@ const EditPostModal: React.FC<EditPostModalProps> = ({ show, onHide, post, onSav
         <Button variant="primary" onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
-              <Spinner
-                as="span"
-                animation="border"
-                size="sm"
-                role="status"
-                aria-hidden="true"
-              />{' '}
-              Saving...
+              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Saving...
             </>
           ) : (
             'Save Changes'

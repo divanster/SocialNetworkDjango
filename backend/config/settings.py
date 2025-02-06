@@ -52,7 +52,7 @@ from kafka_app.constants import (
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
 KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='centralized_consumer_group')
 
-# Instead of parsing from an environment variable, we now use our pre-defined mapping
+# Instead of parsing from an environment variable, now use pre-defined mapping
 KAFKA_TOPICS = TOPIC_MAPPINGS
 
 # Define the required topics dictionary:
