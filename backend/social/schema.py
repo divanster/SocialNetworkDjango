@@ -64,6 +64,7 @@ class Query(graphene.ObjectType):
     post_by_id = graphene.Field(PostType, post_id=graphene.UUID(required=True))
     posts_by_user = graphene.List(PostType, user_id=graphene.UUID(required=True))
 
+    @login_required
     def resolve_all_posts(self, info, **kwargs):
         user = info.context.user
         return Post.objects.visible_to_user(user)

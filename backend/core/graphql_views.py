@@ -1,15 +1,17 @@
 # backend/core/graphql_views.py
 
-from graphene_django.views import GraphQLView
+import json
+import logging
+
+from django.contrib.auth.models import AnonymousUser
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
-from django.contrib.auth.models import AnonymousUser
 from graphql import parse, validate, GraphQLError
+from graphene_django.views import GraphQLView
+
 from core.graphql_validation import ComplexityLimitRule, DepthLimitRule
-import logging
-import json  # Import JSON module
 
 logger = logging.getLogger(__name__)
 
@@ -25,29 +27,38 @@ class CustomGraphQLView(GraphQLView):
 
     def parse_body(self, request):
         """
-        Authenticate the request using JWT tokens.
+        Authenticate the request using JWT tokens and return the parsed body.
         """
         auth = JWTAuthentication()
 
-        # Extract token from Authorization header or query parameters
+        # Try to extract token from the Authorization header or query parameters
         token = None
-        if 'Authorization' in request.headers:
-            parts = request.headers['Authorization'].split()
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == 'bearer':
                 token = parts[1]
+                logger.debug(f"Extracted token from header: {token}")
+            else:
+                logger.warning("Authorization header is malformed.")
         elif 'token' in request.GET:
-            token = request.GET['token']
+            token = request.GET.get('token')
+            logger.debug(f"Extracted token from query parameters: {token}")
 
+        # If no token is provided, set the user as AnonymousUser
         if not token:
+            logger.info("No token provided; setting request.user to AnonymousUser")
             request.user = AnonymousUser()
             return super().parse_body(request)
 
+        # Attempt to authenticate using the provided token
         try:
-            # Validate the token
             user_auth_tuple = auth.authenticate(request)
             if user_auth_tuple is not None:
                 request.user, request.token = user_auth_tuple
+                logger.info(f"Authenticated user: {request.user}")
             else:
+                logger.warning("JWTAuthentication returned None; setting request.user to AnonymousUser")
                 request.user = AnonymousUser()
         except (InvalidToken, AuthenticationFailed) as e:
             logger.error(f"Invalid token error: {str(e)}")
@@ -57,12 +68,13 @@ class CustomGraphQLView(GraphQLView):
 
     def execute_graphql_request(self, *args, **kwargs):
         """
-        Override to add custom validation and logging.
+        Override to add custom query validation and detailed logging.
         """
         request = self.request
         logger.info(f"GraphQL Request: {request.method} {request.path}")
+
         try:
-            # Parse the JSON body
+            # Parse the request body
             body_unicode = request.body.decode('utf-8') if request.body else ''
             body = json.loads(body_unicode) if body_unicode else {}
             query = body.get('query', '')
@@ -71,19 +83,21 @@ class CustomGraphQLView(GraphQLView):
 
             logger.debug(f"Query: {query}")
             logger.debug(f"Variables: {variables}")
+            logger.debug(f"Operation Name: {operation_name}")
 
-            # Validate the query
+            # Validate the GraphQL query using custom rules
             try:
                 document = parse(query)
-                # Pass the underlying GraphQLSchema to validate
                 validation_errors = validate(
                     self.schema.graphql_schema,  # Access the underlying GraphQLSchema
                     document,
-                    rules=[ComplexityLimitRule, DepthLimitRule]  # Pass classes, not instances
+                    rules=[ComplexityLimitRule, DepthLimitRule]  # Pass rule classes (they will be instantiated internally)
                 )
                 if validation_errors:
                     error_messages = [error.message for error in validation_errors]
-                    raise GraphQLError(", ".join(error_messages))
+                    error_text = ", ".join(error_messages)
+                    logger.error(f"GraphQL Validation Error: {error_text}")
+                    raise GraphQLError(error_text)
             except GraphQLError as e:
                 logger.error(f"GraphQL Validation Error: {str(e)}")
                 raise e
@@ -91,10 +105,10 @@ class CustomGraphQLView(GraphQLView):
                 logger.error(f"Unexpected Validation Error: {str(e)}")
                 raise e
 
-            # Execute the request
+            # Execute the query
             response = super().execute_graphql_request(*args, **kwargs)
 
-            # Log the response
+            # Log response status and data
             if hasattr(response, 'status_code') and hasattr(response, 'content'):
                 logger.info(f"GraphQL Response Status: {response.status_code}")
                 try:
@@ -107,5 +121,5 @@ class CustomGraphQLView(GraphQLView):
             return response
 
         except Exception as e:
-            logger.error(f"GraphQL Execution Error: {str(e)}")
+            logger.error(f"GraphQL Execution Error: {str(e)}", exc_info=True)
             raise e

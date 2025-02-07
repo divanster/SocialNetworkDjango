@@ -397,9 +397,9 @@ CORS_ALLOW_CREDENTIALS = True
 # =====================
 GRAPHENE = {
     'SCHEMA': 'schema.schema',
-    # 'MIDDLEWARE': [
-    #     'graphql_jwt.middleware.JSONWebTokenMiddleware',
-    # ],
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    ],
 }
 
 GRAPHQL_JWT = {
