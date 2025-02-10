@@ -26,8 +26,9 @@ urlpatterns = [
 
     # Add the GraphQL endpoint here
     path('graphql/', CustomGraphQLView.as_view(graphiql=True, schema=schema), name='graphql'),
-    # path('graphql/', CustomGraphQLView.as_view(graphiql=settings.DEBUG, schema=schema), name='graphql'),
-    # path('graphql/', CustomGraphQLView.as_view(graphiql=True)),
+    # path('graphql/', CustomGraphQLView.as_view(graphiql=settings.DEBUG,
+    # schema=schema), name='graphql'), path('graphql/', CustomGraphQLView.as_view(
+    # graphiql=True)),
 
 
     # API Versioning - Versioned API URLs
