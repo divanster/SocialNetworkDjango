@@ -61,11 +61,11 @@ urlpatterns += [
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('api/docs/', RedirectView.as_view(url='/api/schema/swagger-ui/', permanent=True)),
 ]
-# # Custom error handlers for handling specific HTTP errors
-# handler400 = 'config.views.custom_400_view'
-# handler403 = 'config.views.custom_403_view'
-# handler404 = 'config.views.custom_404_view'
-# handler500 = 'config.views.custom_500_view'
+# Custom error handlers for handling specific HTTP errors
+handler400 = 'config.views.custom_400_view'
+handler403 = 'config.views.custom_403_view'
+handler404 = 'config.views.custom_404_view'
+handler500 = 'config.views.custom_500_view'
 
 # Serving static and media files during development
 if settings.DEBUG:
