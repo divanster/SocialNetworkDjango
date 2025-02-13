@@ -1,5 +1,3 @@
-// frontend/src/contexts/AuthContext.tsx
-
 import React, {
   createContext,
   useState,

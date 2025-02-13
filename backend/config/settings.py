@@ -376,14 +376,13 @@ SPECTACULAR_SETTINGS = {
     'EXCLUDE_PATHS': [],
 }
 
-# =====================
 # CORS Settings to Allow Frontend Origins and HTTP Methods
-# =====================
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
-    'http://127.0.0.1:3000',
-    'http://localhost:3000',
-    'http://frontend:3000'
+    'http://127.0.0.1:3000',  # Local frontend
+    'http://localhost:3000',   # Another common local frontend address
+    'http://frontend:3000',    # Docker container hostname
 ])
+
 CORS_ALLOW_METHODS = [
     "DELETE",
     "GET",
@@ -392,7 +391,17 @@ CORS_ALLOW_METHODS = [
     "POST",
     "PUT",
 ]
+
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "X-Requested-With",
+    "Accept",
+    "X-Custom-Header",  # If you need custom headers
+]
+
 
 # =====================
 # GraphQL Settings

@@ -1,9 +1,9 @@
-// src/App.tsx
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
+import { OnlineStatusProvider } from './contexts/OnlineStatusContext'; // Import the provider
 
 const NewsFeed = lazy(() => import('./pages/NewsFeed'));
 const Albums = lazy(() => import('./pages/Albums'));
@@ -13,10 +13,11 @@ const NotFound = lazy(() => import('./components/NotFound'));
 const Profile = lazy(() => import('./components/LeftSidebar/Profile'));
 const Messages = lazy(() => import('./pages/Messages'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const Contacts = lazy(() => import('./components/RightSidebar/Contacts'));
 
 const App: React.FC = () => {
   return (
-    <>
+    <OnlineStatusProvider> {/* Wrap your app or relevant part with this provider */}
       <Navbar />
       <ErrorBoundary>
         <Suspense fallback={<div>Loading...</div>}>
@@ -66,13 +67,21 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/contacts"
+              element={
+                <ProtectedRoute>
+                  <Contacts />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Catch-All Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>
-    </>
+    </OnlineStatusProvider>
   );
 };
 
