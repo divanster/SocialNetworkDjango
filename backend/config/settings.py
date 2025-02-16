@@ -10,22 +10,37 @@ from django.core.exceptions import ImproperlyConfigured
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
-# Initialize environment variables using django-environ
+# -----------------------------
+# Environment Setup and Validation
+# -----------------------------
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-env = environ.Env()
+
+# Initialize environment variables using django-environ
+env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
 
-# Secret key used for cryptographic signing
+# Validate required environment variables
+required_env_vars = [
+    'DJANGO_SECRET_KEY',
+    'SIMPLE_JWT_SIGNING_KEY',
+    'POSTGRES_DB',
+    'POSTGRES_USER',
+    'POSTGRES_PASSWORD',
+]
+missing_vars = [var for var in required_env_vars if not env(var, default=None)]
+if missing_vars:
+    raise ImproperlyConfigured(
+        f"Missing required environment variables: {', '.join(missing_vars)}")
+
+# -----------------------------
+# Basic Settings
+# -----------------------------
+
 SECRET_KEY = env('DJANGO_SECRET_KEY')
-if not SECRET_KEY:
-    raise ImproperlyConfigured("The DJANGO_SECRET_KEY environment variable is not set.")
-
-# Debug mode, should be set to False in production
 DEBUG = env.bool('DEBUG', default=False)
-
-# List of allowed hosts that can make requests to this Django instance
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',
-                         default=['localhost', '127.0.0.1', 'web', 'backend'])
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS',
+                         default=['localhost', '127.0.0.1', 'web'])
 
 # =====================
 # Kafka Configuration
@@ -50,56 +65,55 @@ from kafka_app.constants import (
 
 # Kafka broker URL for event-driven architecture
 KAFKA_BROKER_URL = env('KAFKA_BROKER_URL', default='kafka:9092')
-KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID', default='centralized_consumer_group')
+KAFKA_CONSUMER_GROUP_ID = env('KAFKA_CONSUMER_GROUP_ID',
+                              default='centralized_consumer_group')
 
 # Instead of parsing from an environment variable, now use pre-defined mapping
 KAFKA_TOPICS = TOPIC_MAPPINGS
 
-# Define the required topics dictionary:
-REQUIRED_KAFKA_TOPICS = {
-    USER_EVENTS: 'user-events',
-    NOTIFICATIONS: 'notifications',
-    ALBUM_EVENTS: 'album-events',
-    COMMENT_EVENTS: 'comment-events',
-    FOLLOW_EVENTS: 'follow-events',
-    FRIEND_EVENTS: 'friend-events',
-    NEWSFEED_EVENTS: 'newsfeed-events',
-    REACTION_EVENTS: 'reaction-events',
-    SOCIAL_EVENTS: 'social-events',
-    TAGGING_EVENTS: 'tagging-events',
-    PHOTO_EVENTS: 'photo-events',
-    STORY_EVENTS: 'story-events',
-    # Add additional topics as needed...
-}
+# Define the required topics (just a list of keys here)
+REQUIRED_KAFKA_TOPICS = [
+    USER_EVENTS,
+    NOTIFICATIONS,
+    ALBUM_EVENTS,
+    COMMENT_EVENTS,
+    FOLLOW_EVENTS,
+    FRIEND_EVENTS,
+    NEWSFEED_EVENTS,
+    REACTION_EVENTS,
+    SOCIAL_EVENTS,
+    TAGGING_EVENTS,
+    PHOTO_EVENTS,
+    STORY_EVENTS,
+    # Add any additional topics here...
+]
 
 # Check for missing Kafka topics
 missing_topics = [topic for topic in REQUIRED_KAFKA_TOPICS if topic not in KAFKA_TOPICS]
 if missing_topics:
-    raise ImproperlyConfigured(f"Missing Kafka topics in KAFKA_TOPICS: {', '.join(missing_topics)}")
-
+    raise ImproperlyConfigured(
+        f"Missing Kafka topics in KAFKA_TOPICS: {', '.join(missing_topics)}")
 
 # Kafka encryption key for securing messages
 KAFKA_ENCRYPTION_KEY = env('KAFKA_ENCRYPTION_KEY', default=None)
 
-# =====================
+
+# -----------------------------
 # Authentication Backends
-# =====================
+# -----------------------------
 AUTHENTICATION_BACKENDS = [
     'graphql_jwt.backends.JSONWebTokenBackend',
-    'django.contrib.auth.backends.ModelBackend',  # Default email/password backend
-    # 'social_core.backends.google.GoogleOAuth2',
-    # 'social_core.backends.facebook.FacebookOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
 
-# Utility function to check if tests are currently running
 def is_running_tests():
     return 'test' in sys.argv
 
 
-# =====================
+# -----------------------------
 # Installed Applications
-# =====================
+# -----------------------------
 INSTALLED_APPS = [
     # Django default apps
     'django.contrib.admin',
@@ -144,9 +158,9 @@ INSTALLED_APPS = [
     'websocket.apps.WebSocketConfig',
 ]
 
-# =====================
+# -----------------------------
 # Middleware Configuration
-# =====================
+# -----------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -158,73 +172,59 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-# Add Custom Error Middleware at the end
-MIDDLEWARE += [
     'config.custom_error_middleware.CustomErrorMiddleware',
 ]
 
-# =====================
-# Root URL Configuration
-# =====================
 ROOT_URLCONF = 'config.urls'
 
-# =====================
-# Template Engine Configuration
-# =====================
+# -----------------------------
+# Templates
+# -----------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        # Ensure templates directory is included
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
-                # Required by DRF and django-admin
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
         },
     },
 ]
-
-# Verify that the 'templates' directory exists
 templates_dir = os.path.join(BASE_DIR, 'templates')
 if not os.path.exists(templates_dir):
     os.makedirs(templates_dir)
 
-# =====================
-# WSGI and ASGI Application Configuration
-# =====================
+# -----------------------------
+# WSGI and ASGI Applications
+# -----------------------------
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# =====================
-# Channels Configuration for WebSocket Handling Using Redis as a Broker
-# =====================
+# -----------------------------
+# Channels Configuration (Redis)
+# -----------------------------
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [
                 (
-                    env('REDIS_HOST', default='redis'),
-                    env.int('REDIS_PORT', default=6379)
-                )
+                env('REDIS_HOST', default='redis'), env.int('REDIS_PORT', default=6379))
             ],
         },
     },
 }
-
 REDIS_HOST = env('REDIS_HOST', default='redis')
 REDIS_PORT = env.int('REDIS_PORT', default=6379)
 
-# =====================
-# Database Configuration Using PostgreSQL for Core Functionalities
-# =====================
+# -----------------------------
+# Database Configuration (PostgreSQL)
+# -----------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -240,58 +240,48 @@ DATABASES = {
         },
     },
 }
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# =====================
-# Password Validation Settings
-# =====================
+# -----------------------------
+# Password Validation
+# -----------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation'
-                '.UserAttributeSimilarityValidator'
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {'min_length': 8}
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'
-    },
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# =====================
-# Internationalization Settings
-# =====================
+# -----------------------------
+# Internationalization
+# -----------------------------
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# =====================
-# Static and Media File Settings
-# =====================
+# -----------------------------
+# Static and Media Files
+# -----------------------------
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 ALLOWED_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff']
 
-# =====================
+# -----------------------------
 # Custom User Model
-# =====================
+# -----------------------------
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# =====================
+# -----------------------------
 # Django REST Framework Configuration
-# =====================
+# -----------------------------
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',  # Updated to use custom handler
+    'EXCEPTION_HANDLER': 'config.exception_handlers.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -303,8 +293,6 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
-
-# Adjust the renderer classes based on DEBUG mode
 if DEBUG:
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
@@ -315,24 +303,33 @@ else:
         'rest_framework.renderers.JSONRenderer',
     )
 
-# =====================
+# -----------------------------
 # Simple JWT Configuration
-# =====================
+# -----------------------------
+
+SIMPLE_JWT_SIGNING_KEY = env('SIMPLE_JWT_SIGNING_KEY', default=None)
+if not SIMPLE_JWT_SIGNING_KEY:
+    raise ImproperlyConfigured("The SIMPLE_JWT_SIGNING_KEY environment variable must "
+                               "be set for JWT security.")
+
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(
+        hours=env.int('ACCESS_TOKEN_LIFETIME_HOURS', default=1)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(
+        days=env.int('REFRESH_TOKEN_LIFETIME_DAYS', default=7)),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': env('SIMPLE_JWT_SIGNING_KEY', default=SECRET_KEY),
+    'ALGORITHM': env('SIMPLE_JWT_ALGORITHM', default='HS256'),
+    'SIGNING_KEY': SIMPLE_JWT_SIGNING_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
 
-# =====================
+# -----------------------------
 # Djoser Configuration
-# =====================
+# -----------------------------
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': True,
@@ -351,17 +348,16 @@ DJOSER = {
     },
 }
 
-# =====================
-# Spectacular Configuration for OpenAPI Documentation
-# =====================
+# -----------------------------
+# Spectacular (OpenAPI) Configuration
+# -----------------------------
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Social Network APIs',
     'DESCRIPTION': 'API documentation for the Social Network project.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': True,
     'SWAGGER_UI_DIST': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest',
-    'SWAGGER_UI_FAVICON_HREF': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest'
-                               '/favicon-32x32.png',
+    'SWAGGER_UI_FAVICON_HREF': 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest/favicon-32x32.png',
     'COMPONENT_SPLIT_REQUEST': True,
     'SECURITY': [{'BearerAuth': []}],
     'COMPONENTS': {
@@ -376,60 +372,37 @@ SPECTACULAR_SETTINGS = {
     'EXCLUDE_PATHS': [],
 }
 
-# CORS Settings to Allow Frontend Origins and HTTP Methods
+# -----------------------------
+# CORS Configuration
+# -----------------------------
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
-    'http://127.0.0.1:3000',  # Local frontend
-    'http://localhost:3000',   # Another common local frontend address
-    'http://frontend:3000',    # Docker container hostname
+    'http://127.0.0.1:3000',
+    'http://localhost:3000',
+    'http://frontend:3000',
 ])
-
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
-
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = ["Authorization", "Content-Type", "X-Requested-With", "Accept",
+                      "X-Custom-Header"]
 
-CORS_ALLOW_HEADERS = [
-    "Authorization",
-    "Content-Type",
-    "X-Requested-With",
-    "Accept",
-    "X-Custom-Header",  # If you need custom headers
-]
-
-
-# =====================
-# GraphQL Settings
-# =====================
+# -----------------------------
+# GraphQL Configuration
+# -----------------------------
 GRAPHENE = {
     'SCHEMA': 'schema.schema',
-    'MIDDLEWARE': [
-        'graphql_jwt.middleware.JSONWebTokenMiddleware',
-    ],
+    'MIDDLEWARE': ['graphql_jwt.middleware.JSONWebTokenMiddleware'],
 }
-
 GRAPHQL_JWT = {
     'JWT_VERIFY_EXPIRATION': True,
     'JWT_EXPIRATION_DELTA': timedelta(hours=1),
     'JWT_REFRESH_EXPIRATION_DELTA': timedelta(days=7),
-    # Add other settings as needed
 }
-
-# =====================
-# GraphQL Validation and Middleware Configuration
-# =====================
-
 ENABLE_GRAPHQL_VALIDATION = env.bool('ENABLE_GRAPHQL_VALIDATION', default=True)
 ENABLE_GRAPHQL_MIDDLEWARE = env.bool('ENABLE_GRAPHQL_MIDDLEWARE', default=True)
 
-# =====================
+# -----------------------------
 # Email Configuration
-# =====================
+# -----------------------------
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
@@ -437,9 +410,9 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 
-# =====================
+# -----------------------------
 # Celery Configuration
-# =====================
+# -----------------------------
 CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/0')
 CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT', default=['json'])
@@ -447,10 +420,6 @@ CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER', default='json')
 CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = 'UTC'
-
-# =====================
-# Celery Beat Configuration
-# =====================
 CELERY_BEAT_SCHEDULE = {
     'deactivate_expired_stories_every_hour': {
         'task': 'stories.tasks.deactivate_expired_stories',
@@ -458,9 +427,9 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-# =====================
-# Redis Caching Configuration
-# =====================
+# -----------------------------
+# Redis Caching
+# -----------------------------
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -471,12 +440,10 @@ CACHES = {
     }
 }
 
-# =====================
-# Sentry (Error Tracking)
-# =====================
+# -----------------------------
+# Sentry Configuration
+# -----------------------------
 SENTRY_DSN = env('SENTRY_DSN', default='')
-
-# Initialize Sentry if DSN is provided
 if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
@@ -485,17 +452,17 @@ if SENTRY_DSN:
         send_default_pii=True
     )
 
-# =====================
-# Content Security Policy (CSP) Settings
-# =====================
+# -----------------------------
+# Content Security Policy (CSP)
+# -----------------------------
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
-"'self'", 'https://apis.google.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
+"'self'", "https://apis.google.com", "https://cdn.jsdelivr.net", "'unsafe-inline'")
 CSP_IMG_SRC = (
-"'self'", 'https://images.unsplash.com', 'https://cdn.jsdelivr.net', 'data:')
+"'self'", "https://images.unsplash.com", "https://cdn.jsdelivr.net", "data:")
 CSP_STYLE_SRC = (
-"'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', "'unsafe-inline'")
-CSP_FONT_SRC = ("'self'", 'https://fonts.gstatic.com')
+"'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", "'unsafe-inline'")
+CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)
 CSP_FORM_ACTION = ("'self'",)

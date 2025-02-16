@@ -12,6 +12,7 @@ from urllib.parse import parse_qs
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+
 class BaseConsumer(AsyncWebsocketConsumer):
     """
     Base WebSocket consumer that handles common logic for all consumers.
@@ -36,6 +37,7 @@ class BaseConsumer(AsyncWebsocketConsumer):
         """
         message = event['message']
         await self.send(text_data=json.dumps(message))
+
 
 class AuthenticatedWebsocketConsumer(BaseConsumer):
     """
@@ -65,59 +67,70 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
 
         if token:
             token = token[0]
+            logger.info(f"Received token: {token[:10]}...")  # Log the token (partial for security)
+
             try:
-                UntypedToken(token)
+                UntypedToken(token)  # Validate the token format
                 decoded = TokenBackend(algorithm=settings.SIMPLE_JWT['ALGORITHM']).decode(token, verify=True)
+                logger.info(f"Decoded JWT Token: {decoded}")
                 user = await self.get_user(decoded['user_id'])
                 if user:
                     return user
+                else:
+                    logger.warning(f"User with ID {decoded['user_id']} not found.")
             except (InvalidToken, TokenError) as e:
-                logger.warning(f"Invalid token: {e}")
+                logger.warning(f"Invalid token error: {e}")
+                await self.close()  # Close the connection if token is invalid
+        else:
+            logger.warning("Token not provided.")
         return None
 
-    @database_sync_to_async
-    def get_user(self, user_id):
-        """
-        Retrieves a user from the database by their ID.
-        """
-        try:
-            return User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return None
+
 
 # Example of other consumers inheriting from BaseConsumer
 class PostConsumer(BaseConsumer):
     group_name = 'posts'
 
+
 class AlbumConsumer(BaseConsumer):
     group_name = 'albums'
+
 
 class CommentConsumer(BaseConsumer):
     group_name = 'comments'
 
+
 class FollowConsumer(BaseConsumer):
     group_name = 'follows'
+
 
 class FriendConsumer(BaseConsumer):
     group_name = 'friends'
 
+
 class MessengerConsumer(BaseConsumer):
     group_name = 'messenger'
+
 
 class NewsfeedConsumer(BaseConsumer):
     group_name = 'newsfeed'
 
+
 class ReactionConsumer(BaseConsumer):
     group_name = 'reactions'
+
 
 class SocialConsumer(BaseConsumer):
     group_name = 'social'
 
+
 class StoryConsumer(BaseConsumer):
     group_name = 'stories'
 
+
 class TaggingConsumer(BaseConsumer):
     group_name = 'tagging'
+
 
 class UserConsumer(BaseConsumer):
     group_name = 'users'
@@ -149,17 +162,21 @@ class UserConsumer(BaseConsumer):
         Handle when a user comes online.
         """
         user_id = event['user_id']
-        await self.send(text_data=json.dumps({'type': 'user_online', 'user_id': user_id}))
+        await self.send(
+            text_data=json.dumps({'type': 'user_online', 'user_id': user_id}))
 
     async def user_offline(self, event):
         """
         Handle when a user goes offline.
         """
         user_id = event['user_id']
-        await self.send(text_data=json.dumps({'type': 'user_offline', 'user_id': user_id}))
+        await self.send(
+            text_data=json.dumps({'type': 'user_offline', 'user_id': user_id}))
+
 
 class NotificationConsumer(BaseConsumer):
     group_name = 'notifications'
+
 
 # PresenceConsumer added
 class PresenceConsumer(AsyncWebsocketConsumer):
