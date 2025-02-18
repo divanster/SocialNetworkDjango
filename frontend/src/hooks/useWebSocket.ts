@@ -20,22 +20,34 @@ export default function useWebSocket<T>(
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const isConnecting = useRef(false); // Prevent redundant connections
 
   // Stable message handler reference
   const messageHandlerRef = useRef(onMessage);
   messageHandlerRef.current = onMessage;
 
+  // Send messages through WebSocket
   const sendMessage = useCallback((message: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(message);
     }
   }, []);
 
+  // Connect to WebSocket
   const connect = useCallback(() => {
-    if (loading || !token || !isAuthenticated) {
-      console.warn(`No token provided – no WebSocket connection for group: ${groupName}`);
-      return;
+    if (loading || !token || !isAuthenticated || isConnecting.current) return;
+
+    // Cleanup previous connection if exists
+    if (socketRef.current) {
+      socketRef.current.close(1000, 'Reconnecting');
+      socketRef.current = null;
     }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+
+    isConnecting.current = true;
 
     const wsUrl = new URL(`${BASE_WS_URL}/${groupName}/`);
     wsUrl.searchParams.set('token', token);
@@ -46,6 +58,7 @@ export default function useWebSocket<T>(
     socketRef.current.onopen = () => {
       console.log(`WebSocket connected to group: ${groupName}`);
       reconnectAttemptsRef.current = 0;
+      isConnecting.current = false;
     };
 
     socketRef.current.onmessage = (event) => {
@@ -57,16 +70,29 @@ export default function useWebSocket<T>(
       }
     };
 
-    socketRef.current.onerror = (error) => {
+    socketRef.current.onerror = (error: Event) => {
       console.error(`WebSocket error for ${groupName}:`, error);
+
+      // Check for ECONNREFUSED error
+      if ((error as ErrorEvent).message && (error as ErrorEvent).message.includes('ECONNREFUSED')) {
+        console.error("Connection refused. Attempting to reconnect...");
+        reconnect();
+      } else {
+        console.error("Unknown WebSocket error.");
+        reconnect();
+      }
     };
 
-    socketRef.current.onclose = (event) => {
+    socketRef.current.onclose = (event: CloseEvent) => {
       console.warn(`WebSocket closed for ${groupName}:`, event);
+      if (event.code === 1006) {
+        console.warn("WebSocket closed with error code 1006. Attempting reconnect...");
+        reconnect();
+      }
+
+      // Attempt reconnection logic for any non-clean closures
       if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const timeout = Math.min(30000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
-        console.log(`Reconnecting to ${groupName} in ${timeout/1000}s...`);
-
         reconnectTimeoutRef.current = setTimeout(() => {
           reconnectAttemptsRef.current += 1;
           connect();
@@ -75,9 +101,22 @@ export default function useWebSocket<T>(
     };
   }, [groupName, token, loading, isAuthenticated]);
 
-  useEffect(() => {
-    connect();
+  // Reconnection logic
+  const reconnect = () => {
+    if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+      connect();
+    } else {
+      console.error('Max reconnect attempts reached, WebSocket not connected.');
+    }
+  };
 
+  // Trigger connection once loading is false and token is available
+  useEffect(() => {
+    if (!loading && token && isAuthenticated) {
+      connect();
+    }
+
+    // Cleanup on component unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.close(1000, 'Component unmounted');
@@ -86,6 +125,7 @@ export default function useWebSocket<T>(
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      isConnecting.current = false;
     };
   }, [connect, token, loading, isAuthenticated]);
 

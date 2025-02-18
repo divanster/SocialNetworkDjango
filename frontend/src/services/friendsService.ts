@@ -1,5 +1,3 @@
-// src/services/friendsService.ts
-
 import axios from 'axios';
 import { handleApiError } from './api';
 
@@ -30,8 +28,12 @@ export const fetchFriendsList = async (): Promise<User[]> => {
       },
     });
 
-    // Adjust the response handling based on your actual API structure:
-    if (Array.isArray(response.data)) {
+    // Check for a structure with URLs and handle accordingly
+    if (response.data['friend-requests']) {
+      // Handle the specific case where the response contains the URLs
+      console.warn('Received structure with URLs for friend requests:', response.data);
+      return []; // Adjust as per how you want to handle this response
+    } else if (Array.isArray(response.data)) {
       // If the API returns an array directly
       return response.data;
     } else if (Array.isArray(response.data.results)) {

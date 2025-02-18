@@ -9,10 +9,9 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { fetchProfileData } from '../services/api'; // Ensure this path is correct
+import { fetchProfileData } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
-// Helper function to set the Axios header globally
 const setAuthToken = (token: string | null): void => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -21,7 +20,6 @@ const setAuthToken = (token: string | null): void => {
   }
 };
 
-// Decode token expiration time (convert seconds to milliseconds)
 const getTokenExpirationTime = (token: string): number | null => {
   try {
     const decoded = jwtDecode<JwtPayload>(token);
@@ -32,7 +30,6 @@ const getTokenExpirationTime = (token: string): number | null => {
   }
 };
 
-// Define the User interface based on your backend's user data structure
 export interface User {
   id: number;
   email: string;
@@ -48,9 +45,7 @@ export interface User {
     town: string;
     country: string;
     relationship_status: string;
-    // Add other profile fields as needed
   };
-  // Add any other user fields if necessary
 }
 
 interface AuthContextType {
@@ -78,10 +73,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
-  // Store refreshToken function in a ref for scheduled calls
   const refreshTokenRef = useRef<(() => Promise<string | null>) | null>(null);
 
-  // Schedule a token refresh 1 minute before expiration
   const scheduleTokenRefresh = useCallback((accessToken: string): void => {
     const expirationTime = getTokenExpirationTime(accessToken);
     if (expirationTime) {
@@ -95,7 +88,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Logout function: clears tokens, resets state, and redirects to login page
   const logout = useCallback(async (): Promise<void> => {
     console.log('Logging out...');
     localStorage.removeItem('access_token');
@@ -104,11 +96,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthToken(null);
-    navigate('/login'); // Redirect to login page
+    navigate('/login');
   }, [navigate]);
 
-  // Refresh token function: uses the stored refresh token to get a new access token.
-  // If the backend rotates tokens, update the stored refresh token as well.
   const refreshToken = useCallback(async (): Promise<string | null> => {
     try {
       const storedRefreshToken = localStorage.getItem('refresh_token');
@@ -120,14 +110,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return null;
       }
 
-      // For the refresh request, explicitly clear the Authorization header.
       const response = await axios.post(
         `${API_URL}/token/refresh/`,
         { refresh: storedRefreshToken },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': '', // Override any default Authorization header
+            'Authorization': '',
           },
         }
       );
@@ -135,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Refresh token response:', response.data);
 
       const newAccessToken = response.data.access;
-      const newRefreshToken = response.data.refresh; // If backend rotates refresh tokens
+      const newRefreshToken = response.data.refresh;
       if (newAccessToken) {
         console.log('Token refreshed successfully.');
         localStorage.setItem('access_token', newAccessToken);
@@ -149,7 +138,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         scheduleTokenRefresh(newAccessToken);
 
-        // Fetch and update the user data after refreshing the token
         const userData = await fetchProfileData();
         setUser(userData);
 
@@ -159,22 +147,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await logout();
         return null;
       }
-    } catch (error: any) {
-      if (error.response && error.response.data) {
-        console.error('Error refreshing token details:', error.response.data);
-      }
+    } catch (error) {
       console.error('Error refreshing token:', error);
       await logout();
       return null;
     }
   }, [logout, scheduleTokenRefresh]);
 
-  // Save the refreshToken function in a ref so it can be invoked from scheduled callbacks
   useEffect(() => {
     refreshTokenRef.current = refreshToken;
   }, [refreshToken]);
 
-  // Login function: stores tokens, sets state, schedules refresh, and fetches user data
   const login = useCallback(
     (accessToken: string, refreshTokenStr: string): void => {
       console.log('Logging in...');
@@ -186,7 +169,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       scheduleTokenRefresh(accessToken);
 
-      // Fetch and set user data after login
       fetchProfileData()
         .then((userData) => {
           setUser(userData);
@@ -194,13 +176,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         })
         .catch((error) => {
           console.error('Error fetching user data after login:', error);
-          // Optionally, logout if fetching user data fails
         });
     },
     [scheduleTokenRefresh]
   );
 
-  // Initialize authentication state on app load
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('Initializing authentication...');
@@ -234,13 +214,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, [refreshToken, logout, scheduleTokenRefresh]);
 
-  // Axios interceptor: on 401 errors (except for the refresh endpoint), attempt token refresh.
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        // If the refresh request itself fails, logout immediately.
         if (originalRequest.url?.endsWith('/token/refresh/')) {
           await logout();
           return Promise.reject(error);
