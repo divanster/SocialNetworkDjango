@@ -20,6 +20,7 @@ export default function useWebSocket<T>(
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
   const isConnecting = useRef(false); // Prevent redundant connections
 
   // Stable message handler reference
@@ -37,28 +38,58 @@ export default function useWebSocket<T>(
   const connect = useCallback(() => {
     if (loading || !token || !isAuthenticated || isConnecting.current) return;
 
-    // Cleanup previous connection if exists
-    if (socketRef.current) {
-      socketRef.current.close(1000, 'Reconnecting');
-      socketRef.current = null;
-    }
+    // Clear any previous reconnection attempt
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = undefined;
     }
 
-    isConnecting.current = true;
+    // Cleanup previous connection
+    if (socketRef.current) {
+      if (socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.close(1000, 'Reconnection initiated');
+      }
+      socketRef.current = null;
+    }
 
     const wsUrl = new URL(`${BASE_WS_URL}/${groupName}/`);
     wsUrl.searchParams.set('token', token);
 
-    console.log(`Connecting to WebSocket at: ${wsUrl.toString()}`);
+    console.log(`Attempting connection to ${wsUrl}`);
     socketRef.current = new WebSocket(wsUrl.toString());
 
+    // Add heartbeat mechanism
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ type: 'heartbeat' }));
+      }
+    }, 30000); // Send heartbeat every 30 seconds
+
     socketRef.current.onopen = () => {
-      console.log(`WebSocket connected to group: ${groupName}`);
+      console.log(`Connected to ${groupName}`);
       reconnectAttemptsRef.current = 0;
-      isConnecting.current = false;
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current); // Stop heartbeat on successful connection
+      }
+    };
+
+    socketRef.current.onclose = (event: CloseEvent) => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current); // Clear heartbeat on close
+      }
+
+      if (event.code !== 1000) {  // Only reconnect for abnormal closures
+        const delay = Math.min(30000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectAttemptsRef.current += 1;
+          connect();
+        }, delay);
+      }
+    };
+
+    socketRef.current.onerror = (error: Event) => {
+      console.error(`WebSocket error for ${groupName}:`, error);
+      reconnect(); // Attempt reconnection for any error
     };
 
     socketRef.current.onmessage = (event) => {
@@ -67,36 +98,6 @@ export default function useWebSocket<T>(
         messageHandlerRef.current(data);
       } catch (error) {
         console.error(`Error parsing message for ${groupName}:`, error);
-      }
-    };
-
-    socketRef.current.onerror = (error: Event) => {
-      console.error(`WebSocket error for ${groupName}:`, error);
-
-      // Check for ECONNREFUSED error
-      if ((error as ErrorEvent).message && (error as ErrorEvent).message.includes('ECONNREFUSED')) {
-        console.error("Connection refused. Attempting to reconnect...");
-        reconnect();
-      } else {
-        console.error("Unknown WebSocket error.");
-        reconnect();
-      }
-    };
-
-    socketRef.current.onclose = (event: CloseEvent) => {
-      console.warn(`WebSocket closed for ${groupName}:`, event);
-      if (event.code === 1006) {
-        console.warn("WebSocket closed with error code 1006. Attempting reconnect...");
-        reconnect();
-      }
-
-      // Attempt reconnection logic for any non-clean closures
-      if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-        const timeout = Math.min(30000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectAttemptsRef.current += 1;
-          connect();
-        }, timeout);
       }
     };
   }, [groupName, token, loading, isAuthenticated]);
@@ -124,6 +125,9 @@ export default function useWebSocket<T>(
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current); // Clear heartbeat on cleanup
       }
       isConnecting.current = false;
     };

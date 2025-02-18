@@ -1,39 +1,40 @@
-// frontend/src/components/RightSidebar/Contacts.tsx
-import React, { useEffect } from 'react';
-import { useOnlineStatus } from '../../contexts/OnlineStatusContext'; // Import the context
+import React, { useEffect, useState } from 'react';
+import { fetchUsers } from '../../services/api';  // Import the function to fetch all users
+import { useOnlineStatus } from '../../contexts/OnlineStatusContext';  // Import the context for online users
 
 const Contacts: React.FC = () => {
-  const { onlineUsers, addUser, removeUser } = useOnlineStatus();
+  const { onlineUsers } = useOnlineStatus();  // Get online users from context
+  const [allUsers, setAllUsers] = useState<any[]>([]);  // State to hold all users
 
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:8000/ws/presence/');  // WebSocket URL for presence
-
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'user_online') {
-        addUser(data.userId);  // Add user to online list
-      } else if (data.type === 'user_offline') {
-        removeUser(data.userId);  // Remove user from online list
-      }
+    // Fetch all users from the API when the component mounts
+    const getAllUsers = async () => {
+      const users = await fetchUsers();
+      setAllUsers(users);
     };
 
-    return () => {
-      socket.close();  // Clean up WebSocket connection when the component unmounts
-    };
-  }, [addUser, removeUser]);
+    getAllUsers();  // Call the function to fetch users
+  }, []);  // Empty dependency array to run this effect only once when the component mounts
 
   return (
     <div>
       <h3>Contacts</h3>
+      <h4>All Users</h4>
       <ul>
-        {onlineUsers.length > 0 ? (
-          onlineUsers.map((userId) => (
-            <li key={userId}>
-              User ID: {userId} - <strong>Online</strong>
+        {allUsers.length > 0 ? (
+          allUsers.map((user) => (
+            <li key={user.id}>
+              {user.username} - {user.email}
+              {/* Check if the user is online */}
+              {onlineUsers.includes(user.id) ? (
+                <span style={{ color: 'green' }}> (Online)</span>
+              ) : (
+                <span style={{ color: 'red' }}> (Offline)</span>
+              )}
             </li>
           ))
         ) : (
-          <li>No contacts online.</li>
+          <li>No users found.</li>
         )}
       </ul>
     </div>
@@ -41,4 +42,3 @@ const Contacts: React.FC = () => {
 };
 
 export default Contacts;
-

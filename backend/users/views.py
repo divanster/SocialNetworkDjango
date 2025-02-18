@@ -106,6 +106,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response({"detail": "UserProfile not found or not deleted."}, status=status.HTTP_404_NOT_FOUND)
 
 
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
 class CustomUserViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing custom user data.
@@ -118,6 +120,19 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     lookup_url_kwarg = 'pk'
 
     @extend_schema(
+        summary="List all users",
+        description="Retrieves a list of all users in the system.",
+        responses={200: CustomUserSerializer(many=True)},
+    )
+    def list(self, request, *args, **kwargs):
+        """
+        Retrieves the list of users.
+        """
+        queryset = self.get_queryset()  # This will get all users
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
         parameters=[
             OpenApiParameter(
                 name='pk',
@@ -126,7 +141,10 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 type=OpenApiTypes.UUID,
                 location=OpenApiParameter.PATH
             )
-        ]
+        ],
+        summary="Retrieve a specific user",
+        description="Retrieves details of a user by their UUID.",
+        responses={200: CustomUserSerializer},
     )
     def retrieve(self, request, *args, **kwargs):
         """
@@ -164,6 +182,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(request.user)
 
         return Response(serializer.data)
+
 
 
 class CustomUserSignupView(CreateAPIView):
