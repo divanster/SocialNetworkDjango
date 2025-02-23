@@ -1,5 +1,3 @@
-# backend/config/asgi.py
-
 import os
 import django
 from channels.routing import ProtocolTypeRouter, URLRouter
@@ -15,6 +13,7 @@ django.setup()
 
 # Import the centralized WebSocket routing module
 from websocket.routing import websocket_urlpatterns  # Central WebSocket routing
+from config.middleware import JWTMiddleware  # Import the custom JWT middleware
 
 # Configure logging for tracking ASGI events and debugging
 logger = logging.getLogger(__name__)
@@ -24,8 +23,8 @@ application = ProtocolTypeRouter({
     # HTTP requests will be handled using the default Django ASGI application
     "http": get_asgi_application(),
 
-    # WebSocket connections are handled through the centralized WebSocket routing
-    "websocket": AuthMiddlewareStack(
+    # WebSocket connections are handled through the JWTMiddleware for JWT authentication
+    "websocket": JWTMiddleware(
         URLRouter(
             websocket_urlpatterns  # Include all WebSocket routes
         )

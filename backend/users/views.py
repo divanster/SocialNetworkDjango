@@ -3,12 +3,13 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 from .models import CustomUser, UserProfile
-from .serializers import CustomUserSerializer, UserProfileSerializer, TokenRefreshSerializer
+from .serializers import CustomUserSerializer, UserProfileSerializer, \
+    TokenRefreshSerializer
 from rest_framework.generics import CreateAPIView
 from kafka_app.tasks import send_welcome_email, send_profile_update_notification
 from rest_framework.views import APIView
@@ -16,6 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
 from django_ratelimit.decorators import ratelimit
+from django.core.cache import cache
 
 import logging
 
@@ -90,7 +92,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         logger.info(f"Soft-deleted UserProfile with ID: {instance.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['post'], url_path='restore', permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'], url_path='restore',
+            permission_classes=[IsAuthenticated])
     def restore(self, request, pk=None):
         """
         Restores a soft-deleted user profile.
@@ -103,10 +106,23 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except UserProfile.DoesNotExist:
             logger.error(f"UserProfile with ID {pk} does not exist or is not deleted.")
-            return Response({"detail": "UserProfile not found or not deleted."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "UserProfile not found or not deleted."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@extend_schema(
+    summary="Get online users",
+    description="Retrieves list of currently online users",
+    responses={200: CustomUserSerializer(many=True)}
+)
+def get_online_users(request):
+    online_user_ids = cache.get('online_users', [])
+    users = CustomUser.objects.filter(id__in=online_user_ids)
+    return Response(CustomUserSerializer(users, many=True).data)
 
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     """
@@ -182,7 +198,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(request.user)
 
         return Response(serializer.data)
-
 
 
 class CustomUserSignupView(CreateAPIView):

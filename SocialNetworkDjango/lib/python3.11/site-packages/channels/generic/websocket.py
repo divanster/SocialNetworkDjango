@@ -3,6 +3,7 @@ import json
 from asgiref.sync import async_to_sync
 
 from ..consumer import AsyncConsumer, SyncConsumer
+from ..db import aclose_old_connections
 from ..exceptions import (
     AcceptConnection,
     DenyConnection,
@@ -59,7 +60,7 @@ class WebsocketConsumer(SyncConsumer):
         Called when a WebSocket frame is received. Decodes it and passes it
         to receive().
         """
-        if "text" in message:
+        if message.get("text") is not None:
             self.receive(text_data=message["text"])
         else:
             self.receive(bytes_data=message["bytes"])
@@ -199,7 +200,7 @@ class AsyncWebsocketConsumer(AsyncConsumer):
         Called when a WebSocket frame is received. Decodes it and passes it
         to receive().
         """
-        if "text" in message:
+        if message.get("text") is not None:
             await self.receive(text_data=message["text"])
         else:
             await self.receive(bytes_data=message["bytes"])
@@ -247,6 +248,7 @@ class AsyncWebsocketConsumer(AsyncConsumer):
                 "BACKEND is unconfigured or doesn't support groups"
             )
         await self.disconnect(message["code"])
+        await aclose_old_connections()
         raise StopConsumer()
 
     async def disconnect(self, code):

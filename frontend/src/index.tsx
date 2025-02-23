@@ -1,5 +1,4 @@
 // frontend/src/index.tsx
-
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -11,7 +10,8 @@ import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter
 import { Provider } from 'react-redux';
 import store from './store';
 import { AuthProvider } from './contexts/AuthContext';
-import { WebSocketProvider } from './contexts/WebSocketManager';
+import { WebSocketProvider } from './contexts/WebSocketContext'; // Correct import here
+import { OnlineStatusProvider } from './contexts/OnlineStatusContext'; // Correct import here
 import ErrorBoundary from './components/ErrorBoundary';
 
 const container = document.getElementById('root');
@@ -21,12 +21,13 @@ if (container) {
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
-        {/* Place BrowserRouter at the top so that all children get router context */}
         <BrowserRouter>
           <Provider store={store}>
             <AuthProvider>
               <WebSocketProvider>
-                <App />
+                <OnlineStatusProvider>
+                  <App />
+                </OnlineStatusProvider>
               </WebSocketProvider>
             </AuthProvider>
           </Provider>

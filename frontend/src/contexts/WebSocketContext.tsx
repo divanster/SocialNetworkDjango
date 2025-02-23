@@ -1,5 +1,3 @@
-// frontend/src/contexts/WebSocketContext.tsx
-
 import React, {
   createContext,
   useContext,
@@ -23,7 +21,6 @@ interface JwtPayload {
   exp: number; // expiration time (in seconds)
   iat: number; // issued at time
   sub: string; // subject
-  // add other properties if needed
 }
 
 // Helper function to check if a token is expired
@@ -44,10 +41,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 10;
   const subscribedGroupsRef = useRef<Set<string>>(new Set());
+  const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 
-  // Function to connect to the WebSocket server.
-  // This code uses the environment variable REACT_APP_WEBSOCKET_URL
-  // and appends no group path—assuming the server will handle subscription via messages.
+  // Function to connect to the WebSocket server
   const connectWebSocket = useCallback(async () => {
     if (!token) {
       console.warn('No token provided for WebSocket connection.');
@@ -64,8 +60,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     }
 
-    // Build the final WebSocket URL using the environment variable.
-    // For example: ws://localhost:8000/ws/?token=your_jwt_token
     const baseWsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
     const wsUrl = `${baseWsUrl}/?token=${token}`;
     console.log(`Connecting to WebSocket at: ${wsUrl}`);
@@ -75,7 +69,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     ws.onopen = () => {
       console.log('WebSocket connection established.');
       reconnectAttemptsRef.current = 0;
-      // Resubscribe to existing groups
+      // Subscribe only after the connection is open
       subscribedGroupsRef.current.forEach((group) => {
         ws.send(JSON.stringify({ action: 'subscribe', group }));
         console.log(`Resubscribed to group: ${group}`);
@@ -105,7 +99,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     ws.onclose = (event) => {
       console.warn('WebSocket connection closed:', event);
-      // Only attempt reconnection if the closure was not normal (1000 = normal)
       if (event.code !== 1000) {
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           const timeout = Math.min(10000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
@@ -115,13 +108,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             connectWebSocket();
           }, timeout);
         } else {
-          console.error('Max reconnection attempts reached. Giving up.');
+          console.error('Max reconnection attempts reached.');
         }
       }
     };
   }, [token, refreshToken]);
 
-  // When token changes (or on mount), try to connect the WebSocket.
   useEffect(() => {
     connectWebSocket();
 
@@ -133,7 +125,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, [token, connectWebSocket]);
 
-  // subscribe: send a subscription message for a specific group.
+  // Subscribe to a group
   const subscribe = (groupName: string) => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       console.warn(`WebSocket is not open. Cannot subscribe to group: ${groupName}`);
@@ -148,7 +140,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     console.log(`Subscribed to group: ${groupName}`);
   };
 
-  // unsubscribe: send an unsubscribe message for a specific group.
+  // Unsubscribe from a group
   const unsubscribe = (groupName: string) => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       console.warn(`WebSocket is not open. Cannot unsubscribe from group: ${groupName}`);

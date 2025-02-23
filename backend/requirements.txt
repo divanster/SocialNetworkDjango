@@ -23,7 +23,7 @@ billiard==4.2.0                         # Pool and process management (required 
 amqp==5.2.0                             # Python AMQP messaging library for Celery
 kombu==5.4.0                            # Messaging library for Python, used by Celery
 asgiref==3.8.1                          # ASGI reference implementation, used by Django Channels
-channels==4.1.0                         # Django Channels for handling WebSocket, HTTP2, etc.
+channels==4.2.0                         # Django Channels for handling WebSocket, HTTP2, etc.
 channels-redis==4.2.0                   # Redis integration for Django Channels
 daphne==4.0.0                           # ASGI server for Django Channels
 

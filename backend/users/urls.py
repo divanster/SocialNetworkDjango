@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, CustomTokenRefreshView
+from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, CustomTokenRefreshView, get_online_users
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'users'
@@ -12,6 +12,9 @@ router.register(r'users', CustomUserViewSet, basename='customuser')  # Use speci
 router.register(r'profiles', UserProfileViewSet, basename='userprofile')  # Use specific prefix
 
 urlpatterns = [
+    # Online users
+    path('get_online_users/', get_online_users, name='get_online_users'),
+
     # JWT Token Refresh endpoint
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
