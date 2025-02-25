@@ -205,3 +205,24 @@ class PresenceConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'message': message
         }))
+
+
+class DefaultConsumer(AsyncWebsocketConsumer):
+    """
+    Default WebSocket consumer that handles connections to the "ws/" path.
+    """
+
+    async def connect(self):
+        await self.accept()
+        # You can add any custom logic here to handle connection to "ws/"
+        await self.send(text_data=json.dumps({
+            'message': 'Connected to the default WebSocket endpoint.'
+        }))
+
+    async def disconnect(self, close_code):
+        # Handle disconnection
+        pass
+
+    async def receive(self, text_data):
+        # Handle any messages sent from the client (if needed)
+        pass

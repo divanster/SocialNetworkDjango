@@ -56,12 +56,15 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """
-        Soft delete the post instead of hard deleting.
+        Soft delete the post ensuring only the post owner can delete it.
+        Admin users can delete any post.
         """
-        if instance.user != self.request.user:
-            raise permissions.PermissionDenied("You do not have permission to delete this post.")
+        if instance.user != self.request.user and not self.request.user.is_staff:
+            raise permissions.PermissionDenied(
+                "You do not have permission to delete this post.")
         instance.delete()  # Soft delete
-        logger.info(f"Post with ID {instance.id} soft-deleted by user {self.request.user.id}")
+        logger.info(
+            f"Post with ID {instance.id} soft-deleted by user {self.request.user.id}")
 
     @extend_schema(
         parameters=[

@@ -109,6 +109,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return Response({"detail": "UserProfile not found or not deleted."},
                             status=status.HTTP_404_NOT_FOUND)
 
+
 @api_view(['GET'])
 @extend_schema(
     summary="Get online users",

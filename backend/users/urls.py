@@ -12,7 +12,7 @@ router.register(r'users', CustomUserViewSet, basename='customuser')  # Use speci
 router.register(r'profiles', UserProfileViewSet, basename='userprofile')  # Use specific prefix
 
 urlpatterns = [
-    # Online users
+    # Online usersa
     path('get_online_users/', get_online_users, name='get_online_users'),
 
     # JWT Token Refresh endpoint
