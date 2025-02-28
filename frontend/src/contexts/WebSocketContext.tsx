@@ -35,7 +35,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const maxReconnectAttempts = 10;
   const subscribedGroupsRef = useRef<Set<string>>(new Set());
   const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-  const queuedActions = useRef<Array<() => void>>([]); // To queue subscription actions
+  const queuedActions = useRef<Array<() => void>>([]); // Queue for subscription actions
 
   // Function to connect to the WebSocket server
   const connectWebSocket = useCallback(async () => {
@@ -44,7 +44,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
-    // Check if the token is expired and refresh if needed
     let currentToken = token;
     if (isTokenExpired(token)) {
       console.log('Token expired. Refreshing token...');
@@ -62,19 +61,30 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
+    // Set up the heartbeat
+    const heartbeatInterval = setInterval(() => {
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ action: 'ping' }));
+      }
+    }, HEARTBEAT_INTERVAL);
+
     ws.onopen = () => {
       console.log('WebSocket connection established.');
       reconnectAttemptsRef.current = 0;
-
-      // Process the queued subscription actions
+      // Process queued actions (subscribe/unsubscribe)
       queuedActions.current.forEach(action => action());
-      queuedActions.current = []; // Clear the queue
+      queuedActions.current = [];
     };
 
     ws.onmessage = (event) => {
       try {
-        console.log("Received WebSocket message:", event.data); // Add this to log raw data
+        console.log("Received WebSocket message:", event.data);
         const data = JSON.parse(event.data);
+        // If the message is a default connection confirmation, ignore it.
+        if (data.message === "Connected to the default WebSocket endpoint." && !data.group) {
+          console.log("Default connection message received, ignoring.");
+          return;
+        }
         if (data.group && data.message) {
           const eventName = `ws-${data.group}`;
           const customEvent = new CustomEvent(eventName, { detail: data.message });
@@ -94,6 +104,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     ws.onclose = (event) => {
+      clearInterval(heartbeatInterval);
       console.warn('WebSocket connection closed:', event);
       if (event.code !== 1000) {  // Only reconnect for abnormal closures
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
@@ -101,7 +112,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           console.log(`Reconnecting in ${timeout / 1000} seconds...`);
           setTimeout(() => {
             reconnectAttemptsRef.current += 1;
-            connectWebSocket();  // Try reconnecting
+            connectWebSocket();
           }, timeout);
         } else {
           console.error('Max reconnection attempts reached.');
@@ -112,7 +123,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     connectWebSocket();
-
     return () => {
       if (socketRef.current) {
         console.log('Closing WebSocket connection.');
@@ -120,17 +130,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     };
   }, [token, connectWebSocket]);
-
-  // Function to handle heartbeat
-  useEffect(() => {
-    const heartbeatInterval = setInterval(() => {
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ action: 'ping' }));
-      }
-    }, HEARTBEAT_INTERVAL);
-
-    return () => clearInterval(heartbeatInterval);
-  }, []);
 
   // Subscribe to a group
   const subscribe = (groupName: string) => {
@@ -144,7 +143,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       performSubscribe();
     } else {
-      queuedActions.current.push(performSubscribe); // Queue the action if WebSocket is not ready
+      queuedActions.current.push(performSubscribe);
     }
   };
 
@@ -160,7 +159,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       performUnsubscribe();
     } else {
-      queuedActions.current.push(performUnsubscribe); // Queue the action if WebSocket is not ready
+      queuedActions.current.push(performUnsubscribe);
     }
   };
 
