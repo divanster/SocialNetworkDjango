@@ -1,5 +1,3 @@
-# backend/websocket/middleware.py
-
 from urllib.parse import parse_qs
 from channels.middleware import BaseMiddleware
 from django.contrib.auth.models import AnonymousUser
@@ -15,23 +13,21 @@ import logging
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
-
 class TokenAuthMiddleware(BaseMiddleware):
     """
     Custom middleware that takes a JWT token from the query string or headers and authenticates via Django.
     """
 
     async def __call__(self, scope, receive, send):
-        # Extract token from query parameters or headers
         token = None
-        query_string = scope['query_string'].decode()
+        query_string = scope.get('query_string', b'').decode()  # Safely get query_string, default to empty byte string
         params = parse_qs(query_string)
 
-        # Try to get the token from query string
+        # Try to get the token from the query string
         token = params.get('token', [None])[0]
 
         if not token:
-            # If no token in query string, try extracting it from the headers
+            # If no token in the query string, try extracting it from the headers
             headers = dict(scope.get('headers', []))
             if b'authorization' in headers:
                 auth_header = headers[b'authorization'].decode().split()
@@ -54,7 +50,7 @@ class TokenAuthMiddleware(BaseMiddleware):
                 token,
                 settings.SIMPLE_JWT['SIGNING_KEY'],
                 algorithms=[settings.SIMPLE_JWT['ALGORITHM']],
-                options={'verify_exp': True}
+                options={'verify_exp': True}  # Verify expiration
             )
             user_id = decoded_data.get(settings.SIMPLE_JWT['USER_ID_CLAIM'])
 
@@ -63,13 +59,20 @@ class TokenAuthMiddleware(BaseMiddleware):
 
             # Retrieve the user asynchronously
             user = await sync_to_async(User.objects.get)(id=user_id)
+
+            # Assign the user to the scope
             scope['user'] = user
             logger.info(f"Authenticated WebSocket connection for user: {user.username}")
 
-        except (TokenError, DecodeError, ExpiredSignatureError, InvalidToken,
-                User.DoesNotExist) as e:
+        except (TokenError, DecodeError, ExpiredSignatureError, InvalidToken) as e:
             # Token is invalid or expired, set the user as AnonymousUser
             scope['user'] = AnonymousUser()
             logger.warning(f"WebSocket connection attempt with invalid token: {e}")
+            await send({"type": "websocket.close"})  # Close the WebSocket if the token is invalid
+
+        except User.DoesNotExist:
+            # If user does not exist, set AnonymousUser
+            scope['user'] = AnonymousUser()
+            logger.warning("User not found for the provided user_id.")
 
         return await super().__call__(scope, receive, send)

@@ -1,4 +1,3 @@
-// frontend/src/contexts/OnlineStatusContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import axios from 'axios';
 import { useWebSocketContext } from './WebSocketContext';
@@ -33,20 +32,21 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   const fetchOnlineUsers = async () => {
-  try {
-    const response = await axios.get('/api/v1/users/get_online_users/'); // Corrected endpoint
-    const onlineIds = response.data.map((user: any) => user.id);
-    const details = response.data.reduce((acc: any, user: any) => ({
-      ...acc,
-      [user.id]: user.username
-    }), {});
+    try {
+      // Use the REACT_APP_API_URL to get the correct base URL
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}users/get_online_users/`);
+      const onlineIds = response.data.map((user: any) => user.id);
+      const details = response.data.reduce((acc: any, user: any) => ({
+        ...acc,
+        [user.id]: user.username
+      }), {});
 
-    setOnlineUsers(onlineIds);
-    setUserDetails(details);
-  } catch (error) {
-    console.error('Error fetching online users:', error);
-  }
-};
+      setOnlineUsers(onlineIds);
+      setUserDetails(details);
+    } catch (error) {
+      console.error('Error fetching online users:', error);
+    }
+  };
 
   useEffect(() => {
     // Setup WebSocket subscriptions

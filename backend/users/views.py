@@ -118,6 +118,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 )
 def get_online_users(request):
     online_user_ids = cache.get('online_users', [])
+    logger.debug(f"Online User IDs from cache: {online_user_ids}")  # Debug log
     users = CustomUser.objects.filter(id__in=online_user_ids)
     return Response(CustomUserSerializer(users, many=True).data)
 

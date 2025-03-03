@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useRef, useCallback, ReactNode } 
 import { useAuth } from './AuthContext';
 import jwt_decode from 'jwt-decode';
 
-// Define the JWT payload interface
 interface JwtPayload {
   exp: number; // expiration time (in seconds)
   iat: number; // issued at time
@@ -34,10 +33,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 10;
   const subscribedGroupsRef = useRef<Set<string>>(new Set());
-  const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-  const queuedActions = useRef<Array<() => void>>([]); // Queue for subscription actions
+  const HEARTBEAT_INTERVAL = 30000; // Interval for heartbeat ping
+  const queuedActions = useRef<Array<() => void>>([]); // Add this line to declare `queuedActions`
 
-  // Function to connect to the WebSocket server
   const connectWebSocket = useCallback(async () => {
     if (!token) {
       console.warn('No token provided for WebSocket connection.');
@@ -61,7 +59,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
-    // Set up the heartbeat
+    // Set up heartbeat
     const heartbeatInterval = setInterval(() => {
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(JSON.stringify({ action: 'ping' }));
@@ -72,7 +70,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('WebSocket connection established.');
       reconnectAttemptsRef.current = 0;
       // Process queued actions (subscribe/unsubscribe)
-      queuedActions.current.forEach(action => action());
+      queuedActions.current.forEach(action => action()); // <-- Fixing the error by using queuedActions
       queuedActions.current = [];
     };
 
@@ -80,18 +78,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
         console.log("Received WebSocket message:", event.data);
         const data = JSON.parse(event.data);
-        // If the message is a default connection confirmation, ignore it.
-        if (data.message === "Connected to the default WebSocket endpoint." && !data.group) {
-          console.log("Default connection message received, ignoring.");
-          return;
-        }
         if (data.group && data.message) {
           const eventName = `ws-${data.group}`;
           const customEvent = new CustomEvent(eventName, { detail: data.message });
           window.dispatchEvent(customEvent);
           console.log(`Received message for group ${data.group}:`, data.message);
-        } else {
-          console.warn('Received malformed message:', data);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -106,17 +97,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     ws.onclose = (event) => {
       clearInterval(heartbeatInterval);
       console.warn('WebSocket connection closed:', event);
-      if (event.code !== 1000) {  // Only reconnect for abnormal closures
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const timeout = Math.min(10000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
-          console.log(`Reconnecting in ${timeout / 1000} seconds...`);
-          setTimeout(() => {
-            reconnectAttemptsRef.current += 1;
-            connectWebSocket();
-          }, timeout);
-        } else {
-          console.error('Max reconnection attempts reached.');
-        }
+      if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        const timeout = Math.min(10000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
+        console.log(`Reconnecting in ${timeout / 1000} seconds...`);
+        setTimeout(() => {
+          reconnectAttemptsRef.current += 1;
+          connectWebSocket();
+        }, timeout);
       }
     };
   }, [token, refreshToken]);
@@ -125,7 +112,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     connectWebSocket();
     return () => {
       if (socketRef.current) {
-        console.log('Closing WebSocket connection.');
         socketRef.current.close(1000, 'Component unmounted');
       }
     };
@@ -134,32 +120,34 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Subscribe to a group
   const subscribe = (groupName: string) => {
     const performSubscribe = () => {
-      if (subscribedGroupsRef.current.has(groupName)) return;
-      socketRef.current?.send(JSON.stringify({ action: 'subscribe', group: groupName }));
-      subscribedGroupsRef.current.add(groupName);
-      console.log(`Subscribed to group: ${groupName}`);
+      if (!subscribedGroupsRef.current.has(groupName)) {
+        socketRef.current?.send(JSON.stringify({ action: 'subscribe', group: groupName }));
+        subscribedGroupsRef.current.add(groupName);
+        console.log(`Subscribed to group: ${groupName}`);
+      }
     };
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       performSubscribe();
     } else {
-      queuedActions.current.push(performSubscribe);
+      queuedActions.current.push(performSubscribe); // <-- Storing action in the queue
     }
   };
 
   // Unsubscribe from a group
   const unsubscribe = (groupName: string) => {
     const performUnsubscribe = () => {
-      if (!subscribedGroupsRef.current.has(groupName)) return;
-      socketRef.current?.send(JSON.stringify({ action: 'unsubscribe', group: groupName }));
-      subscribedGroupsRef.current.delete(groupName);
-      console.log(`Unsubscribed from group: ${groupName}`);
+      if (subscribedGroupsRef.current.has(groupName)) {
+        socketRef.current?.send(JSON.stringify({ action: 'unsubscribe', group: groupName }));
+        subscribedGroupsRef.current.delete(groupName);
+        console.log(`Unsubscribed from group: ${groupName}`);
+      }
     };
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       performUnsubscribe();
     } else {
-      queuedActions.current.push(performUnsubscribe);
+      queuedActions.current.push(performUnsubscribe); // <-- Storing action in the queue
     }
   };
 
