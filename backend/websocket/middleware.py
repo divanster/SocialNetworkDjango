@@ -68,7 +68,8 @@ class TokenAuthMiddleware(BaseMiddleware):
             # Token is invalid or expired, set the user as AnonymousUser
             scope['user'] = AnonymousUser()
             logger.warning(f"WebSocket connection attempt with invalid token: {e}")
-            await send({"type": "websocket.close"})  # Close the WebSocket if the token is invalid
+            await send({
+                           "type": "websocket.close"})  # Close the WebSocket if the token is invalid
 
         except User.DoesNotExist:
             # If user does not exist, set AnonymousUser

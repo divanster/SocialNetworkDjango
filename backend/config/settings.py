@@ -570,7 +570,7 @@ LOGGING = {
         },
         'channels': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': 'DEBUG',  # Adjusted to DEBUG for more detailed logs
             'propagate': True,
         },
         'core': {

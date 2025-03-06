@@ -8,6 +8,8 @@ from rest_framework_simplejwt.backends import TokenBackend
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.conf import settings
 from urllib.parse import parse_qs
+from jwt import ExpiredSignatureError, DecodeError
+
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -67,24 +69,71 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
 
         if token:
             token = token[0]
-            logger.info(f"Received token: {token[:10]}...")  # Log the token (partial for security)
+            logger.info(
+                f"Received token: {token[:10]}...")  # Log the token (partial for security)
 
             try:
                 UntypedToken(token)  # Validate the token format
-                decoded = TokenBackend(algorithm=settings.SIMPLE_JWT['ALGORITHM']).decode(token, verify=True)
+                decoded = TokenBackend(
+                    algorithm=settings.SIMPLE_JWT['ALGORITHM']).decode(token,
+                                                                       verify=True)
                 logger.info(f"Decoded JWT Token: {decoded}")
                 user = await self.get_user(decoded['user_id'])
                 if user:
                     return user
                 else:
                     logger.warning(f"User with ID {decoded['user_id']} not found.")
+            except ExpiredSignatureError:
+                logger.warning("Token has expired.")
+                await self.send(text_data=json.dumps({
+                    'error': 'Token has expired.'
+                }))
+                await self.close()
+            except DecodeError as e:
+                logger.warning(f"Token decoding error: {e}")
+                await self.send(text_data=json.dumps({
+                    'error': 'Invalid token.'
+                }))
+                await self.close()
             except (InvalidToken, TokenError) as e:
                 logger.warning(f"Invalid token error: {e}")
-                await self.close()  # Close the connection if token is invalid
+                await self.send(text_data=json.dumps({
+                    'error': 'Invalid token.'
+                }))
+                await self.close()
         else:
             logger.warning("Token not provided.")
+            await self.send(text_data=json.dumps({
+                'error': 'Token not provided.'
+            }))
+            await self.close()
         return None
 
+    async def receive(self, text_data):
+        """
+        Handle received WebSocket messages, log them, and respond.
+        """
+        # Log the received message
+        logger.info(f"Received WebSocket message: {text_data}")
+
+        # Process the message and send a response
+        try:
+            text_data_json = json.loads(text_data)
+            message = text_data_json.get('message', 'No message content')
+
+            # Log the processed message
+            logger.info(f"Processed message: {message}")
+
+            # Send back the message
+            await self.send(text_data=json.dumps({'message': message}))
+
+        except json.JSONDecodeError:
+            logger.error("Received invalid JSON message.")
+            await self.send(text_data=json.dumps({'error': 'Invalid JSON message received.'}))
+
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+            await self.send(text_data=json.dumps({'error': 'Error processing message.'}))
 
 
 # Example of other consumers inheriting from BaseConsumer
