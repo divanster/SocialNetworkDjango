@@ -3,7 +3,8 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, authentication_classes, \
+    permission_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -111,6 +112,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 @extend_schema(
     summary="Get online users",
     description="Retrieves list of currently online users",

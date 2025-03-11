@@ -69,6 +69,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     ws.onopen = () => {
       console.log('WebSocket connection established.');
       reconnectAttemptsRef.current = 0;
+
       // Process queued actions (subscribe/unsubscribe)
       queuedActions.current.forEach(action => action());
       queuedActions.current = [];
@@ -97,7 +98,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     ws.onclose = (event) => {
       clearInterval(heartbeatInterval);
       console.warn('WebSocket connection closed:', event);
-      console.log(`Close code: ${event.code}, reason: ${event.reason}`); // Additional logging for debugging
+
       if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const timeout = Math.min(10000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
         console.log(`Reconnecting in ${timeout / 1000} seconds...`);
@@ -121,17 +122,23 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Subscribe to a group
   const subscribe = (groupName: string) => {
     const performSubscribe = () => {
-      if (!subscribedGroupsRef.current.has(groupName)) {
-        socketRef.current?.send(JSON.stringify({ action: 'subscribe', group: groupName }));
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ action: 'subscribe', group: groupName }));
         subscribedGroupsRef.current.add(groupName);
         console.log(`Subscribed to group: ${groupName}`);
+      } else {
+        queuedActions.current.push(() => {
+          socketRef.current?.send(JSON.stringify({ action: 'subscribe', group: groupName }));
+          subscribedGroupsRef.current.add(groupName);
+          console.log(`Subscribed to group: ${groupName}`);
+        });
       }
     };
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       performSubscribe();
     } else {
-      queuedActions.current.push(performSubscribe); // Storing action in the queue
+      queuedActions.current.push(performSubscribe);  // Store actions to be executed once WebSocket is open
     }
   };
 
@@ -148,7 +155,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       performUnsubscribe();
     } else {
-      queuedActions.current.push(performUnsubscribe); // Storing action in the queue
+      queuedActions.current.push(performUnsubscribe);  // Store actions to be executed once WebSocket is open
     }
   };
 

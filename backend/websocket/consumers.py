@@ -9,7 +9,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.conf import settings
 from urllib.parse import parse_qs
 from jwt import ExpiredSignatureError, DecodeError
-
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -129,11 +129,13 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
 
         except json.JSONDecodeError:
             logger.error("Received invalid JSON message.")
-            await self.send(text_data=json.dumps({'error': 'Invalid JSON message received.'}))
+            await self.send(
+                text_data=json.dumps({'error': 'Invalid JSON message received.'}))
 
         except Exception as e:
             logger.error(f"Error processing message: {e}")
-            await self.send(text_data=json.dumps({'error': 'Error processing message.'}))
+            await self.send(
+                text_data=json.dumps({'error': 'Error processing message.'}))
 
 
 # Example of other consumers inheriting from BaseConsumer
@@ -208,19 +210,42 @@ class UserConsumer(BaseConsumer):
 
     async def user_online(self, event):
         """
-        Handle when a user comes online.
+        A user came online. Update the cache and broadcast to group members.
         """
         user_id = event['user_id']
+        await self.update_online_users_cache(user_id, online=True)
+
+        # Send out the message to the group so that frontends can update in real time
         await self.send(
-            text_data=json.dumps({'type': 'user_online', 'user_id': user_id}))
+            text_data=json.dumps({'type': 'user_online', 'user_id': user_id})
+        )
 
     async def user_offline(self, event):
         """
-        Handle when a user goes offline.
+        A user went offline. Update the cache and broadcast to group members.
         """
         user_id = event['user_id']
+        await self.update_online_users_cache(user_id, online=False)
+
         await self.send(
-            text_data=json.dumps({'type': 'user_offline', 'user_id': user_id}))
+            text_data=json.dumps({'type': 'user_offline', 'user_id': user_id})
+        )
+
+    @database_sync_to_async
+    def update_online_users_cache(self, user_id, online=True):
+        """
+        Stores or removes user_id in a 'online_users' list in the cache.
+        """
+        online_user_ids = cache.get('online_users', [])
+        if online:
+            if user_id not in online_user_ids:
+                online_user_ids.append(user_id)
+                logger.info(f"User {user_id} added to online users")
+        else:
+            if user_id in online_user_ids:
+                online_user_ids.remove(user_id)
+                logger.info(f"User {user_id} removed from online users")
+        cache.set('online_users', online_user_ids, None)
 
 
 class NotificationConsumer(BaseConsumer):
