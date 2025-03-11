@@ -53,7 +53,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       currentToken = newToken; // Use the refreshed token
     }
 
-    const baseWsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
+    const baseWsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws/users';
     const wsUrl = `${baseWsUrl}/?token=${currentToken}`;
     console.log(`Connecting to WebSocket at: ${wsUrl}`);
     const ws = new WebSocket(wsUrl);

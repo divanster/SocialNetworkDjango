@@ -33,14 +33,13 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const fetchOnlineUsers = async () => {
     try {
-      // Use the REACT_APP_API_URL to get the correct base URL
+      // Assuming REACT_APP_API_URL is set to the backend API base URL (e.g., http://localhost:8000/api/v1)
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/get_online_users/`);
       const onlineIds = response.data.map((user: any) => user.id);
       const details = response.data.reduce((acc: any, user: any) => ({
         ...acc,
         [user.id]: user.username
       }), {});
-
       setOnlineUsers(onlineIds);
       setUserDetails(details);
     } catch (error) {
@@ -49,9 +48,8 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   useEffect(() => {
-    // Setup WebSocket subscriptions
+    // Subscribe to online status updates via WebSocket events
     subscribe('online_status');
-
     const handleOnlineStatus = (event: Event) => {
       const message = (event as CustomEvent).detail;
       if (message.type === 'USER_ONLINE') {
@@ -60,9 +58,7 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
         removeUser(message.userId);
       }
     };
-
     window.addEventListener('ws-online_status', handleOnlineStatus);
-
     return () => {
       unsubscribe('online_status');
       window.removeEventListener('ws-online_status', handleOnlineStatus);
@@ -74,9 +70,7 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, []);
 
   return (
-    <OnlineStatusContext.Provider
-      value={{ onlineUsers, userDetails, addUser, removeUser, fetchOnlineUsers }}
-    >
+    <OnlineStatusContext.Provider value={{ onlineUsers, userDetails, addUser, removeUser, fetchOnlineUsers }}>
       {children}
     </OnlineStatusContext.Provider>
   );

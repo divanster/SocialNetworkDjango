@@ -14,6 +14,7 @@ from core.views import health_check, csp_report  # Import health_check and csp_r
 
 from core.graphql_views import CustomGraphQLView
 from schema import schema
+from users.views import get_online_users
 
 urlpatterns = [
     # Admin and health endpoints
@@ -30,6 +31,8 @@ urlpatterns = [
     # schema=schema), name='graphql'), path('graphql/', CustomGraphQLView.as_view(
     # graphiql=True)),
 
+    # Expose online users endpoint at top level:
+    path('api/v1/get_online_users/', get_online_users, name='get_online_users'),
 
     # API Versioning - Versioned API URLs
     path('api/v1/', include([

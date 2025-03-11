@@ -13,7 +13,7 @@ router.register(r'profiles', UserProfileViewSet, basename='userprofile')  # Regi
 
 urlpatterns = [
     # Online users
-    path('get_online_users/', get_online_users, name='get_online_users'),  # This should work as expected
+    path('get_online_users/', get_online_users, name='get_online_users'),
 
     # JWT Token Refresh endpoint (via SimpleJWT)
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

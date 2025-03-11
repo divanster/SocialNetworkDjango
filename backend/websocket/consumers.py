@@ -109,6 +109,13 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
             await self.close()
         return None
 
+    @database_sync_to_async
+    def get_user(self, user_id):
+        try:
+            return User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return None
+
     async def receive(self, text_data):
         """
         Handle received WebSocket messages, log them, and respond.
