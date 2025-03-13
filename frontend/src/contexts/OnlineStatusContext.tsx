@@ -17,29 +17,34 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [userDetails, setUserDetails] = useState<{ [key: string]: string }>({});
   const { subscribe, unsubscribe } = useWebSocketContext();
 
+  // Add a user to the list of online users and store their username
   const addUser = (userId: string, username: string) => {
-    setOnlineUsers(prev => [...new Set([...prev, userId])]);
-    setUserDetails(prev => ({ ...prev, [userId]: username }));
+    setOnlineUsers((prev) => [...new Set([...prev, userId])]);
+    setUserDetails((prev) => ({ ...prev, [userId]: username }));
   };
 
+  // Remove a user from the list of online users
   const removeUser = (userId: string) => {
-    setOnlineUsers(prev => prev.filter(id => id !== userId));
-    setUserDetails(prev => {
+    setOnlineUsers((prev) => prev.filter((id) => id !== userId));
+    setUserDetails((prev) => {
       const newDetails = { ...prev };
       delete newDetails[userId];
       return newDetails;
     });
   };
 
+  // Fetch the list of online users from the backend API
   const fetchOnlineUsers = async () => {
     try {
-      // Assuming REACT_APP_API_URL is set to the backend API base URL (e.g., http://localhost:8000/api/v1)
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/get_online_users/`);
       const onlineIds = response.data.map((user: any) => user.id);
-      const details = response.data.reduce((acc: any, user: any) => ({
-        ...acc,
-        [user.id]: user.username
-      }), {});
+      const details = response.data.reduce(
+        (acc: any, user: any) => ({
+          ...acc,
+          [user.id]: user.username,
+        }),
+        {}
+      );
       setOnlineUsers(onlineIds);
       setUserDetails(details);
     } catch (error) {
@@ -47,35 +52,45 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
+  // Effect to subscribe to the WebSocket channel for online status updates
   useEffect(() => {
-    // Subscribe to online status updates via WebSocket events
-    subscribe('online_status');
-    const handleOnlineStatus = (event: Event) => {
-      const message = (event as CustomEvent).detail;
-      if (message.type === 'USER_ONLINE') {
-        addUser(message.userId, message.username);
-      } else if (message.type === 'USER_OFFLINE') {
-        removeUser(message.userId);
-      }
-    };
-    window.addEventListener('ws-online_status', handleOnlineStatus);
-    return () => {
-      unsubscribe('online_status');
-      window.removeEventListener('ws-online_status', handleOnlineStatus);
-    };
-  }, [subscribe, unsubscribe]);
+  subscribe('users');  // Subscribe to the "users" WebSocket group
 
+  const handleOnlineStatus = (event: CustomEvent) => {
+    const message = event.detail;
+    if (message.type === 'user_online') {
+      addUser(message.user_id, message.username);
+    } else if (message.type === 'user_offline') {
+      removeUser(message.user_id);
+    }
+  };
+
+  window.addEventListener('ws-user_online', handleOnlineStatus);
+  window.addEventListener('ws-user_offline', handleOnlineStatus);
+
+  return () => {
+    unsubscribe('users');  // Unsubscribe from the "users" group when the component unmounts
+    window.removeEventListener('ws-user_online', handleOnlineStatus);
+    window.removeEventListener('ws-user_offline', handleOnlineStatus);
+  };
+}, [subscribe, unsubscribe]);
+
+
+  // Effect to fetch initial online users
   useEffect(() => {
     fetchOnlineUsers();
   }, []);
 
   return (
-    <OnlineStatusContext.Provider value={{ onlineUsers, userDetails, addUser, removeUser, fetchOnlineUsers }}>
+    <OnlineStatusContext.Provider
+      value={{ onlineUsers, userDetails, addUser, removeUser, fetchOnlineUsers }}
+    >
       {children}
     </OnlineStatusContext.Provider>
   );
 };
 
+// Custom hook to access the context
 export const useOnlineStatus = () => {
   const context = useContext(OnlineStatusContext);
   if (!context) throw new Error('useOnlineStatus must be used within OnlineStatusProvider');

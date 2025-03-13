@@ -11,3 +11,10 @@ export type PostData = {
   ratings: any[];
   tags: any[];
 };
+
+declare global {
+  interface WindowEventMap {
+    'ws-user_online': CustomEvent<any>;
+    'ws-user_offline': CustomEvent<any>;
+  }
+}

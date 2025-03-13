@@ -99,6 +99,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       clearInterval(heartbeatInterval);
       console.warn('WebSocket connection closed:', event);
 
+      // If connection is not closed normally (code !== 1000) attempt to reconnect
       if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const timeout = Math.min(10000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
         console.log(`Reconnecting in ${timeout / 1000} seconds...`);

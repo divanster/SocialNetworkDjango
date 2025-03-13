@@ -1,20 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUsers } from '../../services/api';  // Import the function to fetch all users
 import { useOnlineStatus } from '../../contexts/OnlineStatusContext';  // Import the context for online users
+import { useWebSocketContext } from '../../contexts/WebSocketContext';  // Import WebSocketContext
 
 const Contacts: React.FC = () => {
-  const { onlineUsers } = useOnlineStatus();  // Get online users from context
+  const { onlineUsers, userDetails, addUser, removeUser } = useOnlineStatus();  // Get functions and data from the context
+  const { subscribe, unsubscribe } = useWebSocketContext();  // Get subscribe and unsubscribe from WebSocketContext
   const [allUsers, setAllUsers] = useState<any[]>([]);  // State to hold all users
 
   useEffect(() => {
-    // Fetch all users from the API when the component mounts
     const getAllUsers = async () => {
-      const users = await fetchUsers();
-      setAllUsers(users);
+      const users = await fetchUsers();  // Call the function to fetch users
+      setAllUsers(users);  // Set the fetched users
     };
 
-    getAllUsers();  // Call the function to fetch users
-  }, []);  // Empty dependency array to run this effect only once when the component mounts
+    getAllUsers();  // Fetch all users on mount
+
+    // Subscribe to the "users" WebSocket group
+    subscribe('users');
+
+    // Handle online status
+    const handleOnlineStatus = (event: CustomEvent) => {
+      const message = event.detail;
+      if (message.type === 'user_online') {
+        addUser(message.user_id, message.username);  // Add user when they go online
+      } else if (message.type === 'user_offline') {
+        removeUser(message.user_id);  // Remove user when they go offline
+      }
+    };
+
+    window.addEventListener('ws-user_online', handleOnlineStatus);
+    window.addEventListener('ws-user_offline', handleOnlineStatus);
+
+    return () => {
+      unsubscribe('users');  // Unsubscribe when the component unmounts
+      window.removeEventListener('ws-user_online', handleOnlineStatus);
+      window.removeEventListener('ws-user_offline', handleOnlineStatus);
+    };
+  }, [addUser, removeUser, subscribe, unsubscribe]);  // Add the functions to the dependency array
 
   return (
     <div>
