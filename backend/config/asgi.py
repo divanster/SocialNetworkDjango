@@ -1,7 +1,6 @@
 import os
 import django
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
 from django.core.asgi import get_asgi_application
 import logging
 
@@ -24,7 +23,7 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
 
     # WebSocket connections are handled through the JWTMiddleware for JWT authentication
-    "websocket": JWTMiddleware(
+    "websocket": JWTMiddleware(  # Only JWTMiddleware is used here
         URLRouter(
             websocket_urlpatterns  # Include all WebSocket routes
         )

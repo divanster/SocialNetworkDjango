@@ -120,13 +120,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     responses={200: CustomUserSerializer(many=True)}
 )
 def get_online_users(request):
+    # Log the Authorization header received
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    logger.info(f"Authorization header received: {auth_header}")
+
     online_user_ids = cache.get('online_users', [])
-    logger.debug(f"Online User IDs from cache: {online_user_ids}")  # Debug log.
+    logger.debug(f"Online User IDs from cache: {online_user_ids}")
     users = CustomUser.objects.filter(id__in=online_user_ids)
     return Response(CustomUserSerializer(users, many=True).data)
-
-
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):

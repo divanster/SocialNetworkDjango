@@ -43,6 +43,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     let currentToken = token;
+
     if (isTokenExpired(token)) {
       console.log('Token expired. Refreshing token...');
       const newToken = await refreshToken();

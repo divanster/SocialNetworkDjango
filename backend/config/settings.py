@@ -9,6 +9,7 @@ from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from corsheaders.defaults import default_headers
 
 # -----------------------------
 # Environment Setup and Validation
@@ -382,8 +383,13 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
 ])
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = ["Authorization", "Content-Type", "X-Requested-With", "Accept",
-                      "X-Custom-Header"]
+CORS_ALLOW_HEADERS = default_headers + (
+    'Authorization',  # Allow the Authorization header for token-based requests
+    "Content-Type",
+    "X-Requested-With",
+    "Accept",
+    "X-Custom-Header"
+)
 
 # -----------------------------
 # GraphQL Configuration

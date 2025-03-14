@@ -34,6 +34,9 @@ class TokenAuthMiddleware(BaseMiddleware):
                 if len(auth_header) == 2 and auth_header[0].lower() == 'bearer':
                     token = auth_header[1]
 
+        # Log the token being validated
+        logger.info(f"Validating token: {token}")
+
         # If no token is found, assign AnonymousUser
         if not token:
             scope['user'] = AnonymousUser()

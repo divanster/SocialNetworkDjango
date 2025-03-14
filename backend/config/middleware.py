@@ -12,7 +12,7 @@ class JWTMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
         # Parse query string using urllib.parse.parse_qs
         query_string = scope.get("query_string", b"").decode()
-        query_params = parse_qs(query_string)  # Correct parsing
+        query_params = parse_qs(query_string)
 
         # Extract token from query params
         token = query_params.get("token", [None])[0]
@@ -29,6 +29,9 @@ class JWTMiddleware(BaseMiddleware):
             logger.warning("WebSocket connection rejected: No token provided.")
             await send({"type": "websocket.close", "code": 4000})
             return
+
+        # Log the token being validated
+        logger.info(f"Validating token: {token}")
 
         try:
             # Validate the JWT token
@@ -54,3 +57,4 @@ class JWTMiddleware(BaseMiddleware):
             return await User.objects.aget(id=user_id)
         except User.DoesNotExist:
             return AnonymousUser()
+
