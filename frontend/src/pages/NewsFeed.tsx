@@ -1,5 +1,4 @@
-// frontend/src/pages/NewsFeed.tsx
-
+// src/pages/NewsFeed.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import useWebSocket from '../hooks/useWebSocket';
@@ -10,10 +9,9 @@ import Profile from '../components/LeftSidebar/Profile';
 import FriendRequests from '../components/RightSidebar/FriendRequests';
 import Birthdays from '../components/RightSidebar/Birthdays';
 import Contacts from '../components/RightSidebar/Contacts';
-import CreatePosting from '../components/CentralNewsFeed/CreatePosting'; // Updated import
+import CreatePosting from '../components/CentralNewsFeed/CreatePosting';
 import './NewsFeed.css';
 
-// Import your types
 import { Post as PostType } from '../types/post';
 import { Album as AlbumType } from '../types/album';
 import { SharedItem as SharedItemType } from '../types/sharedItem';
@@ -33,7 +31,6 @@ const NewsFeed: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
 
-  // IDs must be strings if our `PostType.id` is a string
   const [updatingPostIds, setUpdatingPostIds] = useState<string[]>([]);
   const [deletingPostIds, setDeletingPostIds] = useState<string[]>([]);
 
@@ -43,8 +40,7 @@ const NewsFeed: React.FC = () => {
     variant: 'success',
   });
 
-  // --- Create or add items (callback props) ---
-
+  // Callbacks for adding new items
   const addNewPost = (newPost: PostType) => {
     setPosts((prevPosts) => [newPost, ...prevPosts]);
     setToast({ show: true, message: 'Post created successfully!', variant: 'success' });
@@ -60,8 +56,7 @@ const NewsFeed: React.FC = () => {
     setToast({ show: true, message: 'Content shared successfully!', variant: 'success' });
   };
 
-  // --- WebSocket handlers ---
-
+  // WebSocket handlers
   const handlePostsMessage = useCallback(
     (data: any) => {
       if (data.message && data.type === 'post') {
@@ -91,13 +86,13 @@ const NewsFeed: React.FC = () => {
     []
   );
 
-  // Use your custom hooks for WebSocket
+  // Use our custom WebSocket hook for posts and albums.
   const { sendMessage: sendPostMessage } = useWebSocket('posts', { onMessage: handlePostsMessage });
   const { sendMessage: sendAlbumMessage } = useWebSocket('albums', { onMessage: handleAlbumsMessage });
 
-  // --- Fetch Data on Mount ---
+  // Fetch Data on Mount
   useEffect(() => {
-    if (authLoading) return;     // Wait until AuthContext is done loading
+    if (authLoading) return;
     if (!token) {
       setError('User is not authenticated.');
       setDataLoading(false);
@@ -109,7 +104,6 @@ const NewsFeed: React.FC = () => {
         const response = await axios.get(`${API_URL}/newsfeed/feed/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         setPosts(response.data.posts || []);
         setAlbums(response.data.albums || []);
         setSharedItems(response.data.shared_items || []);
@@ -124,16 +118,13 @@ const NewsFeed: React.FC = () => {
     fetchData();
   }, [token, authLoading]);
 
-  // --- Handlers (CRUD) ---
-
-  // Delete a Post by its string ID
+  // CRUD Handlers (simplified)
   const handleDeletePost = async (id: string) => {
     if (!token) {
       setDeleteError('You must be logged in to delete a post.');
       return;
     }
     setDeletingPostIds((prev) => [...prev, id]);
-
     try {
       await axios.delete(`${API_URL}/social/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -149,14 +140,12 @@ const NewsFeed: React.FC = () => {
     }
   };
 
-  // Update a post (we get the entire post object)
   const handleUpdatePost = async (updatedPost: PostType) => {
     if (!token) {
       setError('You must be logged in to update a post.');
       return;
     }
     setUpdatingPostIds((prev) => [...prev, updatedPost.id]);
-
     try {
       const response = await axios.put(`${API_URL}/social/${updatedPost.id}/`, updatedPost, {
         headers: {
@@ -164,7 +153,6 @@ const NewsFeed: React.FC = () => {
           'Content-Type': 'application/json',
         },
       });
-      // Replace the post in local state with the updated data
       setPosts((prev) =>
         prev.map((p) => (p.id === updatedPost.id ? response.data : p))
       );
@@ -177,13 +165,11 @@ const NewsFeed: React.FC = () => {
     }
   };
 
-  // Delete an Album by its string ID
   const handleDeleteAlbum = async (id: string) => {
     if (!token) {
       setDeleteError('You must be logged in to delete an album.');
       return;
     }
-
     try {
       await axios.delete(`${API_URL}/albums/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -197,13 +183,11 @@ const NewsFeed: React.FC = () => {
     }
   };
 
-  // Update an album (we get the entire album object)
   const handleUpdateAlbum = async (updatedAlbum: AlbumType) => {
     if (!token) {
       setError('You must be logged in to update an album.');
       return;
     }
-
     try {
       const formData = new FormData();
       formData.append('title', updatedAlbum.title);
@@ -222,7 +206,6 @@ const NewsFeed: React.FC = () => {
           'Content-Type': 'multipart/form-data',
         },
       });
-
       setAlbums((prev) =>
         prev.map((a) => (a.id === updatedAlbum.id ? response.data : a))
       );
@@ -233,13 +216,11 @@ const NewsFeed: React.FC = () => {
     }
   };
 
-  // Delete a Shared Item by its string ID
   const handleDeleteSharedItem = async (id: string) => {
     if (!token) {
       setDeleteError('You must be logged in to delete shared content.');
       return;
     }
-
     try {
       await axios.delete(`${API_URL}/shared/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -262,7 +243,6 @@ const NewsFeed: React.FC = () => {
 
       {/* Main Feed */}
       <div className="main-feed flex-grow-1">
-        {/* CreatePosting component replaces CreatePost and CreateAlbum */}
         <CreatePosting
           onPostCreated={addNewPost}
           onAlbumCreated={addNewAlbum}
@@ -278,13 +258,8 @@ const NewsFeed: React.FC = () => {
             {deleteError && <div className="alert alert-danger">{deleteError}</div>}
             {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
 
-            {/* Shared Items */}
-            <SharedItem
-              sharedItems={sharedItems}
-              onDeleteSharedItem={handleDeleteSharedItem}
-            />
+            <SharedItem sharedItems={sharedItems} onDeleteSharedItem={handleDeleteSharedItem} />
 
-            {/* Posts */}
             <Posts
               posts={posts}
               onDeletePost={handleDeletePost}
@@ -293,7 +268,6 @@ const NewsFeed: React.FC = () => {
               updatingPostIds={updatingPostIds}
             />
 
-            {/* Albums */}
             {albums.length > 0 ? (
               albums.map((album) => (
                 <Album
