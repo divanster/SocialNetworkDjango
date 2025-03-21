@@ -1,5 +1,17 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import jwt_decode from 'jwt-decode';
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const decoded: any = jwt_decode(token);
+    const currentTime = Date.now() / 1000; // current time in seconds
+    return decoded.exp < currentTime;
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return true; // assume expired if decoding fails
+  }
+}
 
 interface WebSocketHandler<T> {
   onMessage: (data: T) => void;
@@ -21,22 +33,48 @@ export default function useWebSocket<T>(
   const maxReconnectAttempts = 5;
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
-  const isConnecting = useRef(false); // Prevent redundant connections
+  const isConnecting = useRef(false);
 
   // Stable message handler reference
   const messageHandlerRef = useRef(onMessage);
   messageHandlerRef.current = onMessage;
 
-  // Send messages through WebSocket
   const sendMessage = useCallback((message: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(message);
+    } else {
+      console.warn('WebSocket not open, message not sent.');
+    }
+  }, []);
+
+  const reconnect = useCallback(() => {
+    if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+      reconnectAttemptsRef.current += 1;
+      console.log(`Reconnecting attempt ${reconnectAttemptsRef.current}`);
+      connect(); // Try to reconnect
+    } else {
+      console.error('Max reconnect attempts reached, WebSocket not connected.');
     }
   }, []);
 
   // Connect to WebSocket
   const connect = useCallback(() => {
-    if (loading || !token || !isAuthenticated || isConnecting.current) return;
+    // Prevent repeated calls
+    if (loading || isConnecting.current) return;
+
+    // No token or user is not authenticated => skip
+    if (!token || !isAuthenticated) {
+      console.warn('No valid token or not authenticated; skipping WebSocket connect.');
+      return;
+    }
+
+    // If token is expired, skip connecting. AuthContext should handle refreshing.
+    if (isTokenExpired(token)) {
+      console.warn('Token is expired; skipping WebSocket connect.');
+      return;
+    }
+
+    isConnecting.current = true;
 
     // Clear any previous reconnection attempt
     if (reconnectTimeoutRef.current) {
@@ -58,66 +96,62 @@ export default function useWebSocket<T>(
     console.log(`Attempting connection to ${wsUrl}`);
     socketRef.current = new WebSocket(wsUrl.toString());
 
-    // Add heartbeat mechanism
+    // Setup heartbeat mechanism
     heartbeatIntervalRef.current = setInterval(() => {
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(JSON.stringify({ type: 'heartbeat' }));
       }
-    }, 30000); // Send heartbeat every 30 seconds
+    }, 30000);
 
     socketRef.current.onopen = () => {
       console.log(`Connected to ${groupName}`);
       reconnectAttemptsRef.current = 0;
+      isConnecting.current = false;
+
+      // Once connected, we stop the heartbeat setup.
+      // (Alternatively, you might want to keep it running at intervals,
+      // but let’s clear it here and re-set if needed.)
       if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current); // Stop heartbeat on successful connection
+        clearInterval(heartbeatIntervalRef.current);
       }
     };
 
     socketRef.current.onclose = (event: CloseEvent) => {
+      console.error('WebSocket closed:', event);
+      isConnecting.current = false;
+
       if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current); // Clear heartbeat on close
+        clearInterval(heartbeatIntervalRef.current);
       }
 
-      if (event.code !== 1000) {  // Only reconnect for abnormal closures
+      if (event.code !== 1000) {
         const delay = Math.min(30000, Math.pow(2, reconnectAttemptsRef.current) * 1000);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectAttemptsRef.current += 1;
-          connect();
-        }, delay);
+        console.log(`Reconnecting in ${delay / 1000} seconds...`);
+        reconnectTimeoutRef.current = setTimeout(reconnect, delay);
       }
     };
 
     socketRef.current.onerror = (error: Event) => {
       console.error(`WebSocket error for ${groupName}:`, error);
-      reconnect(); // Attempt reconnection for any error
+      // Attempt reconnection for any error
+      // But first close the socket to avoid half-open
+      socketRef.current?.close();
     };
 
     socketRef.current.onmessage = (event) => {
       try {
         const data: T = JSON.parse(event.data);
         messageHandlerRef.current(data);
-      } catch (error) {
-        console.error(`Error parsing message for ${groupName}:`, error);
+      } catch (err) {
+        console.error(`Error parsing message for ${groupName}:`, err);
       }
     };
-  }, [groupName, token, loading, isAuthenticated]);
+  }, [groupName, token, isAuthenticated, loading, reconnect]);
 
-  // Reconnection logic
-  const reconnect = () => {
-    if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-      connect();
-    } else {
-      console.error('Max reconnect attempts reached, WebSocket not connected.');
-    }
-  };
-
-  // Trigger connection once loading is false and token is available
   useEffect(() => {
     if (!loading && token && isAuthenticated) {
       connect();
     }
-
-    // Cleanup on component unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.close(1000, 'Component unmounted');
@@ -127,7 +161,7 @@ export default function useWebSocket<T>(
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current); // Clear heartbeat on cleanup
+        clearInterval(heartbeatIntervalRef.current);
       }
       isConnecting.current = false;
     };

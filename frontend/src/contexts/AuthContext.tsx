@@ -55,7 +55,7 @@ interface AuthContextType {
   loading: boolean;
   login: (accessToken: string, refreshTokenStr: string) => void;
   logout: () => Promise<void>;
-  refreshToken: () => Promise<string | null>;
+  refreshToken: () => Promise<string | null>; // Ensure this function is included in the context type
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
