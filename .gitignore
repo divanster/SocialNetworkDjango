@@ -31,7 +31,7 @@ yarn-error.log
 *.swp
 .vol
 docker-compose.override.yml
-.konspraz
+.konslaina
 
 # Build directories
 build/

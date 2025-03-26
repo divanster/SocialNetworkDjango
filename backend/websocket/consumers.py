@@ -50,10 +50,10 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
         """
         Handles the WebSocket connection after validating the JWT token.
         """
-        user = await self.authenticate_user()
+        user = await self.authenticate_user()  # Call authentication method
         if user:
             self.scope['user'] = user
-            await super().connect()
+            await super().connect()  # Add user to group and accept the connection
             logger.info(f"WebSocket connected for user: {user.username}")
         else:
             logger.warning("Authentication failed, rejecting connection.")
@@ -85,27 +85,19 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
                     logger.warning(f"User with ID {decoded['user_id']} not found.")
             except ExpiredSignatureError:
                 logger.warning("Token has expired.")
-                await self.send(text_data=json.dumps({
-                    'error': 'Token has expired.'
-                }))
+                await self.send(text_data=json.dumps({'error': 'Token has expired.'}))
                 await self.close()
             except DecodeError as e:
                 logger.warning(f"Token decoding error: {e}")
-                await self.send(text_data=json.dumps({
-                    'error': 'Invalid token.'
-                }))
+                await self.send(text_data=json.dumps({'error': 'Invalid token.'}))
                 await self.close()
             except (InvalidToken, TokenError) as e:
                 logger.warning(f"Invalid token error: {e}")
-                await self.send(text_data=json.dumps({
-                    'error': 'Invalid token.'
-                }))
+                await self.send(text_data=json.dumps({'error': 'Invalid token.'}))
                 await self.close()
         else:
             logger.warning("Token not provided.")
-            await self.send(text_data=json.dumps({
-                'error': 'Token not provided.'
-            }))
+            await self.send(text_data=json.dumps({'error': 'Token not provided.'}))
             await self.close()
         return None
 

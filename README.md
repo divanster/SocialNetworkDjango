@@ -108,7 +108,7 @@ Docker simplifies the setup by containerizing all services.
    Duplicate the `.env.example` file:
 
    ```bash
-   cp backend/.konspraz.example backend/.konspraz
+   cp backend/.konslaina.example backend/.konslaina
    ```
 
    Edit `backend/.env` with your configurations.
@@ -165,7 +165,7 @@ For those preferring a non-Docker setup:
 4. Configure Environment Variables:
 
    ```bash
-   cp .konspraz.example .konspraz
+   cp .konslaina.example .konslaina
    ```
 
    Edit `backend/.env` with your settings.

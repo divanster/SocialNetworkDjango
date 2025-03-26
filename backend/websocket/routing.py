@@ -35,5 +35,5 @@ websocket_urlpatterns = [
     path("ws/notifications/", NotificationConsumer.as_asgi()),
     path("ws/presence/", PresenceConsumer.as_asgi()),
     path("ws/", DefaultConsumer.as_asgi()),
-    # Add more routes as needed for other appss
+    # Add more routes as needed for other apps
 ]

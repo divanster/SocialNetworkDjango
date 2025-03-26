@@ -1,10 +1,8 @@
-
 services:
+  # PostgreSQL for SQL models in Django
   db:
     image: postgres:13-alpine
     platform: linux/arm64
-    env_file:
-      - ./backend/.env
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-app_db}
       POSTGRES_USER: ${POSTGRES_USER:-app_user}
@@ -19,6 +17,7 @@ services:
     networks:
       - backend_network
 
+  # Redis for caching and Celery broker
   redis:
     image: redis:6-alpine
     platform: linux/arm64
@@ -32,56 +31,32 @@ services:
     networks:
       - backend_network
 
-  zookeeper:
-    image: bitnami/zookeeper:latest
-    platform: linux/arm64
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 3000
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data:delegated
-      - zookeeper_datalog:/var/lib/zookeeper/log:delegated
-    healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-    restart: always
-    networks:
-      - kafka_network
-
+  # Kafka broker for event handling
   kafka:
-    build:
-      context: .
-      dockerfile: Dockerfile.kafka
+    image: bitnami/kafka:3.7.0
     platform: linux/arm64
-    depends_on:
-      zookeeper:
-        condition: service_healthy
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_KRAFT_MODE: "true"  # Enable KRaft mode (no Zookeeper)
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"  # Set the roles to controller and broker for KRaft
+      KAFKA_CFG_NODE_ID: "1"  # Unique node ID for the KRaft cluster
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"  # Controller quorum
+      KAFKA_CFG_LISTENERS: "CONTROLLER://:9093,BROKER://:9092"  # Kafka listeners
+      KAFKA_CFG_ADVERTISED_LISTENERS: "BROKER://kafka:9092"  # Kafka advertised listeners
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,BROKER:PLAINTEXT"  # Security protocol
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"  # Controller listener names
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Auto-create topics
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"  # Set replication factor for internal topics
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"  # Set JVM heap options
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "BROKER"
+    ports:
+      - "9092:9092"
     volumes:
       - kafka_data:/var/lib/kafka/data
-    ports:
-      - "9093:9092"
     healthcheck:
-      test: ["CMD", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "kafka:9092"]
+      test: [ "CMD", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "kafka:9092" ]
       interval: 30s
       timeout: 10s
       retries: 5
-    restart: always
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     networks:
       - kafka_network
 
@@ -113,7 +88,7 @@ services:
     env_file:
       - ./backend/.env
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -124,9 +99,7 @@ services:
       - backend_network
       - kafka_network
 
-
-
-    # Celery Worker for task processing
+  # Celery Worker for task processing
   celery-worker:
     build:
       context: ./backend
@@ -208,20 +181,14 @@ services:
     depends_on:
       web:
         condition: service_healthy
-    dns:
-      - 8.8.8.8   # Google DNS
-      - 1.1.1.1   # Cloudflare DNS
     networks:
       - frontend_network
       - backend_network
-
 
 # Volumes for data persistence
 volumes:
   postgres_data:
   redis_data:
-  zookeeper_data:
-  zookeeper_datalog:
   kafka_data:
 
 # Networks for inter-service communication
