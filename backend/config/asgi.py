@@ -2,6 +2,7 @@ import os
 import django
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
+from channels.security.websocket import AllowedHostsOriginValidator
 import logging
 
 # Set up the Django settings environment
@@ -23,9 +24,9 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
 
     # WebSocket connections are handled through the JWTMiddleware for JWT authentication
-    "websocket": JWTMiddleware(  # Only JWTMiddleware is used here
-        URLRouter(
-            websocket_urlpatterns  # Include all WebSocket routes
+    "websocket": AllowedHostsOriginValidator(  # <-- wrap with origin validator
+        JWTMiddleware(
+            URLRouter(websocket_urlpatterns)
         )
     ),
 })

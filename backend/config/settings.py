@@ -98,7 +98,6 @@ if missing_topics:
 # Kafka encryption key for securing messages
 KAFKA_ENCRYPTION_KEY = env('KAFKA_ENCRYPTION_KEY', default=None)
 
-
 # -----------------------------
 # Authentication Backends
 # -----------------------------
@@ -215,11 +214,18 @@ CHANNEL_LAYERS = {
         'CONFIG': {
             'hosts': [
                 (
-                env('REDIS_HOST', default='redis'), env.int('REDIS_PORT', default=6379))
+                    env('REDIS_HOST', default='redis'),
+                    env.int('REDIS_PORT', default=6379))
             ],
         },
     },
 }
+CHANNELS_ALLOWED_HOSTS = [
+    'localhost:3000',
+    '127.0.0.1:3000',
+    'frontend:3000',
+]
+
 REDIS_HOST = env('REDIS_HOST', default='redis')
 REDIS_PORT = env.int('REDIS_PORT', default=6379)
 
@@ -312,7 +318,6 @@ SIMPLE_JWT_SIGNING_KEY = env('SIMPLE_JWT_SIGNING_KEY', default=None)
 if not SIMPLE_JWT_SIGNING_KEY:
     raise ImproperlyConfigured("The SIMPLE_JWT_SIGNING_KEY environment variable must "
                                "be set for JWT security.")
-
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(
@@ -463,11 +468,12 @@ if SENTRY_DSN:
 # -----------------------------
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
-"'self'", "https://apis.google.com", "https://cdn.jsdelivr.net", "'unsafe-inline'")
+    "'self'", "https://apis.google.com", "https://cdn.jsdelivr.net", "'unsafe-inline'")
 CSP_IMG_SRC = (
-"'self'", "https://images.unsplash.com", "https://cdn.jsdelivr.net", "data:")
+    "'self'", "https://images.unsplash.com", "https://cdn.jsdelivr.net", "data:")
 CSP_STYLE_SRC = (
-"'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", "'unsafe-inline'")
+    "'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net",
+    "'unsafe-inline'")
 CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_BASE_URI = ("'self'",)

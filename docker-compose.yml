@@ -131,6 +131,7 @@ services:
     networks:
       - backend_network
       - kafka_network
+      - frontend_network
 
   # Kafka Consumer Service
   kafka-consumer:

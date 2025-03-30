@@ -18,20 +18,35 @@ User = get_user_model()
 class BaseConsumer(AsyncWebsocketConsumer):
     """
     Base WebSocket consumer that handles common logic for all consumers.
+    Each subclass should set a 'group_name' at the class level.
     """
+
+    group_name = None  # Subclasses will override
 
     async def connect(self):
         """
         Adds the channel to a group and accepts the connection.
         """
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        # Instead of reading from self.scope['url_route']['kwargs']['group_name'],
+        # we rely on the class-level group_name each subclass sets.
+        if not self.group_name:
+            # Fallback or default group name if none is set:
+            self.group_name = "default"
+
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
         await self.accept()
 
     async def disconnect(self, close_code):
         """
         Removes the channel from the group on disconnect.
         """
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
 
     async def kafka_message(self, event):
         """
@@ -44,16 +59,18 @@ class BaseConsumer(AsyncWebsocketConsumer):
 class AuthenticatedWebsocketConsumer(BaseConsumer):
     """
     A WebSocket consumer that handles authentication using JWT tokens.
+    Subclasses can still specify a group_name, or you can subclass this
+    directly if you need per-route authentication.
     """
 
     async def connect(self):
         """
         Handles the WebSocket connection after validating the JWT token.
         """
-        user = await self.authenticate_user()  # Call authentication method
+        user = await self.authenticate_user()  # Validate JWT
         if user:
             self.scope['user'] = user
-            await super().connect()  # Add user to group and accept the connection
+            await super().connect()  # Calls BaseConsumer.connect()
             logger.info(f"WebSocket connected for user: {user.username}")
         else:
             logger.warning("Authentication failed, rejecting connection.")
@@ -61,22 +78,22 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
 
     async def authenticate_user(self):
         """
-        Validates the JWT token passed in the WebSocket query string.
+        Validates the JWT token passed in the WebSocket query string (?token=...).
         """
         query_string = self.scope['query_string'].decode()
         params = parse_qs(query_string)
-        token = params.get('token')
+        token_list = params.get('token')
 
-        if token:
-            token = token[0]
-            logger.info(
-                f"Received token: {token[:10]}...")  # Log the token (partial for security)
+        if token_list:
+            token = token_list[0]
+            logger.info(f"Received token: {token[:10]}...")  # Partial logging for security
 
             try:
                 UntypedToken(token)  # Validate the token format
                 decoded = TokenBackend(
-                    algorithm=settings.SIMPLE_JWT['ALGORITHM']).decode(token,
-                                                                       verify=True)
+                    algorithm=settings.SIMPLE_JWT['ALGORITHM']
+                ).decode(token, verify=True)
+
                 logger.info(f"Decoded JWT Token: {decoded}")
                 user = await self.get_user(decoded['user_id'])
                 if user:
@@ -86,19 +103,18 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
             except ExpiredSignatureError:
                 logger.warning("Token has expired.")
                 await self.send(text_data=json.dumps({'error': 'Token has expired.'}))
-                await self.close()
             except DecodeError as e:
                 logger.warning(f"Token decoding error: {e}")
                 await self.send(text_data=json.dumps({'error': 'Invalid token.'}))
-                await self.close()
             except (InvalidToken, TokenError) as e:
                 logger.warning(f"Invalid token error: {e}")
                 await self.send(text_data=json.dumps({'error': 'Invalid token.'}))
-                await self.close()
         else:
             logger.warning("Token not provided.")
             await self.send(text_data=json.dumps({'error': 'Token not provided.'}))
-            await self.close()
+
+        # In all error cases, close the connection:
+        await self.close()
         return None
 
     @database_sync_to_async
@@ -112,32 +128,28 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
         """
         Handle received WebSocket messages, log them, and respond.
         """
-        # Log the received message
         logger.info(f"Received WebSocket message: {text_data}")
-
-        # Process the message and send a response
         try:
-            text_data_json = json.loads(text_data)
-            message = text_data_json.get('message', 'No message content')
+            data = json.loads(text_data)
+            message = data.get('message', 'No message content')
 
             # Log the processed message
             logger.info(f"Processed message: {message}")
 
-            # Send back the message
+            # Echo the message back
             await self.send(text_data=json.dumps({'message': message}))
-
         except json.JSONDecodeError:
             logger.error("Received invalid JSON message.")
-            await self.send(
-                text_data=json.dumps({'error': 'Invalid JSON message received.'}))
-
+            await self.send(text_data=json.dumps({'error': 'Invalid JSON message received.'}))
         except Exception as e:
             logger.error(f"Error processing message: {e}")
-            await self.send(
-                text_data=json.dumps({'error': 'Error processing message.'}))
+            await self.send(text_data=json.dumps({'error': 'Error processing message.'}))
 
 
-# Example of other consumers inheriting from BaseConsumer
+#
+# Specific Consumers With Fixed group_name
+#
+
 class PostConsumer(BaseConsumer):
     group_name = 'posts'
 
@@ -182,29 +194,37 @@ class TaggingConsumer(BaseConsumer):
     group_name = 'tagging'
 
 
-class UserConsumer(BaseConsumer):
+class NotificationConsumer(BaseConsumer):
+    group_name = 'notifications'
+
+
+class UserConsumer(AuthenticatedWebsocketConsumer):
+    """
+    Consumer that tracks user presence in the 'users' group.
+    Inherits from AuthenticatedWebsocketConsumer to ensure token-based authentication.
+    """
+
     group_name = 'users'
 
     async def connect(self):
-        """
-        Add user to group and notify others when they are online.
-        """
-        self.user_id = self.scope["user"].id
         await super().connect()
-
-        await self.channel_layer.group_send(self.group_name, {
-            'type': 'user_online',
-            'user_id': self.user_id,
-        })
+        user = self.scope.get("user")
+        self.user_id = user.id if user else None
+        self.username = user.username if user else "Unknown"
+        if self.user_id:
+            await self.channel_layer.group_send(self.group_name, {
+                'type': 'user_online',
+                'user_id': self.user_id,
+                'username': self.username,
+            })
 
     async def disconnect(self, close_code):
-        """
-        Notify others when the user goes offline.
-        """
-        await self.channel_layer.group_send(self.group_name, {
-            'type': 'user_offline',
-            'user_id': self.user_id,
-        })
+        if self.user_id:
+            await self.channel_layer.group_send(self.group_name, {
+                'type': 'user_offline',
+                'user_id': self.user_id,
+                'username': self.username,
+            })
         await super().disconnect(close_code)
 
     async def user_online(self, event):
@@ -212,29 +232,21 @@ class UserConsumer(BaseConsumer):
         A user came online. Update the cache and broadcast to group members.
         """
         user_id = event['user_id']
+        username = event.get('username', '')
         await self.update_online_users_cache(user_id, online=True)
-
-        # Send out the message to the group so that frontends can update in real time
-        await self.send(
-            text_data=json.dumps({'type': 'user_online', 'user_id': user_id})
-        )
+        await self.send(json.dumps({'type': 'user_online', 'user_id': user_id, 'username': username}))
 
     async def user_offline(self, event):
         """
         A user went offline. Update the cache and broadcast to group members.
         """
         user_id = event['user_id']
+        username = event.get('username', '')
         await self.update_online_users_cache(user_id, online=False)
-
-        await self.send(
-            text_data=json.dumps({'type': 'user_offline', 'user_id': user_id})
-        )
+        await self.send(json.dumps({'type': 'user_offline', 'user_id': user_id, 'username': username}))
 
     @database_sync_to_async
     def update_online_users_cache(self, user_id, online=True):
-        """
-        Stores or removes user_id in a 'online_users' list in the cache.
-        """
         online_user_ids = cache.get('online_users', [])
         if online:
             if user_id not in online_user_ids:
@@ -247,55 +259,37 @@ class UserConsumer(BaseConsumer):
         cache.set('online_users', online_user_ids, None)
 
 
-class NotificationConsumer(BaseConsumer):
-    group_name = 'notifications'
-
-
-# PresenceConsumer added
 class PresenceConsumer(AsyncWebsocketConsumer):
+    """
+    A simple consumer that doesn't need group_name logic from BaseConsumer.
+    """
     async def connect(self):
         self.group_name = 'presence'
-        # Join the group
-        await self.channel_layer.group_add(
-            self.group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave the group
-        await self.channel_layer.group_discard(
-            self.group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
-        # Handle the message received
-        text_data_json = json.loads(text_data)
-        message = text_data_json['message']
-
-        # Send message to WebSocket
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
+        data = json.loads(text_data)
+        message = data.get('message')
+        # Echo it back
+        await self.send(json.dumps({'message': message}))
 
 
 class DefaultConsumer(AsyncWebsocketConsumer):
     """
-    Default WebSocket consumer that handles connections to the "ws/" path.
+    Default catch-all for /ws/ with no subpath.
     """
-
     async def connect(self):
         await self.accept()
-        # You can add any custom logic here to handle connection to "ws/"
-        await self.send(text_data=json.dumps({
+        await self.send(json.dumps({
             'message': 'Connected to the default WebSocket endpoint.'
         }))
 
     async def disconnect(self, close_code):
-        # Handle disconnection
         pass
 
     async def receive(self, text_data):
-        # Handle any messages sent from the client (if needed)
         pass
