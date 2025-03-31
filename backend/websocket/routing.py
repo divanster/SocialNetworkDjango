@@ -32,6 +32,6 @@ websocket_urlpatterns = [
     re_path(r"^ws/notifications/$", NotificationConsumer.as_asgi()),
     re_path(r"^ws/users/$", UserConsumer.as_asgi()),
     re_path(r"^ws/presence/$", PresenceConsumer.as_asgi()),
-    # Default fallback route – remove this if not needed.
+    # Default fallback route – remove if not needed.
     re_path(r"^ws/$", DefaultConsumer.as_asgi()),
 ]

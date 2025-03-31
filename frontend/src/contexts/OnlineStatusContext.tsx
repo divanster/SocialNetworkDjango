@@ -16,12 +16,14 @@ const OnlineStatusContext = createContext<OnlineStatusContextType | undefined>(u
 export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [userDetails, setUserDetails] = useState<{ [key: string]: string }>({});
-  const { subscribe, unsubscribe } = useWebSocketContext();
   const { token, refreshToken } = useAuth();
+  const { subscribe, unsubscribe } = useWebSocketContext();
 
+  // Helper functions to update state.
   const addUser = (userId: string, username: string) => {
     setOnlineUsers(prev => [...new Set([...prev, userId])]);
     setUserDetails(prev => ({ ...prev, [userId]: username }));
+    console.log(`User added: ${userId} (${username})`);
   };
 
   const removeUser = (userId: string) => {
@@ -31,77 +33,74 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
       delete newDetails[userId];
       return newDetails;
     });
+    console.log(`User removed: ${userId}`);
   };
 
+  // Fetch online users from your REST endpoint.
   const fetchOnlineUsers = async () => {
     try {
       if (!token) {
-        console.error('No token found in localStorage.');
+        console.error('No token found.');
         return;
       }
-
-      // Check if the token has expired
+      // Refresh token if nearing expiry.
       const tokenPayload = decodeToken(token);
-      const expiryTime = tokenPayload.exp * 1000; // Convert to milliseconds
+      const expiryTime = tokenPayload.exp * 1000;
       const currentTime = Date.now();
-      const timeLeft = expiryTime - currentTime;
-
-      if (timeLeft < 60000) {
-        await refreshToken(); // Refresh token if less than 1 minute is left
+      if (expiryTime - currentTime < 60000) {
+        await refreshToken();
       }
-
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/get_online_users/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/get_online_users/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       const onlineIds = response.data.map((user: any) => user.id);
-      const details = response.data.reduce((acc: any, user: any) => ({
-        ...acc,
-        [user.id]: user.username,
-      }), {});
+      const details = response.data.reduce(
+        (acc: any, user: any) => ({ ...acc, [user.id]: user.username }),
+        {}
+      );
       setOnlineUsers(onlineIds);
       setUserDetails(details);
+      console.log('Fetched online users:', onlineIds);
     } catch (error) {
       console.error('Error fetching online users:', error);
     }
   };
 
+  // Listen for custom events dispatched by WebSocketContext.
   useEffect(() => {
-    subscribe('users');
-    const handleOnlineStatus = (event: CustomEvent) => {
-      const message = event.detail;
-      if (message.type === 'user_online') {
-        addUser(message.user_id, message.username);
-      } else if (message.type === 'user_offline') {
-        removeUser(message.user_id);
-      }
-    };
+  const handleUsersEvent = (event: Event) => {
+    const customEvent = event as CustomEvent<any>;
+    // Now you can access customEvent.detail safely.
+    if (customEvent.detail && customEvent.detail.type === 'user_online') {
+      addUser(customEvent.detail.user_id, customEvent.detail.username);
+    } else if (customEvent.detail && customEvent.detail.type === 'user_offline') {
+      removeUser(customEvent.detail.user_id);
+    }
+  };
 
-    window.addEventListener('ws-user_online', handleOnlineStatus);
-    window.addEventListener('ws-user_offline', handleOnlineStatus);
+  window.addEventListener('ws-users', handleUsersEvent as EventListener);
 
-    return () => {
-      unsubscribe('users');
-      window.removeEventListener('ws-user_online', handleOnlineStatus);
-      window.removeEventListener('ws-user_offline', handleOnlineStatus);
-    };
-  }, [subscribe, unsubscribe]);
+  return () => {
+    window.removeEventListener('ws-users', handleUsersEvent as EventListener);
+  };
+}, [addUser, removeUser]);
+
 
   useEffect(() => {
-    fetchOnlineUsers();
+    if (token) {
+      fetchOnlineUsers();
+    }
   }, [token]);
 
+  // Helper to decode JWT.
   const decodeToken = (token: string) => {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split('')
-        .map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        })
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
     return JSON.parse(jsonPayload);
@@ -116,6 +115,8 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
 
 export const useOnlineStatus = () => {
   const context = useContext(OnlineStatusContext);
-  if (!context) throw new Error('useOnlineStatus must be used within OnlineStatusProvider');
+  if (!context) {
+    throw new Error('useOnlineStatus must be used within OnlineStatusProvider');
+  }
   return context;
 };

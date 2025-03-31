@@ -51,8 +51,8 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
       currentToken = newToken;
     }
-    // Change default endpoint as needed; here we use "/ws/users" so subscriptions work.
-    const wsUrl = `${process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws/users'}/?token=${currentToken}`;
+    // Hardcode the endpoint for the "users" channel.
+    const wsUrl = `ws://localhost:8000/ws/users/?token=${currentToken}`;
     const ws = new WebSocket(wsUrl);
     socketRef.current = ws;
 
@@ -66,13 +66,15 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
       reconnectAttemptsRef.current = 0;
       queuedActions.current.forEach(action => action());
       queuedActions.current = [];
+      console.log('WebSocketContext: Connection opened.');
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        // Expect an object with "group" and "message"
         if (data.group && data.message) {
-          const eventName = `ws-${data.group}`;
+          const eventName = `ws-${data.group}`; // e.g., "ws-users"
           const customEvent = new CustomEvent(eventName, { detail: data.message });
           window.dispatchEvent(customEvent);
         }
@@ -88,6 +90,7 @@ export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     ws.onclose = (event) => {
       clearInterval(heartbeatInterval);
+      console.warn('WebSocket closed:', event);
       if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
         setTimeout(() => {
           reconnectAttemptsRef.current += 1;

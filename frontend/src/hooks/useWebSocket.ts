@@ -1,4 +1,3 @@
-// src/hooks/useWebSocket.ts
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -20,7 +19,7 @@ export default function useWebSocket<T>(
   useEffect(() => {
     if (!token || !groupName) return;
 
-    // Build the dynamic URL: e.g. "ws://localhost:8000/ws/posts/?token=..."
+    // Build URL e.g. "ws://localhost:8000/ws/users/?token=..."
     const baseUrl = process.env.REACT_APP_WEBSOCKET_BASE || 'ws://localhost:8000/ws';
     const wsUrl = `${baseUrl}/${groupName}/?token=${token}`;
     console.log(`Attempting WebSocket: ${wsUrl}`);
