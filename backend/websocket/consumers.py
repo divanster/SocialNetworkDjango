@@ -17,8 +17,8 @@ User = get_user_model()
 
 class BaseConsumer(AsyncWebsocketConsumer):
     """
-    Base WebSocket consumer that handles joining/leaving a group.
-    Subclasses set a class-level group_name to identify which group to join.
+    Base WebSocket consumer that handles joining and leaving a group.
+    Subclasses set a class-level group_name to determine which group to join.
     """
     group_name = None
 
@@ -27,9 +27,13 @@ class BaseConsumer(AsyncWebsocketConsumer):
             self.group_name = "default"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        logger.info(
+            f"Connected to group '{self.group_name}' on channel {self.channel_name}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        logger.info(
+            f"Disconnected from group '{self.group_name}' on channel {self.channel_name} with code {close_code}")
 
     async def kafka_message(self, event):
         message = event["message"]
@@ -38,9 +42,10 @@ class BaseConsumer(AsyncWebsocketConsumer):
 
 class AuthenticatedWebsocketConsumer(BaseConsumer):
     """
-    A WebSocket consumer that requires a valid JWT token in ?token=...
-    If valid, self.scope['user'] is set to the matching User.
+    A WebSocket consumer that requires a valid JWT token in the query string (?token=...).
+    If valid, sets self.scope['user'] to the corresponding User.
     """
+
     async def connect(self):
         user = await self.authenticate_user()
         if user:
@@ -60,11 +65,12 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
             await self.send(json.dumps({"error": "Token not provided."}))
             await self.close()
             return None
+
         token = token_list[0]
         logger.info(f"Received token: {token[:10]}...")  # Partial logging for security
         try:
             UntypedToken(token)
-            # Pass the signing_key explicitly so a string is used.
+            # Pass the signing key explicitly so that a string is used.
             decoded = TokenBackend(
                 algorithm=settings.SIMPLE_JWT["ALGORITHM"],
                 signing_key=settings.SIMPLE_JWT["SIGNING_KEY"]
@@ -162,14 +168,14 @@ class NotificationConsumer(BaseConsumer):
 class UserConsumer(AuthenticatedWebsocketConsumer):
     """
     Tracks user presence in the 'users' group.
-    Broadcasts 'user_online'/'user_offline' events with user_id and username.
+    Broadcasts 'user_online' and 'user_offline' events with user_id and username.
     """
     group_name = "users"
 
     async def connect(self):
         await super().connect()
         user = self.scope.get("user")
-        # Convert user_id to string to avoid serialization issues with UUIDs.
+        # Convert user.id to a string for consistency (important if using UUIDs)
         self.user_id = str(user.id) if user else None
         self.username = user.username if user else "Unknown"
         if self.user_id:
@@ -181,6 +187,7 @@ class UserConsumer(AuthenticatedWebsocketConsumer):
                     "username": self.username,
                 },
             )
+            logger.info(f"Broadcasted user_online for {self.user_id}")
 
     async def disconnect(self, close_code):
         if self.user_id:
@@ -192,6 +199,7 @@ class UserConsumer(AuthenticatedWebsocketConsumer):
                     "username": self.username,
                 },
             )
+            logger.info(f"Broadcasted user_offline for {self.user_id}")
         await super().disconnect(close_code)
 
     async def user_online(self, event):
@@ -222,29 +230,45 @@ class UserConsumer(AuthenticatedWebsocketConsumer):
 
     @database_sync_to_async
     def update_online_users_cache(self, user_id, online=True):
+        # Convert user_id to a string
+        user_id_str = str(user_id)
+        # Retrieve the current list of online users and ensure all IDs are strings
         online_user_ids = cache.get("online_users", [])
+        online_user_ids = [str(uid) for uid in online_user_ids]
         if online:
-            if user_id not in online_user_ids:
-                online_user_ids.append(user_id)
-                logger.info(f"User {user_id} added to online users")
+            if user_id_str not in online_user_ids:
+                online_user_ids.append(user_id_str)
+                logger.info(f"User {user_id_str} added to online users")
         else:
-            if user_id in online_user_ids:
-                online_user_ids.remove(user_id)
-                logger.info(f"User {user_id} removed from online users")
+            if user_id_str in online_user_ids:
+                online_user_ids.remove(user_id_str)
+                logger.info(f"User {user_id_str} removed from online users")
         cache.set("online_users", online_user_ids, None)
+
+        # Optionally, if your cache backend supports atomic Redis set operations (using django-redis),
+        # you could do the following instead:
+        # if online:
+        #     cache.client.get_client().sadd("online_users_set", user_id_str)
+        #     logger.info(f"User {user_id_str} added to online users (set)")
+        # else:
+        #     cache.client.get_client().srem("online_users_set", user_id_str)
+        #     logger.info(f"User {user_id_str} removed from online users (set)")
 
 
 class PresenceConsumer(AsyncWebsocketConsumer):
     """
-    A simple consumer that doesn't require auth.
+    A simple consumer that does not require authentication.
     """
+
     async def connect(self):
         self.group_name = "presence"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        logger.info("PresenceConsumer connected.")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        logger.info("PresenceConsumer disconnected.")
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -256,12 +280,14 @@ class DefaultConsumer(AsyncWebsocketConsumer):
     """
     Catch-all for /ws/ with no subpath. Remove if not needed.
     """
+
     async def connect(self):
         await self.accept()
         await self.send(json.dumps({"message": "Connected to default endpoint."}))
+        logger.info("DefaultConsumer connected.")
 
     async def disconnect(self, close_code):
-        pass
+        logger.info(f"DefaultConsumer disconnected with code {close_code}.")
 
     async def receive(self, text_data):
         pass
