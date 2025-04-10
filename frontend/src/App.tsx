@@ -6,7 +6,6 @@ import Navbar from './components/Navbar/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
 import { OnlineStatusProvider } from './contexts/OnlineStatusContext';
 
-// Lazy load pages and components
 const NewsFeed = lazy(() => import('./pages/NewsFeed'));
 const Albums = lazy(() => import('./pages/Albums'));
 const Login = lazy(() => import('./components/Auth/Login'));

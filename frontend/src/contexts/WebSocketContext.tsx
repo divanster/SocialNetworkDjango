@@ -1,181 +1,191 @@
+// src/contexts/WebSocketContext.tsx
 import React, {
   createContext,
   useContext,
   useEffect,
   useRef,
+  useState,
   useCallback,
-  ReactNode,
 } from 'react';
 import { useAuth } from './AuthContext';
-import jwt_decode from 'jwt-decode';
 
-interface JwtPayload {
-  exp: number;
-  iat: number;
-  sub: string;
-}
-
-export interface WebSocketContextType {
-  subscribe: (groupName: string) => void;
-  unsubscribe: (groupName: string) => void;
-  sendMessage: (message: string) => void;
+interface WebSocketContextType {
+  isConnected: boolean;
+  subscribe: (group: string) => void;
+  unsubscribe: (group: string) => void;
+  on: (event: string, handler: (data: any) => void) => void;
+  off: (event: string, handler: (data: any) => void) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
-const isTokenExpired = (token: string): boolean => {
-  try {
-    const decoded = jwt_decode<JwtPayload>(token);
-    const currentTime = Date.now() / 1000;
-    return decoded.exp < currentTime;
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    return true;
-  }
-};
-
-export const WebSocketProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
-  const { token, refreshToken } = useAuth();
+export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { token } = useAuth();
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef<number>(0);
-  const maxReconnectAttempts = 10;
-  const subscribedGroupsRef = useRef<Set<string>>(new Set());
-  const queuedActions = useRef<Array<() => void>>([]);
-  const HEARTBEAT_INTERVAL = 30000;
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manuallyClosed = useRef<boolean>(false);
+  const attemptRef = useRef<number>(0);
+  const eventCallbacks = useRef<Record<string, Set<(data: any) => void>>>({});
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const pendingGroupSubs = useRef<Record<string, boolean>>({});
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const connectWebSocket = useCallback(async () => {
-    if (!token) {
-      console.warn('No token provided for WebSocket connection.');
-      return;
-    }
-    let currentToken = token;
-    if (isTokenExpired(token)) {
-      const newToken = await refreshToken();
-      if (!newToken) {
-        console.error('Unable to refresh token');
-        return;
-      }
-      currentToken = newToken;
-    }
-    // Use the "users" endpoint by default so that user presence events work.
-    const wsUrl = `${process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws/users'}/?token=${currentToken}`;
-    const ws = new WebSocket(wsUrl);
-    socketRef.current = ws;
+  const connectWebSocket = useCallback(() => {
+    if (!token) return;
+    // Example endpoint – adjust as needed.
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/users/?token=${token}`;
+    console.log(`Attempting WebSocket connection to ${wsUrl}`);
+    const socket = new WebSocket(wsUrl);
+    socketRef.current = socket;
+    manuallyClosed.current = false;
 
-    const heartbeatInterval = setInterval(() => {
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ action: 'ping' }));
-      }
-    }, HEARTBEAT_INTERVAL);
-
-    ws.onopen = () => {
-      reconnectAttemptsRef.current = 0;
-      while (queuedActions.current.length > 0) {
-        const action = queuedActions.current.shift();
-        if (action) action();
-      }
-      console.log("WebSocketContext: Connection opened.");
+    socket.onopen = () => {
+      console.log('WebSocket connection established');
+      setIsConnected(true);
+      attemptRef.current = 0;
+      Object.keys(pendingGroupSubs.current).forEach((group) => {
+        if (pendingGroupSubs.current[group] && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ action: 'subscribe', group }));
+          console.log(`Subscribed to group: ${group}`);
+        }
+      });
+      pingIntervalRef.current = setInterval(() => {
+        try {
+          socket.send(JSON.stringify({ action: 'ping' }));
+        } catch (e) {
+          console.error('WebSocket ping failed', e);
+        }
+      }, 30000);
     };
 
-    ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.group && data.message) {
-          const eventName = `ws-${data.group}`;
-          // Dispatch a custom event with the message detail.
-          const customEvent = new CustomEvent(eventName, { detail: data.message });
-          window.dispatchEvent(customEvent);
+        const eventName = data.event;
+        if (eventName && eventCallbacks.current[eventName]) {
+          eventCallbacks.current[eventName].forEach((callback) => callback(data));
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+      } catch (err) {
+        console.warn('Failed to parse WebSocket message', event.data);
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket encountered error:', error);
-      ws.close();
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
     };
 
-    ws.onclose = (event) => {
-      clearInterval(heartbeatInterval);
-      console.warn(`WebSocket closed: ${event.code} ${event.reason}`);
-      if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-        setTimeout(() => {
-          reconnectAttemptsRef.current += 1;
-          connectWebSocket();
-        }, Math.min(10000, Math.pow(2, reconnectAttemptsRef.current) * 1000));
+    socket.onclose = (event) => {
+      console.log(`WebSocket connection closed (code: ${event.code})`);
+      setIsConnected(false);
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+      socketRef.current = null;
+      // Only attempt reconnect if token still exists
+      if (!manuallyClosed.current && token) {
+        attemptRef.current += 1;
+        const reconnectDelay = Math.min(1000 * 2 ** attemptRef.current, 30000);
+        console.log(`Reconnecting WebSocket in ${reconnectDelay} ms (attempt #${attemptRef.current})`);
+        reconnectTimer.current = setTimeout(connectWebSocket, reconnectDelay);
       }
     };
-  }, [token, refreshToken]);
+  }, [token]);
 
   useEffect(() => {
-    connectWebSocket();
+    if (token && !socketRef.current) {
+      connectWebSocket();
+    }
+    if (!token && socketRef.current) {
+      console.log('Closing WebSocket due to missing token');
+      manuallyClosed.current = true;
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      socketRef.current.close();
+    }
     return () => {
       if (socketRef.current) {
-        socketRef.current.close(1000, 'Component unmounted');
+        manuallyClosed.current = true;
+        socketRef.current.close();
+      }
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+      }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
       }
     };
   }, [token, connectWebSocket]);
 
-  const subscribe = (groupName: string) => {
-    const performSubscribe = () => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ action: 'subscribe', group: groupName }));
-        subscribedGroupsRef.current.add(groupName);
-        console.log(`Subscribed to group: ${groupName}`);
-      } else {
-        queuedActions.current.push(() => {
-          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({ action: 'subscribe', group: groupName }));
-            subscribedGroupsRef.current.add(groupName);
-            console.log(`Subscribed to group (queued): ${groupName}`);
-          }
-        });
+  // Listen for logout events to immediately close the WebSocket.
+  useEffect(() => {
+    const handleUserLogout = () => {
+      if (socketRef.current) {
+        console.log('Closing WebSocket due to user logout event');
+        manuallyClosed.current = true;
+        if (reconnectTimer.current) {
+          clearTimeout(reconnectTimer.current);
+          reconnectTimer.current = null;
+        }
+        socketRef.current.close();
       }
     };
-    performSubscribe();
-  };
-
-  const unsubscribe = (groupName: string) => {
-    const performUnsubscribe = () => {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ action: 'unsubscribe', group: groupName }));
-        subscribedGroupsRef.current.delete(groupName);
-        console.log(`Unsubscribed from group: ${groupName}`);
-      } else {
-        queuedActions.current.push(() => {
-          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({ action: 'unsubscribe', group: groupName }));
-            subscribedGroupsRef.current.delete(groupName);
-            console.log(`Unsubscribed from group (queued): ${groupName}`);
-          }
-        });
-      }
+    window.addEventListener('user-logout', handleUserLogout);
+    return () => {
+      window.removeEventListener('user-logout', handleUserLogout);
     };
-    performUnsubscribe();
-  };
+  }, []);
 
-  const sendMessage = (message: string) => {
+  const subscribe = useCallback((group: string) => {
+    if (!group) return;
+    pendingGroupSubs.current[group] = true;
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(message);
-    } else {
-      console.warn('WebSocket is not open; message not sent.');
+      socketRef.current.send(JSON.stringify({ action: 'subscribe', group }));
+      console.log(`Subscribe request sent for group: ${group}`);
     }
+  }, []);
+
+  const unsubscribe = useCallback((group: string) => {
+    if (!group) return;
+    delete pendingGroupSubs.current[group];
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: 'unsubscribe', group }));
+      console.log(`Unsubscribe request sent for group: ${group}`);
+    }
+  }, []);
+
+  const on = useCallback((eventName: string, handler: (data: any) => void) => {
+    if (!eventCallbacks.current[eventName]) {
+      eventCallbacks.current[eventName] = new Set();
+    }
+    eventCallbacks.current[eventName].add(handler);
+  }, []);
+
+  const off = useCallback((eventName: string, handler: (data: any) => void) => {
+    eventCallbacks.current[eventName]?.delete(handler);
+  }, []);
+
+  const contextValue: WebSocketContextType = {
+    isConnected,
+    subscribe,
+    unsubscribe,
+    on,
+    off,
   };
 
-  return (
-    <WebSocketContext.Provider value={{ subscribe, unsubscribe, sendMessage }}>
-      {children}
-    </WebSocketContext.Provider>
-  );
+  return <WebSocketContext.Provider value={contextValue}>{children}</WebSocketContext.Provider>;
 };
 
-export const useWebSocketContext = () => {
+export const useWebSocket = (): WebSocketContextType => {
   const context = useContext(WebSocketContext);
-  if (!context) {
-    throw new Error('useWebSocketContext must be used within a WebSocketProvider');
+  if (context === undefined) {
+    throw new Error('useWebSocket must be used within a WebSocketProvider');
   }
   return context;
 };
+
+// Backwards compatibility alias:
+export const useWebSocketContext = useWebSocket;

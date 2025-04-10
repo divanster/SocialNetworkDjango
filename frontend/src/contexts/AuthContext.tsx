@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useState,
@@ -55,7 +56,7 @@ interface AuthContextType {
   loading: boolean;
   login: (accessToken: string, refreshTokenStr: string) => void;
   logout: () => Promise<void>;
-  refreshToken: () => Promise<string | null>; // Ensure this function is included in the context type
+  refreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const scheduleTokenRefresh = useCallback((accessToken: string): void => {
     const expirationTime = getTokenExpirationTime(accessToken);
     if (expirationTime) {
-      const delay = expirationTime - Date.now() - 60000;
+      const delay = expirationTime - Date.now() - 60000; // 60 seconds before expiration
       console.log(`Scheduling token refresh in ${Math.max(delay / 1000, 0)} seconds`);
       if (delay > 0) {
         setTimeout(() => {
@@ -88,14 +89,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const logout = useCallback(async (): Promise<void> => {
-    console.log('Logging out...');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setToken(null);
+  const logout = useCallback(async () => {
+    // Clear tokens and user state
     setUser(null);
-    setIsAuthenticated(false);
-    setAuthToken(null);
+    setToken(null);
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    // Dispatch a custom event so that WebSocketContext can close its connections
+    window.dispatchEvent(new CustomEvent('user-logout'));
+    // Navigate to login or force page reload as needed
     navigate('/login');
   }, [navigate]);
 
@@ -103,13 +105,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const storedRefreshToken = localStorage.getItem('refresh_token');
       console.log('Stored refresh token:', storedRefreshToken);
-
       if (!storedRefreshToken) {
         console.log('No refresh token available.');
         await logout();
         return null;
       }
-
       const response = await axios.post(
         `${API_URL}/token/refresh/`,
         { refresh: storedRefreshToken },
@@ -120,9 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           },
         }
       );
-
       console.log('Refresh token response:', response.data);
-
       const newAccessToken = response.data.access;
       const newRefreshToken = response.data.refresh;
       if (newAccessToken) {
@@ -135,12 +133,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(newAccessToken);
         setIsAuthenticated(true);
         setAuthToken(newAccessToken);
-
         scheduleTokenRefresh(newAccessToken);
-
         const userData = await fetchProfileData();
         setUser(userData);
-
         return newAccessToken;
       } else {
         console.log('No access token found in refresh response.');
@@ -166,9 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(accessToken);
       setIsAuthenticated(true);
       setAuthToken(accessToken);
-
       scheduleTokenRefresh(accessToken);
-
       fetchProfileData()
         .then((userData) => {
           setUser(userData);
@@ -193,7 +186,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsAuthenticated(true);
           setAuthToken(storedAccessToken);
           scheduleTokenRefresh(storedAccessToken);
-
           try {
             const userData = await fetchProfileData();
             setUser(userData);
@@ -210,7 +202,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       setLoading(false);
     };
-
     initializeAuth();
   }, [refreshToken, logout, scheduleTokenRefresh]);
 
@@ -239,13 +230,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [refreshToken, logout]);
 
-  return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, token, user, loading, login, logout, refreshToken }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const contextValue: AuthContextType = {
+    isAuthenticated,
+    token,
+    user,
+    loading,
+    login,
+    logout,
+    refreshToken,
+  };
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {

@@ -2,7 +2,8 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, CustomTokenRefreshView, get_online_users
+from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, \
+    CustomTokenRefreshView, get_online_users, logout_view
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'users'
@@ -32,4 +33,6 @@ urlpatterns = [
 
     # Optionally include a custom token refresh endpoint (if needed)
     path('custom-token-refresh/', CustomTokenRefreshView.as_view(), name='custom_token_refresh'),
+
+    path('logout/', logout_view, name='logout'),
 ]

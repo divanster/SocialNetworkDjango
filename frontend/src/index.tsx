@@ -1,17 +1,17 @@
-// frontend/src/index.tsx
+// src/index.tsx
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
-
-import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import store from './store';
 import { AuthProvider } from './contexts/AuthContext';
-import { WebSocketProvider } from './contexts/WebSocketContext'; // Correct import here
-import { OnlineStatusProvider } from './contexts/OnlineStatusContext'; // Correct import here
+import { WebSocketProvider } from './contexts/WebSocketContext';
+import { OnlineStatusProvider } from './contexts/OnlineStatusContext';
+import { PresenceWebSocketProvider } from './contexts/PresenceWebSocketContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const container = document.getElementById('root');
@@ -25,9 +25,11 @@ if (container) {
           <Provider store={store}>
             <AuthProvider>
               <WebSocketProvider>
-                <OnlineStatusProvider>
-                  <App />
-                </OnlineStatusProvider>
+                <PresenceWebSocketProvider>
+                  <OnlineStatusProvider>
+                    <App />
+                  </OnlineStatusProvider>
+                </PresenceWebSocketProvider>
               </WebSocketProvider>
             </AuthProvider>
           </Provider>
@@ -38,5 +40,4 @@ if (container) {
 }
 
 reportWebVitals();
-
 console.log('Application rendered successfully');

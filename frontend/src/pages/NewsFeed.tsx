@@ -18,6 +18,9 @@ import { SharedItem as SharedItemType } from '../types/sharedItem';
 import { useAuth } from '../contexts/AuthContext';
 import { Toast, ToastContainer } from 'react-bootstrap';
 
+// Import online status context
+import { useOnlineStatus } from '../contexts/OnlineStatusContext';
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const NewsFeed: React.FC = () => {
@@ -40,7 +43,10 @@ const NewsFeed: React.FC = () => {
     variant: 'success',
   });
 
-  // Callbacks for adding new items
+  // Import online status data
+  const { onlineUsers, userDetails } = useOnlineStatus();
+
+  // Callbacks for adding new items (unchanged)
   const addNewPost = (newPost: PostType) => {
     setPosts((prevPosts) => [newPost, ...prevPosts]);
     setToast({ show: true, message: 'Post created successfully!', variant: 'success' });
@@ -56,7 +62,7 @@ const NewsFeed: React.FC = () => {
     setToast({ show: true, message: 'Content shared successfully!', variant: 'success' });
   };
 
-  // WebSocket handlers
+  // WebSocket handlers (unchanged)
   const handlePostsMessage = useCallback(
     (data: any) => {
       if (data.message && data.type === 'post') {
@@ -118,7 +124,7 @@ const NewsFeed: React.FC = () => {
     fetchData();
   }, [token, authLoading]);
 
-  // CRUD Handlers (simplified)
+  // CRUD handlers (unchanged)
   const handleDeletePost = async (id: string) => {
     if (!token) {
       setDeleteError('You must be logged in to delete a post.');
@@ -236,6 +242,12 @@ const NewsFeed: React.FC = () => {
 
   return (
     <div className="newsfeed-container d-flex">
+      {/* Optionally display online status (for example, at the top of the NewsFeed or in a sidebar) */}
+      <div className="online-status-bar">
+        <strong>{onlineUsers.length}</strong> user(s) online
+        {/* If you want to display details, you could map over onlineUsers and/or use userDetails */}
+      </div>
+
       {/* Left Sidebar */}
       <div className="left-sidebar me-3">
         <Profile />
