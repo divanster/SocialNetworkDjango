@@ -1,18 +1,18 @@
-// frontend/src/pages/MessagesPage.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMessageById, markMessageAsRead } from '../services/messagesService';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, Button, Spinner, Alert } from 'react-bootstrap';
 
+// Update the User interface so id is a string (matching the service definitions)
 interface User {
-  id: number;
+  id: string;
   username: string;
   full_name: string;
   profile_picture: string | null;
 }
 
+// Update the Message interface accordingly
 interface Message {
   id: string;
   sender: User;

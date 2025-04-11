@@ -1,3 +1,4 @@
+// frontend/src/components/Navbar/MessagesDropdown.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavDropdown, Badge, Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
@@ -18,7 +19,7 @@ interface MessagesDropdownProps {
 }
 
 const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnreadCount }) => {
-  const { token, user } = useAuth(); // Added user from AuthContext
+  const { token, user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   const [sending, setSending] = useState<boolean>(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  // Fetch user messages from inbox
   const fetchUserMessages = useCallback(async () => {
     if (!token) {
       setError('Authentication token is missing.');
@@ -44,8 +44,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
       setLoading(true);
       const fetchedMessages: Message[] = await fetchInboxMessages();
       setMessages(fetchedMessages);
-
-      // Calculate unread messages count
       const unread = fetchedMessages.filter((msg) => !msg.read).length;
       setUnreadCount(unread);
       setError(null);
@@ -57,15 +55,13 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     }
   }, [token, setUnreadCount]);
 
-  // Fetch friends list (Fixed: Pass the current user's id)
   const fetchFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
       if (!user) {
         throw new Error("User not authenticated");
       }
-      // Convert user.id to string if needed
-      const data = await fetchFriendsList(String(user.id));
+      const data = await fetchFriendsList(user.id);
       setFriends(Array.isArray(data) ? data : []);
       setFriendsError(null);
     } catch (err) {
@@ -81,7 +77,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     fetchFriends();
   }, [fetchUserMessages, fetchFriends]);
 
-  // Mark message as read
   const markAsReadHandler = async (id: string) => {
     try {
       await markMessageAsRead(id);
@@ -94,7 +89,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     }
   };
 
-  // Handle sending message
   const handleSendMessage = async () => {
     if (!selectedReceiver || !messageContent.trim()) {
       setSendError('Please select a recipient and enter a message.');
@@ -104,15 +98,11 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     setSendError(null);
     try {
       if (selectedReceiver === 'all') {
-        // Broadcast message to all users
         await broadcastMessageToAll(messageContent.trim());
       } else {
-        // Send a message to a specific user (convert selectedReceiver to number)
-        await sendMessageToUser(Number(selectedReceiver), messageContent.trim());
+        await sendMessageToUser(selectedReceiver, messageContent.trim());
       }
-      // Refresh messages after sending
       await fetchUserMessages();
-      // Close modal and reset fields
       setShowModal(false);
       setSelectedReceiver('');
       setMessageContent('');
@@ -184,7 +174,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
         )}
       </NavDropdown>
 
-      {/* Send Message Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Send a Message</Modal.Title>

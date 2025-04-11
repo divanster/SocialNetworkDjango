@@ -1,124 +1,155 @@
-// frontend/src/components/Messenger/ChatWindow.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, FormEvent } from 'react';
 import { Button, Form, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
+import './ChatWindow.css';
 
 export interface Message {
   id: string;
-  sender: any;    // Extend or replace 'any' with your proper type
-  receiver: any;
+  sender: {
+    id: string;
+    username: string;
+    full_name: string;
+    profile_picture: string | null;
+  };
+  receiver: {
+    id: string;
+    username: string;
+    full_name: string;
+    profile_picture: string | null;
+  };
   content: string;
   read: boolean;
   created_at: string;
 }
 
 interface ChatWindowProps {
-  conversationId: string; // For now, you can use the friend's id as conversation id.
+  friendId: string; // Selected friend’s id (string)
   friendName: string;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, friendName }) => {
-  const { token } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
+  const { token, user } = useAuth();
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use the WebSocket hook for real-time updates.
+  // Use WebSocket for real‑time updates in the "messenger" group
   const { sendMessage: sendWSMessage } = useWebSocket('messenger', {
     onMessage: (data: any) => {
-      // Filter messages for the current conversation
-      if (data.conversationId === conversationId) {
-        setMessages(prev => [...prev, data.message]);
+      const msg: Message = data.message;
+      // Check if the message belongs to the conversation between the current user and friend
+      if (
+        (msg.sender.id === friendId && msg.receiver.id === user?.id) ||
+        (msg.sender.id === user?.id && msg.receiver.id === friendId)
+      ) {
+        setConversationMessages(prev => [...prev, msg]);
       }
     },
   });
 
-  // Fetch conversation history using API.
-  const fetchConversation = useCallback(async () => {
+  // Fetch all inbox messages
+  const fetchInbox = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const response = await axios.get(`/messenger/conversations/${conversationId}/`, {
+      const response = await axios.get('/messenger/inbox/', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMessages(response.data.messages || []);
+      const messages: Message[] = response.data.results || response.data;
+      setAllMessages(messages);
       setError(null);
     } catch (err: any) {
-      setError('Failed to load conversation.');
+      console.error('Failed to fetch inbox messages:', err);
+      setError('Failed to load messages.');
     } finally {
       setLoading(false);
     }
-  }, [conversationId, token]);
+  }, [token]);
+
+  // Filter messages between the current user and the selected friend
+  const filterConversation = useCallback(() => {
+    if (!user) return;
+    const conversation = allMessages.filter((msg) => {
+      return (
+        (msg.sender.id === friendId && msg.receiver.id === user.id) ||
+        (msg.sender.id === user.id && msg.receiver.id === friendId)
+      );
+    });
+    conversation.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    setConversationMessages(conversation);
+  }, [allMessages, friendId, user]);
 
   useEffect(() => {
-    fetchConversation();
-  }, [fetchConversation]);
+    if (token) {
+      fetchInbox();
+    }
+  }, [token, fetchInbox]);
 
-  const handleSend = async () => {
-    if (!token || !newMessage.trim()) return;
+  useEffect(() => {
+    filterConversation();
+  }, [allMessages, filterConversation]);
+
+  const handleSend = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!token || !newMessage.trim() || !user) return;
     try {
-      // Send the new message via API (or use WebSocket if available)
       const response = await axios.post(
-        `/messenger/conversations/${conversationId}/send/`,
-        { content: newMessage.trim() },
+        '/messenger/',
+        { receiver: friendId, content: newMessage.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // Update the conversation with the new message
-      setMessages(prev => [...prev, response.data]);
+      const sentMsg: Message = response.data;
+      setConversationMessages(prev => [...prev, sentMsg]);
       setNewMessage('');
-      // Optionally, send a WebSocket event:
-      // sendWSMessage({ conversationId, message: response.data });
+      // Optionally, you can also trigger a WebSocket update:
+      // sendWSMessage({ friendId, message: sentMsg });
     } catch (err) {
       console.error('Error sending message', err);
+      setError('Failed to send message.');
     }
   };
 
   return (
-    <div>
-      <h5>Chat with {friendName}</h5>
-      <div
-        style={{
-          maxHeight: '400px',
-          overflowY: 'auto',
-          border: '1px solid #ccc',
-          padding: '10px',
-          marginBottom: '1rem',
-        }}
-      >
+    <div className="chat-window">
+      <div className="chat-header">
+        <h5>Chat with {friendName}</h5>
+      </div>
+      <div className="chat-messages">
         {loading ? (
           <div className="text-center">
             <Spinner animation="border" size="sm" />
           </div>
         ) : error ? (
           <Alert variant="danger">{error}</Alert>
-        ) : messages.length === 0 ? (
+        ) : conversationMessages.length === 0 ? (
           <div>No messages yet.</div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className="mb-2">
+          conversationMessages.map((msg) => (
+            <div key={msg.id} className="message-item">
               <strong>{msg.sender.username}:</strong> {msg.content}
               <br />
-              <small className="text-muted">
-                {new Date(msg.created_at).toLocaleString()}
-              </small>
+              <small className="text-muted">{new Date(msg.created_at).toLocaleTimeString()}</small>
             </div>
           ))
         )}
       </div>
-      <Form onSubmit={(e) => { e.preventDefault(); handleSend(); }}>
-        <Form.Control
-          type="text"
-          placeholder="Type your message..."
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-        />
-        <Button variant="primary" type="submit" className="mt-2">
-          Send
-        </Button>
-      </Form>
+      <div className="chat-input">
+        <Form onSubmit={handleSend} className="d-flex">
+          <Form.Control
+            type="text"
+            placeholder="Type your message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+          />
+          <Button variant="primary" type="submit" className="ms-2">
+            Send
+          </Button>
+        </Form>
+      </div>
     </div>
   );
 };

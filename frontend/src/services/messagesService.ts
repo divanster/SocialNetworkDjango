@@ -1,32 +1,29 @@
-// frontend/src/services/messagesService.ts
-
 import axios from 'axios';
 import { handleApiError } from './api';
 
 export interface User {
-  id: number;
+  id: string; // using string for UUID
   username: string;
   full_name: string;
   profile_picture: string | null;
 }
 
 export interface Message {
-  id: string;       // UUID as string
-  sender: User;     // Sender's user object
-  receiver: User;   // Receiver's user object
+  id: string;
+  sender: User;
+  receiver: User;
   content: string;
-  read: boolean;    // True if the message has been read
+  read: boolean;
   created_at: string;
 }
 
 /**
- * Fetch inbox messages.
+ * Fetch inbox messages for the current logged‑in user.
  * Calls GET /messenger/inbox/ on your backend.
  */
 export const fetchInboxMessages = async (): Promise<Message[]> => {
   try {
     const response = await axios.get('/messenger/inbox/');
-    // If a paginated response is returned, use its "results" property.
     if (response.data && Array.isArray(response.data.results)) {
       return response.data.results;
     }
@@ -39,10 +36,10 @@ export const fetchInboxMessages = async (): Promise<Message[]> => {
 
 /**
  * Send a message to a specific user.
- * POST /messenger/ to create a new message.
+ * POST /messenger/ on your backend.
  */
 export const sendMessageToUser = async (
-  receiverId: number,
+  receiverId: string,
   content: string
 ): Promise<Message> => {
   try {
@@ -59,7 +56,7 @@ export const sendMessageToUser = async (
 
 /**
  * Broadcast a message to all users.
- * POST /messenger/broadcast/
+ * POST /messenger/broadcast/ on your backend.
  */
 export const broadcastMessageToAll = async (content: string): Promise<Message[]> => {
   try {
@@ -73,7 +70,7 @@ export const broadcastMessageToAll = async (content: string): Promise<Message[]>
 
 /**
  * Fetch a specific message by its ID.
- * GET /messenger/<messageId>/
+ * GET /messenger/{messageId}/ on your backend.
  */
 export const fetchMessageById = async (messageId: string): Promise<Message> => {
   try {
@@ -86,8 +83,8 @@ export const fetchMessageById = async (messageId: string): Promise<Message> => {
 };
 
 /**
- * Mark a message as read.
- * POST /messenger/<messageId>/mark_as_read/
+ * Mark a specific message as read.
+ * POST /messenger/{messageId}/mark_as_read/ on your backend.
  */
 export const markMessageAsRead = async (messageId: string): Promise<void> => {
   try {

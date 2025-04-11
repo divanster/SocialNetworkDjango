@@ -1,4 +1,3 @@
-// frontend/src/services/friendsService.ts
 import axios from 'axios';
 import { handleApiError } from './api';
 
@@ -9,7 +8,6 @@ export interface User {
   profile_picture: string | null;
 }
 
-// The structure of a friendship returned by your API
 export interface Friendship {
   id: string;
   user1: User;
@@ -25,9 +23,8 @@ export const fetchFriendsList = async (currentUserId: string): Promise<User[]> =
   try {
     const response = await axios.get('/friends/friendships/');
     const friendships: Friendship[] = response.data.results || [];
-
-    // Map through friendships: if the current user is user1, friend is user2; otherwise, it is user1.
     const friends = friendships.map((friendship) => {
+      // Compare as strings
       if (friendship.user1.id === currentUserId) {
         return friendship.user2;
       } else {

@@ -1,0 +1,41 @@
+/* frontend/src/components/Messenger/ChatWindow.css */
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chat-header {
+  padding: 1rem;
+  border-bottom: 1px solid #ddd;
+  background-color: #f6f6f6;
+}
+
+.online-indicator {
+  color: green;
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+}
+
+.offline-indicator {
+  color: gray;
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #e9ebee;
+}
+
+.chat-input {
+  padding: 1rem;
+  border-top: 1px solid #ddd;
+  background-color: #f6f6f6;
+}

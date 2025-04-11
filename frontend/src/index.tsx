@@ -1,3 +1,4 @@
+// frontend/src/index.tsx
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -9,12 +10,11 @@ import { Provider } from 'react-redux';
 import store from './store';
 import { AuthProvider } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
-import { OnlineStatusProvider } from './contexts/OnlineStatusContext';
 import { PresenceWebSocketProvider } from './contexts/PresenceWebSocketContext';
+import { OnlineStatusProvider } from './contexts/OnlineStatusContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const container = document.getElementById('root');
-
 if (container) {
   const root = createRoot(container);
   root.render(
@@ -37,6 +37,4 @@ if (container) {
     </React.StrictMode>
   );
 }
-
 reportWebVitals();
-console.log('Application rendered successfully');

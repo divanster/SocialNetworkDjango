@@ -1,0 +1,44 @@
+/* frontend/src/components/Messenger/ContactsSidebar.css */
+.contacts-sidebar {
+  padding: 0;
+}
+
+.contacts-sidebar .list-group-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.contacts-sidebar .list-group-item:hover {
+  background-color: #e9ecef;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+}
+
+.contact-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.contact-avatar.placeholder {
+  background-color: #6c757d;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.contact-name {
+  margin-left: 0.5rem;
+}
+
+.online-indicator {
+  color: green;
+  font-size: 1.2rem;
+  margin-left: 0.3rem;
+}
