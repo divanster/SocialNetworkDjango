@@ -1,5 +1,4 @@
-// src/components/Navbar/Navbar.tsx
-
+// frontend/src/components/Navbar/Navbar.tsx
 import React, { useEffect, useState } from 'react';
 import { Navbar, Nav, NavDropdown, Badge, Container } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -9,7 +8,7 @@ import { fetchMessagesCount, fetchNotificationsCount } from '../../services/api'
 import SearchBar from '../Search/SearchBar';
 import NotificationsDropdown from './NotificationsDropdown';
 import MessagesDropdown from './MessagesDropdown';
-import './Navbar.css'; // Ensure you have proper styles
+import './Navbar.css';
 
 const CustomNavbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -66,7 +65,7 @@ const CustomNavbar: React.FC = () => {
         </LinkContainer>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
-          {/* SearchBar Integration */}
+          {/* Show SearchBar if authenticated */}
           {isAuthenticated && (
             <Nav className="me-auto">
               <SearchBar />
@@ -76,11 +75,17 @@ const CustomNavbar: React.FC = () => {
           <Nav className="ms-auto">
             {isAuthenticated ? (
               <>
-                <LinkContainer to="/feed">
+                <LinkContainer to="/">
                   <Nav.Link>Feed</Nav.Link>
                 </LinkContainer>
                 <LinkContainer to="/profile">
                   <Nav.Link>Profile</Nav.Link>
+                </LinkContainer>
+                {/* NEW: Messenger Link */}
+                <LinkContainer to="/messenger">
+                  <Nav.Link>
+                    Messenger {unreadMessages > 0 && <Badge bg="danger">{unreadMessages}</Badge>}
+                  </Nav.Link>
                 </LinkContainer>
                 <li className="nav-item mx-2">
                   <a
@@ -93,13 +98,11 @@ const CustomNavbar: React.FC = () => {
                   </a>
                 </li>
 
-                {/* Notifications Dropdown */}
+                {/* Notifications and Messages Dropdowns */}
                 <NotificationsDropdown
                   unreadCount={unreadNotifications}
                   setUnreadCount={setUnreadNotifications}
                 />
-
-                {/* Messages Dropdown */}
                 <MessagesDropdown
                   unreadCount={unreadMessages}
                   setUnreadCount={setUnreadMessages}

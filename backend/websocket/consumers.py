@@ -29,15 +29,11 @@ class BaseConsumer(AsyncWebsocketConsumer):
             self.group_name = "default"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        logger.info(
-            f"Connected to group '{self.group_name}' on channel {self.channel_name}"
-        )
+        logger.info(f"Connected to group '{self.group_name}' on channel {self.channel_name}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
-        logger.info(
-            f"Disconnected from group '{self.group_name}' on channel {self.channel_name} with code {close_code}"
-        )
+        logger.info(f"Disconnected from group '{self.group_name}' on channel {self.channel_name} with code {close_code}")
 
     async def kafka_message(self, event):
         message = event["message"]
@@ -74,10 +70,9 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
         logger.info(f"Received token: {token[:10]}...")  # Partial logging for security
         try:
             UntypedToken(token)
-            # Pass the signing key explicitly so that a string is used.
             decoded = TokenBackend(
                 algorithm=settings.SIMPLE_JWT["ALGORITHM"],
-                signing_key=settings.SIMPLE_JWT["SIGNING_KEY"],
+                signing_key=settings.SIMPLE_JWT["SIGNING_KEY"]
             ).decode(token, verify=True)
             logger.info(f"Decoded JWT Token: {decoded}")
             user = await self.get_user(decoded["user_id"])
@@ -120,7 +115,6 @@ class AuthenticatedWebsocketConsumer(BaseConsumer):
 
 
 # Specific Consumers
-
 class PostConsumer(BaseConsumer):
     group_name = "posts"
 
@@ -182,45 +176,38 @@ class UserConsumer(AuthenticatedWebsocketConsumer):
         self.user_id = str(user.id) if user else None
         self.username = user.username if user else "Unknown"
         if self.user_id:
-            # Join the per-user group
-            await self.channel_layer.group_add(f"user_{self.user_id}",
-                                               self.channel_name)
-            # Update online status: call the already decorated function directly
+            # Join the per-user group for individual notifications
+            await self.channel_layer.group_add(f"user_{self.user_id}", self.channel_name)
+            # Update online status: call the decorated function directly
             await self.update_online_users_cache(self.user_id, online=True)
-            # Broadcast the online event
+            # Broadcast the online event to the entire 'users' group
             await self.channel_layer.group_send(
                 self.group_name,
-                {"type": "user_online", "user_id": self.user_id,
-                 "username": self.username},
+                {"type": "user_online", "user_id": self.user_id, "username": self.username},
             )
             logger.info(f"Broadcasted user_online for {self.user_id}")
-        # Accept the connection here if not already accepted in super().connect()
-        # (Your AuthenticatedWebsocketConsumer may have already called accept() in its super call.)
+        # (The connection is already accepted in the parent.)
 
     async def disconnect(self, close_code):
         if self.user_id:
             # Leave the per-user group
-            await self.channel_layer.group_discard(f"user_{self.user_id}",
-                                                   self.channel_name)
-            # Update online status by removing the user from Redis
+            await self.channel_layer.group_discard(f"user_{self.user_id}", self.channel_name)
+            # Update online status and remove from Redis
             await self.update_online_users_cache(self.user_id, online=False)
             # Broadcast the offline event
             await self.channel_layer.group_send(
                 self.group_name,
-                {"type": "user_offline", "user_id": self.user_id,
-                 "username": self.username},
+                {"type": "user_offline", "user_id": self.user_id, "username": self.username},
             )
             logger.info(f"Broadcasted user_offline for {self.user_id}")
         await super().disconnect(close_code)
 
     async def force_disconnect(self, event):
-        # When forced disconnect is triggered, update online status and close the connection
         logger.info(f"Force disconnect received for user {self.user_id}")
         await self.update_online_users_cache(self.user_id, online=False)
         await self.channel_layer.group_send(
             self.group_name,
-            {"type": "user_offline", "user_id": self.user_id,
-             "username": self.username},
+            {"type": "user_offline", "user_id": self.user_id, "username": self.username},
         )
         await self.close()
 
@@ -231,22 +218,41 @@ class UserConsumer(AuthenticatedWebsocketConsumer):
         if online:
             redis_conn.sadd("online_users", user_id_str)
             current = redis_conn.smembers("online_users")
-            logger.info(
-                f"User {user_id_str} added. Online set now: {[uid.decode('utf-8') for uid in current]}"
-            )
+            logger.info(f"User {user_id_str} added. Online set now: {[uid.decode('utf-8') for uid in current]}")
         else:
             redis_conn.srem("online_users", user_id_str)
             current = redis_conn.smembers("online_users")
-            logger.info(
-                f"User {user_id_str} removed. Online set now: {[uid.decode('utf-8') for uid in current]}"
-            )
+            logger.info(f"User {user_id_str} removed. Online set now: {[uid.decode('utf-8') for uid in current]}")
+
+    # --- New Handlers Below ---
+    async def user_online(self, event):
+        """
+        Handler for group messages with type "user_online".
+        This forwards the event as a JSON object to the WebSocket client.
+        """
+        await self.send(json.dumps({
+            "event": "user_online",
+            "user_id": event["user_id"],
+            "username": event["username"],
+        }))
+
+    async def user_offline(self, event):
+        """
+        Handler for group messages with type "user_offline".
+        This forwards the event as a JSON object to the WebSocket client.
+        """
+        await self.send(json.dumps({
+            "event": "user_offline",
+            "user_id": event["user_id"],
+            "username": event["username"],
+        }))
 
 
 class PresenceConsumer(AsyncWebsocketConsumer):
     """
     A simple consumer that does not require authentication.
+    Used for testing or lightweight presence interactions.
     """
-
     async def connect(self):
         self.group_name = "presence"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -265,9 +271,8 @@ class PresenceConsumer(AsyncWebsocketConsumer):
 
 class DefaultConsumer(AsyncWebsocketConsumer):
     """
-    Catch-all for /ws/ with no subpath. Remove if not needed.
+    Catch-all consumer for /ws/ endpoints with no subpath. Remove if not needed.
     """
-
     async def connect(self):
         await self.accept()
         await self.send(json.dumps({"message": "Connected to default endpoint."}))

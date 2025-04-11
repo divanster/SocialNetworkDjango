@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.tsx
 import React, {
   createContext,
   useState,
@@ -13,6 +12,7 @@ import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { fetchProfileData } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
+// Sets the default Authorization header for axios
 const setAuthToken = (token: string | null): void => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -21,6 +21,7 @@ const setAuthToken = (token: string | null): void => {
   }
 };
 
+// Decodes a token and returns its expiration time (in ms)
 const getTokenExpirationTime = (token: string): number | null => {
   try {
     const decoded = jwtDecode<JwtPayload>(token);
@@ -68,6 +69,7 @@ interface AuthProviderProps {
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // Initialize state from localStorage using consistent keys (all lowercase)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(localStorage.getItem('access_token'));
   const [user, setUser] = useState<User | null>(null);
@@ -93,11 +95,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Clear tokens and user state
     setUser(null);
     setToken(null);
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    // <-- FIX: Use consistent key names!
+    localStorage.removeItem("access_token"); // Was "accessToken"
+    localStorage.removeItem("refresh_token"); // Was "refreshToken"
     // Dispatch a custom event so that WebSocketContext can close its connections
     window.dispatchEvent(new CustomEvent('user-logout'));
-    // Navigate to login or force page reload as needed
+    // Navigate to login (or reload page as needed)
     navigate('/login');
   }, [navigate]);
 

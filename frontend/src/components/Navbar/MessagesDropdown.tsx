@@ -1,5 +1,3 @@
-// frontend/src/components/Navbar/MessagesDropdown.tsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavDropdown, Badge, Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
@@ -20,7 +18,7 @@ interface MessagesDropdownProps {
 }
 
 const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnreadCount }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth(); // Added user from AuthContext
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +40,12 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       const fetchedMessages: Message[] = await fetchInboxMessages();
       setMessages(fetchedMessages);
 
-      // Calculate unread
+      // Calculate unread messages count
       const unread = fetchedMessages.filter((msg) => !msg.read).length;
       setUnreadCount(unread);
       setError(null);
@@ -60,11 +57,15 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     }
   }, [token, setUnreadCount]);
 
-  // Fetch friends list
+  // Fetch friends list (Fixed: Pass the current user's id)
   const fetchFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
-      const data = await fetchFriendsList();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      // Convert user.id to string if needed
+      const data = await fetchFriendsList(String(user.id));
       setFriends(Array.isArray(data) ? data : []);
       setFriendsError(null);
     } catch (err) {
@@ -73,7 +74,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
     } finally {
       setFriendsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchUserMessages();
@@ -99,21 +100,19 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
       setSendError('Please select a recipient and enter a message.');
       return;
     }
-
     setSending(true);
     setSendError(null);
-
     try {
       if (selectedReceiver === 'all') {
-        // Broadcast
+        // Broadcast message to all users
         await broadcastMessageToAll(messageContent.trim());
       } else {
-        // Send to specific user
+        // Send a message to a specific user (convert selectedReceiver to number)
         await sendMessageToUser(Number(selectedReceiver), messageContent.trim());
       }
-      // Refresh messages
+      // Refresh messages after sending
       await fetchUserMessages();
-      // Close modal
+      // Close modal and reset fields
       setShowModal(false);
       setSelectedReceiver('');
       setMessageContent('');
@@ -143,16 +142,12 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
           </Button>
         </NavDropdown.Header>
         <NavDropdown.Divider />
-
         {loading ? (
           <NavDropdown.ItemText>
-            <Spinner animation="border" size="sm" className="me-2" />
-            Loading...
+            <Spinner animation="border" size="sm" className="me-2" /> Loading...
           </NavDropdown.ItemText>
         ) : error ? (
-          <NavDropdown.ItemText className="text-danger">
-            {error}
-          </NavDropdown.ItemText>
+          <NavDropdown.ItemText className="text-danger">{error}</NavDropdown.ItemText>
         ) : messages.length === 0 ? (
           <NavDropdown.ItemText>No messages.</NavDropdown.ItemText>
         ) : (
@@ -165,7 +160,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
               className={msg.read ? 'read' : 'unread'}
             >
               <div className="d-flex align-items-center">
-                {/* Profile Picture */}
                 {msg.sender.profile_picture ? (
                   <img
                     src={msg.sender.profile_picture}
@@ -175,8 +169,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
                 ) : (
                   <div className="profile-placeholder me-2">?</div>
                 )}
-
-                {/* Message Details */}
                 <div>
                   <strong>{msg.sender.full_name}</strong>
                   <div className="text-truncate" style={{ maxWidth: '200px' }}>
@@ -204,8 +196,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
               <Form.Label>Recipient</Form.Label>
               {friendsLoading ? (
                 <div className="d-flex align-items-center">
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Loading friends...
+                  <Spinner animation="border" size="sm" className="me-2" /> Loading friends...
                 </div>
               ) : friendsError ? (
                 <Alert variant="danger">{friendsError}</Alert>
@@ -224,7 +215,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
                 </Form.Select>
               )}
             </Form.Group>
-
             <Form.Group className="mb-3" controlId="messageContent">
               <Form.Label>Message</Form.Label>
               <Form.Control
@@ -234,7 +224,6 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
                 onChange={(e) => setMessageContent(e.target.value)}
               />
             </Form.Group>
-
             <Button variant="primary" onClick={handleSendMessage} disabled={sending}>
               {sending ? 'Sending...' : 'Send Message'}
             </Button>

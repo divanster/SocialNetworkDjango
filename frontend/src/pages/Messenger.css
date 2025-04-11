@@ -1,0 +1,42 @@
+/* frontend/src/pages/Messenger.css */
+
+/* Overall Messenger page styling */
+.messenger-page {
+  padding: 20px;
+  background-color: #f8f9fa; /* Light gray background */
+  min-height: calc(100vh - 70px); /* Adjust if you have a fixed navbar */
+}
+
+/* Contacts sidebar (left column) */
+.contacts-column {
+  background-color: #ffffff;
+  border-right: 1px solid #dee2e6;
+  padding: 15px;
+  max-height: calc(100vh - 100px); /* Adjust based on your header/footer */
+  overflow-y: auto;
+}
+
+/* Chat window area (right column) */
+.chat-column {
+  background-color: #ffffff;
+  padding: 15px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+/* When no friend is selected */
+.no-selection {
+  margin-top: 20%;
+  text-align: center;
+  color: #6c757d;
+  font-size: 1.25rem;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 767.98px) {
+  .contacts-column,
+  .chat-column {
+    max-height: none;
+    overflow-y: visible;
+  }
+}

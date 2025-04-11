@@ -1,4 +1,3 @@
-// src/contexts/WebSocketContext.tsx
 import React, {
   createContext,
   useContext,
@@ -32,9 +31,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const connectWebSocket = useCallback(() => {
     if (!token) return;
-    // Example endpoint – adjust as needed.
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/users/?token=${token}`;
+    // Use environment variable instead of window.location.host:
+    const baseWsUrl = process.env.REACT_APP_WEBSOCKET_URL;
+    if (!baseWsUrl) {
+      console.error("No REACT_APP_WEBSOCKET_URL defined");
+      return;
+    }
+    // Build URL for connecting to the "users" endpoint:
+    const wsUrl = `${baseWsUrl}/users/?token=${token}`;
     console.log(`Attempting WebSocket connection to ${wsUrl}`);
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
@@ -44,6 +48,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('WebSocket connection established');
       setIsConnected(true);
       attemptRef.current = 0;
+      // Subscribe to any pending groups:
       Object.keys(pendingGroupSubs.current).forEach((group) => {
         if (pendingGroupSubs.current[group] && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ action: 'subscribe', group }));
@@ -83,7 +88,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         pingIntervalRef.current = null;
       }
       socketRef.current = null;
-      // Only attempt reconnect if token still exists
+      // Attempt reconnection only if the connection was not manually closed and token still exists
       if (!manuallyClosed.current && token) {
         attemptRef.current += 1;
         const reconnectDelay = Math.min(1000 * 2 ** attemptRef.current, 30000);
@@ -120,7 +125,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, [token, connectWebSocket]);
 
-  // Listen for logout events to immediately close the WebSocket.
+  // Listen for logout events so the WebSocket is closed immediately
   useEffect(() => {
     const handleUserLogout = () => {
       if (socketRef.current) {
