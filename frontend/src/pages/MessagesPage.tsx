@@ -4,7 +4,7 @@ import { fetchMessageById, markMessageAsRead } from '../services/messagesService
 import { useAuth } from '../contexts/AuthContext';
 import { Card, Button, Spinner, Alert } from 'react-bootstrap';
 
-// Update the Users interface so id is a string (matching the service definitions)
+// Update the User interface so id is a string (matching the service definitions)
 interface User {
   id: string;
   username: string;
