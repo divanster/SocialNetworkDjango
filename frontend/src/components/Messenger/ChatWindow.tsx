@@ -1,136 +1,108 @@
+// Example in ChatWindow.tsx
 import React, { useEffect, useState, useCallback, FormEvent } from 'react';
 import { Button, Form, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
+import { sendMessageToUser, fetchInboxMessages, broadcastMessageToAll, Message as MessageType } from '../../services/messagesService';
 import './ChatWindow.css';
 
-export interface Message {
-  id: string;
-  sender: {
-    id: string;
-    username: string;
-    full_name: string;
-    profile_picture: string | null;
-  };
-  receiver: {
-    id: string;
-    username: string;
-    full_name: string;
-    profile_picture: string | null;
-  };
-  content: string;
-  read: boolean;
-  created_at: string;
-}
-
 interface ChatWindowProps {
-  friendId: string; // Selected friend’s id (string)
+  friendId: string; // The friend's ID (a UUID string)
   friendName: string;
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
   const { token, user } = useAuth();
-  const [allMessages, setAllMessages] = useState<Message[]>([]);
-  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const [newMessage, setNewMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use WebSocket for real‑time updates in the "messenger" group
   const { sendMessage: sendWSMessage } = useWebSocket('messenger', {
     onMessage: (data: any) => {
-      const msg: Message = data.message;
-      // Check if the message belongs to the conversation between the current user and friend
-      if (
-        (msg.sender.id === friendId && msg.receiver.id === user?.id) ||
-        (msg.sender.id === user?.id && msg.receiver.id === friendId)
-      ) {
-        setConversationMessages(prev => [...prev, msg]);
+      if (data.message && user) {
+        // Filter messages for the current conversation; check for non-null user
+        if (
+          (data.message.sender.id === friendId && data.message.receiver.id === user.id) ||
+          (data.message.sender.id === user.id && data.message.receiver.id === friendId)
+        ) {
+          setMessages(prev => [...prev, data.message]);
+        }
       }
     },
   });
 
-  // Fetch all inbox messages
-  const fetchInbox = useCallback(async () => {
-    if (!token) return;
+  const fetchConversation = useCallback(async () => {
+    if (!token || !user) return; // Ensure both token and user are available
     setLoading(true);
     try {
       const response = await axios.get('/messenger/inbox/', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const messages: Message[] = response.data.results || response.data;
-      setAllMessages(messages);
+      let allMessages: MessageType[] = Array.isArray(response.data.results)
+        ? response.data.results
+        : response.data;
+      // Filter for the conversation between the current user and the friend
+      const conversation = allMessages.filter((msg) => {
+        return (
+          (msg.sender.id === friendId && msg.receiver.id === user.id) ||
+          (msg.sender.id === user.id && msg.receiver.id === friendId)
+        );
+      });
+      setMessages(conversation);
       setError(null);
     } catch (err: any) {
-      console.error('Failed to fetch inbox messages:', err);
-      setError('Failed to load messages.');
+      console.error('Error fetching conversation:', err);
+      setError('Failed to load conversation.');
     } finally {
       setLoading(false);
     }
-  }, [token]);
-
-  // Filter messages between the current user and the selected friend
-  const filterConversation = useCallback(() => {
-    if (!user) return;
-    const conversation = allMessages.filter((msg) => {
-      return (
-        (msg.sender.id === friendId && msg.receiver.id === user.id) ||
-        (msg.sender.id === user.id && msg.receiver.id === friendId)
-      );
-    });
-    conversation.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    setConversationMessages(conversation);
-  }, [allMessages, friendId, user]);
+  }, [token, friendId, user]);
 
   useEffect(() => {
-    if (token) {
-      fetchInbox();
-    }
-  }, [token, fetchInbox]);
-
-  useEffect(() => {
-    filterConversation();
-  }, [allMessages, filterConversation]);
+    fetchConversation();
+  }, [fetchConversation]);
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
-    if (!token || !newMessage.trim() || !user) return;
+    if (!token || !user || !newMessage.trim()) return;
     try {
-      const response = await axios.post(
-        '/messenger/',
-        { receiver: friendId, content: newMessage.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const sentMsg: Message = response.data;
-      setConversationMessages(prev => [...prev, sentMsg]);
+      if (friendId === 'all') {
+        await broadcastMessageToAll(newMessage.trim());
+      } else {
+        const sentMsg = await sendMessageToUser(friendId, newMessage.trim());
+        setMessages(prev => [...prev, sentMsg]);
+      }
       setNewMessage('');
-      // Optionally, you can also trigger a WebSocket update:
-      // sendWSMessage({ friendId, message: sentMsg });
     } catch (err) {
       console.error('Error sending message', err);
-      setError('Failed to send message.');
+      setError('Error sending message');
     }
   };
+
+  if (!user) {
+    return <div>Loading user data...</div>; // Or handle it appropriately
+  }
 
   return (
     <div className="chat-window">
       <div className="chat-header">
         <h5>Chat with {friendName}</h5>
       </div>
-      <div className="chat-messages">
+      <div className="chat-messages" style={{ maxHeight: '400px', overflowY: 'auto', padding: '1rem' }}>
         {loading ? (
           <div className="text-center">
             <Spinner animation="border" size="sm" />
           </div>
         ) : error ? (
           <Alert variant="danger">{error}</Alert>
-        ) : conversationMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <div>No messages yet.</div>
         ) : (
-          conversationMessages.map((msg) => (
-            <div key={msg.id} className="message-item">
-              <strong>{msg.sender.username}:</strong> {msg.content}
+          messages.map((msg) => (
+            <div key={msg.id} className="message-item mb-2">
+              <strong>{msg.sender.id === user.id ? 'You' : friendName}:</strong> {msg.content}
               <br />
               <small className="text-muted">{new Date(msg.created_at).toLocaleTimeString()}</small>
             </div>

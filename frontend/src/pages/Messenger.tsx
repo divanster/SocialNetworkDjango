@@ -1,3 +1,4 @@
+// frontend/src/pages/Messenger.tsx
 import React, { useState } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import ContactsSidebar from '../components/Messenger/ContactsSidebar';
@@ -17,8 +18,10 @@ const Messenger: React.FC = () => {
         </Col>
         <Col md={8} className="chat-column">
           {selectedFriend ? (
-            // Pass the friend's id (as string) and name to ChatWindow
-            <ChatWindow friendId={selectedFriend.id} friendName={selectedFriend.full_name || selectedFriend.username} />
+            <ChatWindow
+              friendId={selectedFriend.id}
+              friendName={selectedFriend.full_name || selectedFriend.username}
+            />
           ) : (
             <div className="no-selection">Please select a friend to start a conversation.</div>
           )}

@@ -1,8 +1,9 @@
+// frontend/src/services/messagesService.ts
 import axios from 'axios';
 import { handleApiError } from './api';
 
 export interface User {
-  id: string; // using string for UUID
+  id: string; // UUID as a string
   username: string;
   full_name: string;
   profile_picture: string | null;
@@ -17,17 +18,42 @@ export interface Message {
   created_at: string;
 }
 
+// Helper: transform raw API message into our Message type.
+// Our API returns sender and receiver as IDs, plus sender_name, receiver_name, etc.
+// Optionally, if your API returns profile picture URLs, include them.
+const transformMessage = (msg: any): Message => {
+  return {
+    id: msg.id,
+    sender: {
+      id: msg.sender,
+      username: msg.sender_name,
+      full_name: msg.sender_name,
+      profile_picture: msg.sender_profile_picture || null,
+    },
+    receiver: {
+      id: msg.receiver,
+      username: msg.receiver_name,
+      full_name: msg.receiver_name,
+      profile_picture: msg.receiver_profile_picture || null,
+    },
+    content: msg.content,
+    read: msg.read,
+    created_at: msg.created_at,
+  };
+};
+
 /**
- * Fetch inbox messages for the current logged‑in user.
- * Calls GET /messenger/inbox/ on your backend.
+ * Fetch inbox messages.
+ * GET /messenger/inbox/
  */
 export const fetchInboxMessages = async (): Promise<Message[]> => {
   try {
     const response = await axios.get('/messenger/inbox/');
-    if (response.data && Array.isArray(response.data.results)) {
-      return response.data.results;
+    let data = response.data;
+    if (data && Array.isArray(data.results)) {
+      data = data.results;
     }
-    return response.data;
+    return data.map(transformMessage);
   } catch (error) {
     handleApiError(error, 'Error fetching inbox messages');
     return [];
@@ -36,7 +62,7 @@ export const fetchInboxMessages = async (): Promise<Message[]> => {
 
 /**
  * Send a message to a specific user.
- * POST /messenger/ on your backend.
+ * POST /messenger/
  */
 export const sendMessageToUser = async (
   receiverId: string,
@@ -47,7 +73,7 @@ export const sendMessageToUser = async (
       receiver: receiverId,
       content,
     });
-    return response.data;
+    return transformMessage(response.data);
   } catch (error) {
     handleApiError(error, 'Error sending message to user');
     throw error;
@@ -55,27 +81,13 @@ export const sendMessageToUser = async (
 };
 
 /**
- * Broadcast a message to all users.
- * POST /messenger/broadcast/ on your backend.
- */
-export const broadcastMessageToAll = async (content: string): Promise<Message[]> => {
-  try {
-    const response = await axios.post('/messenger/broadcast/', { content });
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Error broadcasting message to all users');
-    throw error;
-  }
-};
-
-/**
  * Fetch a specific message by its ID.
- * GET /messenger/{messageId}/ on your backend.
+ * GET /messenger/{messageId}/
  */
 export const fetchMessageById = async (messageId: string): Promise<Message> => {
   try {
     const response = await axios.get(`/messenger/${messageId}/`);
-    return response.data;
+    return transformMessage(response.data);
   } catch (error) {
     handleApiError(error, 'Error fetching message by ID');
     throw error;
@@ -83,14 +95,32 @@ export const fetchMessageById = async (messageId: string): Promise<Message> => {
 };
 
 /**
- * Mark a specific message as read.
- * POST /messenger/{messageId}/mark_as_read/ on your backend.
+ * Mark a message as read.
+ * POST /messenger/{messageId}/mark_as_read/
  */
 export const markMessageAsRead = async (messageId: string): Promise<void> => {
   try {
     await axios.post(`/messenger/${messageId}/mark_as_read/`);
   } catch (error) {
     handleApiError(error, 'Error marking message as read');
+    throw error;
+  }
+};
+
+/**
+ * Broadcast a message to all users.
+ * POST /messenger/broadcast/
+ */
+export const broadcastMessageToAll = async (content: string): Promise<Message[]> => {
+  try {
+    const response = await axios.post('/messenger/broadcast/', { content });
+    let data = response.data;
+    if (data && Array.isArray(data.results)) {
+      data = data.results;
+    }
+    return data.map(transformMessage);
+  } catch (error) {
+    handleApiError(error, 'Error broadcasting message');
     throw error;
   }
 };

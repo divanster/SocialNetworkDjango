@@ -1,7 +1,7 @@
+// frontend/src/components/Messenger/ContactsSidebar.tsx
 import React, { useEffect, useState } from 'react';
 import { ListGroup, Spinner, Alert } from 'react-bootstrap';
 import { fetchFriendsList, User } from '../../services/friendsService';
-import { useAuth } from '../../contexts/AuthContext';
 import { useOnlineStatus } from '../../contexts/OnlineStatusContext';
 import './ContactsSidebar.css';
 
@@ -10,19 +10,16 @@ interface ContactsSidebarProps {
 }
 
 const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend }) => {
-  const { user } = useAuth();
-  const { onlineUsers } = useOnlineStatus();
   const [friends, setFriends] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { onlineUsers } = useOnlineStatus(); // onlineUsers is an array of string IDs
 
   useEffect(() => {
     const loadFriends = async () => {
       try {
-        if (!user) {
-          throw new Error("User not authenticated");
-        }
-        const data = await fetchFriendsList(user.id);
+        // Replace "currentUserId" with the actual current user's id if available.
+        const data = await fetchFriendsList("currentUserId");
         setFriends(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
@@ -34,7 +31,7 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend }) => 
     };
 
     loadFriends();
-  }, [user]);
+  }, []);
 
   if (loading) {
     return (
@@ -48,7 +45,6 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend }) => 
   return (
     <ListGroup className="contacts-sidebar">
       {friends.map((friend) => {
-        // Check if friend is online (IDs as strings)
         const isOnline = onlineUsers.includes(friend.id);
         return (
           <ListGroup.Item key={friend.id} action onClick={() => onSelectFriend(friend)}>

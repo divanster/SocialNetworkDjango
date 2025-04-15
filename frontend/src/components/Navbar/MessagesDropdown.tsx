@@ -24,12 +24,12 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal state
+  // Modal state for sending messages
   const [showModal, setShowModal] = useState<boolean>(false);
   const [friends, setFriends] = useState<User[]>([]);
   const [friendsLoading, setFriendsLoading] = useState<boolean>(false);
   const [friendsError, setFriendsError] = useState<string | null>(null);
-  const [selectedReceiver, setSelectedReceiver] = useState<string>(''); // userId or 'all'
+  const [selectedReceiver, setSelectedReceiver] = useState<string>('');
   const [messageContent, setMessageContent] = useState<string>('');
   const [sending, setSending] = useState<boolean>(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -58,10 +58,8 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
   const fetchFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-      const data = await fetchFriendsList(user.id);
+      if (!user) throw new Error("User not authenticated");
+      const data = await fetchFriendsList(String(user.id));
       setFriends(Array.isArray(data) ? data : []);
       setFriendsError(null);
     } catch (err) {

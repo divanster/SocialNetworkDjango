@@ -13,6 +13,7 @@ import logging
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+
 class TokenAuthMiddleware(BaseMiddleware):
     """
     Custom middleware that takes a JWT token from the query string or headers and authenticates via Django.
@@ -20,7 +21,8 @@ class TokenAuthMiddleware(BaseMiddleware):
 
     async def __call__(self, scope, receive, send):
         token = None
-        query_string = scope.get('query_string', b'').decode()  # Safely get query_string, default to empty byte string
+        query_string = scope.get('query_string',
+                                 b'').decode()  # Safely get query_string, default to empty byte string
         params = parse_qs(query_string)
 
         # Try to get the token from the query string
@@ -72,7 +74,7 @@ class TokenAuthMiddleware(BaseMiddleware):
             scope['user'] = AnonymousUser()
             logger.warning(f"WebSocket connection attempt with invalid token: {e}")
             await send({
-                           "type": "websocket.close"})  # Close the WebSocket if the token is invalid
+                "type": "websocket.close"})  # Close the WebSocket if the token is invalid
 
         except User.DoesNotExist:
             # If user does not exist, set AnonymousUser

@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class BaseTask(Task):
     abstract = True  # Ensures Celery does not treat this as a concrete task
 

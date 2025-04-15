@@ -1,3 +1,4 @@
+// frontend/src/services/friendsService.ts
 import axios from 'axios';
 import { handleApiError } from './api';
 
@@ -17,19 +18,16 @@ export interface Friendship {
 
 /**
  * Fetch friendships and convert them into a friend list.
- * The current user's id is used to determine which user in the friendship is the friend.
+ * Use the current user's id to decide which partner is the friend.
  */
 export const fetchFriendsList = async (currentUserId: string): Promise<User[]> => {
   try {
     const response = await axios.get('/friends/friendships/');
     const friendships: Friendship[] = response.data.results || [];
     const friends = friendships.map((friendship) => {
-      // Compare as strings
-      if (friendship.user1.id === currentUserId) {
-        return friendship.user2;
-      } else {
-        return friendship.user1;
-      }
+      return friendship.user1.id === currentUserId
+        ? friendship.user2
+        : friendship.user1;
     });
     return friends;
   } catch (error) {
