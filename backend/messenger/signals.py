@@ -10,7 +10,6 @@ from kafka_app.constants import (
     MESSAGE_CREATED,
     MESSAGE_UPDATED,
     MESSAGE_DELETED,
-    MESSENGER_EVENTS
 )
 
 logger = logging.getLogger(__name__)

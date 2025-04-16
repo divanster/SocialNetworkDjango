@@ -34,7 +34,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
         (incomingMsg.sender.id === friendId && incomingMsg.receiver.id === user.id) ||
         (incomingMsg.sender.id === user.id && incomingMsg.receiver.id === friendId)
       ) {
-        setMessages((prev) => [...prev, incomingMsg]);
+        setMessages((prev) => {
+          // Prevent duplicates by checking if the message ID already exists.
+          if (prev.find(msg => msg.id === incomingMsg.id)) {
+            return prev;
+          }
+          return [...prev, incomingMsg];
+        });
       }
     }
   }, [friendId, user]);

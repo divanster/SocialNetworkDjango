@@ -1,5 +1,3 @@
-# kafka_app/consumers.py
-
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -14,25 +12,19 @@ class GroupConsumer(AsyncWebsocketConsumer):
             logger.warning("WebSocket connection attempt without group name.")
             await self.close()
             return
-
-        # Join the group
-        await self.channel_layer.group_add(
-            self.group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        logger.info(f"WebSocket connected and joined group: {self.group_name}")
+        logger.info(f"Connected to group {self.group_name}")
 
     async def disconnect(self, close_code):
-        # Leave the group
-        await self.channel_layer.group_discard(
-            self.group_name,
-            self.channel_name
-        )
-        logger.info(f"WebSocket disconnected and left group: {self.group_name}")
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        logger.info(f"Disconnected from group {self.group_name}")
 
+    # Crucially, add this method explicitly:
     async def kafka_message(self, event):
-        # Send message to WebSocket
-        message = event['message']
-        await self.send(text_data=json.dumps(message))
-        logger.info(f"Sent message to WebSocket group {self.group_name}: {message}")
+        message = event["message"]
+        await self.send(text_data=json.dumps({
+            "event": message.get("event", "kafka_event"),
+            "data": message.get("data", {})
+        }))
+        logger.info(f"WebSocket sent kafka_message: {message}")

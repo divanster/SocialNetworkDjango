@@ -15,7 +15,8 @@ def process_messenger_event(message):
         if event_type == "created":
             # Logic for processing the "created" event.
             logger.info(f"New message created event: {message}")
-            # Custom handling can be added here, like notifying users, updating inbox, etc.
+            # Custom handling can be added here, like notifying users, updating
+            # inbox, etc.
 
         elif event_type == "updated":
             # Logic for processing the "updated" event.

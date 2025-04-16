@@ -1,3 +1,5 @@
+# backend/kafka_app/consumer.py
+
 import os
 import logging
 import json
@@ -38,6 +40,9 @@ from kafka_app.constants import (
     COMMENT_CREATED,
     FOLLOW_CREATED,
     FRIEND_ADDED,
+    MESSAGE_CREATED,
+    MESSAGE_UPDATED,
+    MESSAGE_DELETED,
     MESSAGE_EVENT,
     NEWSFEED_UPDATED,
     REACTION_ADDED,
@@ -103,6 +108,9 @@ class KafkaConsumerApp(BaseKafkaConsumer):
             FOLLOW_CREATED: self.handle_follow_event,
             FRIEND_ADDED: self.handle_friend_event,
             MESSAGE_EVENT: self.handle_messenger_event,
+            MESSAGE_CREATED: self.handle_message_created,
+            MESSAGE_UPDATED: self.handle_message_updated,
+            MESSAGE_DELETED: self.handle_message_deleted,
             NEWSFEED_UPDATED: self.handle_newsfeed_event,
             REACTION_ADDED: self.handle_reaction_event,
             SOCIAL_ACTION: self.handle_social_event,
@@ -195,6 +203,7 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                              exc_info=True)
         else:
             logger.warning(f"No handler found for event type: {event_type}")
+            logger.info(f"Received event type: {event_type}")
 
     def send_to_websocket_group(self, group_name, message):
         """
@@ -317,3 +326,28 @@ class KafkaConsumerApp(BaseKafkaConsumer):
                                      {"event": "Post newsfeed created", "data": data})
         logger.info(
             f"Handled 'post_newsfeed_created' event for Post ID: {data.get('id')}")
+
+    def handle_message_created(self, data):
+        process_messenger_event(data)
+        self.send_to_websocket_group("messenger", {
+            "event": "New message created",
+            "data": data
+        })
+        logger.info(f"Handled MESSAGE_CREATED event: {data.get('message_id')}")
+
+    def handle_message_updated(self, data):
+        process_messenger_event(data)
+        self.send_to_websocket_group("messenger", {
+            "event": "Message updated",
+            "data": data
+        })
+        logger.info(f"Handled MESSAGE_UPDATED event: {data.get('message_id')}")
+
+    def handle_message_deleted(self, data):
+        process_messenger_event(data)
+        self.send_to_websocket_group("messenger", {
+            "event": "Message deleted",
+            "data": data
+        })
+        logger.info(f"Handled MESSAGE_DELETED event: {data.get('id')}")
+
