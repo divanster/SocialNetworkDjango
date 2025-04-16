@@ -135,8 +135,63 @@ class FriendConsumer(BaseConsumer):
     group_name = "friends"
 
 
-class MessengerConsumer(BaseConsumer):
+class MessengerConsumer(AsyncWebsocketConsumer):
+    """
+    A consumer that puts all connected clients in the 'messenger' group.
+    It expects a JSON payload with a key "message" and then broadcasts this
+    message to all clients in the group.
+    """
     group_name = "messenger"
+
+    async def connect(self):
+        # Add this socket to the messenger group
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+        logger.info(f"Connected to group '{self.group_name}' on channel {self.channel_name}")
+
+    async def disconnect(self, close_code):
+        # Remove this socket from the messenger group
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        logger.info(f"Disconnected from group '{self.group_name}' on channel {self.channel_name} (code {close_code})")
+
+    async def receive(self, text_data):
+        """
+        When a message is received from the client, expect it in the form:
+          { "message": { "content": "Hello", "sender_id": "..." } }
+        and broadcast it to the messenger group.
+        """
+        logger.info(f"MessengerConsumer receive: {text_data}")
+        try:
+            data = json.loads(text_data)
+            msg_obj = data.get("message")
+            if msg_obj:
+                await self.channel_layer.group_send(
+                    self.group_name,  # Broadcast to the messenger group
+                    {
+                        "type": "messenger_message",  # Calls the messenger_message handler
+                        "message": msg_obj,
+                    }
+                )
+            else:
+                logger.warning("No 'message' key in received data")
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON received in MessengerConsumer")
+            await self.send(json.dumps({"error": "Invalid JSON"}))
+        except Exception as e:
+            logger.exception("Error in MessengerConsumer.receive")
+            await self.send(json.dumps({"error": str(e)}))
+
+    async def messenger_message(self, event):
+        """
+        Handler for the broadcast event.
+        It sends the event to the client in the form:
+          { "message": { ... } }
+        """
+        msg_obj = event.get("message")
+        response = {
+            "message": msg_obj
+        }
+        await self.send(json.dumps(response))
 
 
 class NewsfeedConsumer(BaseConsumer):
