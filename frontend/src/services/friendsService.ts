@@ -1,4 +1,5 @@
 // frontend/src/services/friendsService.ts
+
 import axios from 'axios';
 import { handleApiError } from './api';
 
@@ -24,12 +25,24 @@ export const fetchFriendsList = async (currentUserId: string): Promise<User[]> =
   try {
     const response = await axios.get('/friends/friendships/');
     const friendships: Friendship[] = response.data.results || [];
+
+    // For each friendship record, figure out which side is me
+    // and return the other user as the "friend."
     const friends = friendships.map((friendship) => {
-      return friendship.user1.id === currentUserId
-        ? friendship.user2
-        : friendship.user1;
+      if (friendship.user1.id === currentUserId) {
+        return friendship.user2;
+      } else if (friendship.user2.id === currentUserId) {
+        return friendship.user1;
+      } else {
+        // Neither side is me, so skip this record
+        return null;
+      }
     });
-    return friends;
+
+    // Filter out nulls (friendships that don't involve the current user)
+    const validFriends = friends.filter((u) => u !== null) as User[];
+
+    return validFriends;
   } catch (error) {
     handleApiError(error, 'Error fetching friends');
     return [];

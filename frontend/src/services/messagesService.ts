@@ -27,13 +27,13 @@ const transformMessage = (msg: any): Message => {
     sender: {
       id: msg.sender,
       username: msg.sender_name,
-      full_name: msg.sender_name,
+      full_name: msg.sender_full_name,
       profile_picture: msg.sender_profile_picture || null,
     },
     receiver: {
       id: msg.receiver,
       username: msg.receiver_name,
-      full_name: msg.receiver_name,
+      full_name: msg.receiver_full_name,
       profile_picture: msg.receiver_profile_picture || null,
     },
     content: msg.content,
