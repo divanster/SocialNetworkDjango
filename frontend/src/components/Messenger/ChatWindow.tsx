@@ -1,14 +1,14 @@
-// Example in ChatWindow.tsx
 import React, { useEffect, useState, useCallback, FormEvent } from 'react';
 import { Button, Form, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import { sendMessageToUser, fetchInboxMessages, broadcastMessageToAll, Message as MessageType } from '../../services/messagesService';
+import { transformMessage } from '../../services/messagesService'; // ако имате такава функция
 import './ChatWindow.css';
 
 interface ChatWindowProps {
-  friendId: string; // The friend's ID (a UUID string)
+  friendId: string;
   friendName: string;
 }
 
@@ -22,7 +22,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
   const { sendMessage: sendWSMessage } = useWebSocket('messenger', {
     onMessage: (data: any) => {
       if (data.message && user) {
-        // Filter messages for the current conversation; check for non-null user
         if (
           (data.message.sender.id === friendId && data.message.receiver.id === user.id) ||
           (data.message.sender.id === user.id && data.message.receiver.id === friendId)
@@ -34,16 +33,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
   });
 
   const fetchConversation = useCallback(async () => {
-    if (!token || !user) return; // Ensure both token and user are available
+    if (!token || !user) return;
     setLoading(true);
     try {
-      const response = await axios.get('/messenger/inbox/', {
+      const response = await axios.get('/messenger/inbox/', {  // Използвайте правилния URL
         headers: { Authorization: `Bearer ${token}` },
       });
+      // Transforming fuction here
       let allMessages: MessageType[] = Array.isArray(response.data.results)
-        ? response.data.results
+        ? response.data.results.map(transformMessage)
         : response.data;
-      // Filter for the conversation between the current user and the friend
+
+      // filtering messages in both directions
       const conversation = allMessages.filter((msg) => {
         return (
           (msg.sender.id === friendId && msg.receiver.id === user.id) ||
@@ -82,7 +83,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
   };
 
   if (!user) {
-    return <div>Loading user data...</div>; // Or handle it appropriately
+    return <div>Loading user data...</div>;
   }
 
   return (

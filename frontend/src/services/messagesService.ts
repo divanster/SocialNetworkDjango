@@ -21,7 +21,7 @@ export interface Message {
 // Helper: transform raw API message into our Message type.
 // Our API returns sender and receiver as IDs, plus sender_name, receiver_name, etc.
 // Optionally, if your API returns profile picture URLs, include them.
-const transformMessage = (msg: any): Message => {
+export const transformMessage = (msg: any): Message => {
   return {
     id: msg.id,
     sender: {
