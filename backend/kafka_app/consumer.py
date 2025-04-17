@@ -327,27 +327,23 @@ class KafkaConsumerApp(BaseKafkaConsumer):
         logger.info(
             f"Handled 'post_newsfeed_created' event for Post ID: {data.get('id')}")
 
+        # --- messenger specific handlers ---------------------------
     def handle_message_created(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger", {
-            "event": "New message created",
-            "data": data
-        })
+        # 👇  wrap the Kafka “data” dict so the JS can read `data.message`
+        self.send_to_websocket_group(
+            "messenger",
+            {"message": data}  # <-- exactly what the React code expects
+        )
         logger.info(f"Handled MESSAGE_CREATED event: {data.get('message_id')}")
 
     def handle_message_updated(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger", {
-            "event": "Message updated",
-            "data": data
-        })
+        self.send_to_websocket_group("messenger", {"message": data})
         logger.info(f"Handled MESSAGE_UPDATED event: {data.get('message_id')}")
 
     def handle_message_deleted(self, data):
         process_messenger_event(data)
-        self.send_to_websocket_group("messenger", {
-            "event": "Message deleted",
-            "data": data
-        })
+        self.send_to_websocket_group("messenger", {"message": data})
         logger.info(f"Handled MESSAGE_DELETED event: {data.get('id')}")
 
