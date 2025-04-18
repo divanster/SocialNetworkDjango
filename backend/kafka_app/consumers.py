@@ -32,7 +32,7 @@ class GroupConsumer(AsyncWebsocketConsumer):
         logger.info(f"WebSocket disconnected and left group: {self.group_name}")
 
     async def kafka_message(self, event):
-        # Send message to WebSocket
+        # Send messages to WebSocket
         message = event['message']
         await self.send(text_data=json.dumps(message))
         logger.info(f"Sent message to WebSocket group {self.group_name}: {message}")
