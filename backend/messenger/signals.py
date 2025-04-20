@@ -3,7 +3,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Message
-from kafka_app.tasks.messenger_tasks import process_message_event_task  # Updated import
+from kafka_app.tasks.messenger_tasks import process_message_event_task
 import logging
 
 from kafka_app.constants import (
