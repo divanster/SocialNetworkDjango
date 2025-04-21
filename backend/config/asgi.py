@@ -1,34 +1,37 @@
+"""
+ASGI entry‑point for Django + Channels.
+
+✓ Loads Django
+✓ Adds JWTMiddleware outside the URLRouter
+✓ Exposes a health‑checkable `http` application
+"""
+
 import os
 import django
-from channels.routing import ProtocolTypeRouter, URLRouter
-from django.core.asgi import get_asgi_application
-from channels.security.websocket import AllowedHostsOriginValidator
 import logging
+from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
 
-# Set up the Django settings environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
-# Initialize Django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-# Import the centralized WebSocket routing module
-from websocket.routing import websocket_urlpatterns  # Central WebSocket routing
-from config.middleware import JWTMiddleware  # Import the custom JWT middleware
+from websocket.routing import websocket_urlpatterns        # central routes
+from config.middleware import JWTMiddleware                # the ONE jwt middleware
 
-# Configure logging for tracking ASGI events and debugging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)                       # <‑– use local logger
 
-# Define the ASGI application that handles HTTP and WebSocket protocols
-application = ProtocolTypeRouter({
-    # HTTP requests will be handled using the default Django ASGI application
-    "http": get_asgi_application(),
+django_asgi_app = get_asgi_application()
 
-    # WebSocket connections are handled through the JWTMiddleware for JWT authentication
-    "websocket": AllowedHostsOriginValidator(  # <-- wrap with origin validator
-        JWTMiddleware(
-            URLRouter(websocket_urlpatterns)
-        )
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AllowedHostsOriginValidator(
+            JWTMiddleware(
+                URLRouter(websocket_urlpatterns)
+            )
+        ),
+    }
+)
 
-logger.info("ASGI application setup completed successfully.")
+logger.info("ASGI application loaded")

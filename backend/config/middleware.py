@@ -1,60 +1,68 @@
+# backend/config/middleware.py
 from urllib.parse import parse_qs
 from channels.middleware import BaseMiddleware
-from rest_framework_simplejwt.tokens import AccessToken
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.exceptions import TokenError
 import logging
 
 logger = logging.getLogger(__name__)
+User   = get_user_model()
 
 
 class JWTMiddleware(BaseMiddleware):
+    """
+    Authenticates WebSocket requests via
+
+      • ?token=<JWT>         (query string)
+      • Authorization: Bearer <JWT> (header)
+
+    Closes the socket with code 4000 if the token is missing or invalid.
+    """
+
     async def __call__(self, scope, receive, send):
-        # Parse query string using urllib.parse.parse_qs
-        query_string = scope.get("query_string", b"").decode()
-        query_params = parse_qs(query_string)
+        if scope["type"] != "websocket":                # let HTTP pass straight through
+            return await super().__call__(scope, receive, send)
 
-        # Extract token from query params
-        token = query_params.get("token", [None])[0]
-
-        # Fallback to Authorization header if token is not in query string
+        token = self._extract_token(scope)
         if not token:
-            headers = dict(scope.get("headers", []))
-            auth_header = headers.get(b"authorization", b"").decode()
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]  # Extract token after "Bearer"
-
-        # If no token is found, reject the connection
-        if not token:
-            logger.warning("WebSocket connection rejected: No token provided.")
+            logger.warning("WS rejected – no token provided")
             await send({"type": "websocket.close", "code": 4000})
             return
 
-        # Log the token being validated
-        logger.info(f"Validating token: {token}")
-
         try:
-            # Validate the JWT token
-            access_token = AccessToken(token)
-            user_id = access_token.payload.get("user_id")
-            # Asynchronously fetch the user and attach to the scope
-            scope["user"] = await self.get_user(user_id)
-        except (InvalidToken, TokenError) as e:
-            logger.error(f"WebSocket JWT validation failed: {str(e)}")
+            payload      = AccessToken(token).payload   # validates & decodes
+            scope["user"] = await self._get_user(payload.get("user_id"))
+            return await super().__call__(scope, receive, send)
+
+        except TokenError as exc:                       # expired / invalid / black‑listed
+            logger.error(f"WS JWT failed: {exc}")
             await send({"type": "websocket.close", "code": 4000})
-            return
 
-        return await super().__call__(scope, receive, send)
+    # ------------------------------------------------------------------
 
-    async def get_user(self, user_id):
-        """
-        Fetch the user based on user_id asynchronously.
-        If the user does not exist, return an AnonymousUser.
-        """
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
+    def _extract_token(self, scope):
+        # 1. query‑string
+        qs_token = parse_qs(scope.get("query_string", b"").decode()).get("token", [None])[0]
+        if qs_token:
+            return qs_token
+
+        # 2. Authorization header
+        headers = dict(scope.get("headers", []))
+        auth    = headers.get(b"authorization", b"").decode()
+        if auth.lower().startswith("bearer "):
+            return auth.split(" ", 1)[1]
+
+        return None
+
+    # ------------------------------------------------------------------
+
+    async def _get_user(self, user_id):
+        if not user_id:
+            return AnonymousUser()
         try:
-            return await User.objects.aget(id=user_id)
+            return await User.objects.aget(id=user_id)  # async lookup (Django 4.1+)
         except User.DoesNotExist:
             return AnonymousUser()
 
