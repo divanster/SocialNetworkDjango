@@ -31,7 +31,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const connectWebSocket = useCallback(() => {
     if (!token) return;
-    // Use environment variables instead of window.location.host:
+    // Use environment variable instead of window.location.host:
     const baseWsUrl = process.env.REACT_APP_WEBSOCKET_URL;
     if (!baseWsUrl) {
       console.error("No REACT_APP_WEBSOCKET_URL defined");
