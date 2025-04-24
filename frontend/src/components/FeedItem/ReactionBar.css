@@ -1,0 +1,32 @@
+.reaction-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reaction-bar button {
+  background: none;
+  border: none;
+  color: #00a8ff;
+  cursor: pointer;
+}
+
+.reaction-counts span {
+  margin-right: 6px;
+}
+
+.emoji-picker {
+  position: absolute;
+  bottom: 120%;
+  background: #2f3640;
+  border-radius: 20px;
+  padding: 6px 10px;
+  display: flex;
+  gap: 6px;
+  box-shadow: 0 4px 8px rgba(0,0,0,.4);
+}
+.emoji-picker span {
+  cursor: pointer;
+  font-size: 20px;
+}

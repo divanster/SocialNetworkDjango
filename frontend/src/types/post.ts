@@ -1,28 +1,15 @@
 // frontend/src/types/post.ts
-
 export interface Post {
-  id: string; // Changed from number to string
+  id: string;                // UUID
   title: string;
   content: string;
-  author?: {
+  author?: {                  // your API must return this object
     id: string;
     username: string;
-    // Add other fields if necessary
   };
   created_at?: string;
   updated_at?: string;
-  // Add or remove optional fields as necessary
-  tags?: {
-    id: string; // string if you use UUID
-    name: string;
-  }[];
-  images?: {
-    id: string; // string if you use UUID
-    image: string;
-  }[];
-  ratings?: {
-    id: string; // string if you use UUID
-    value: number;
-    user: string; // string if user IDs are UUID
-  }[];
+  images?: { id: string; image: string }[];
+  reactions_count?: number;   // your feed endpoint should provide this
+  comments_count?: number;    // and this
 }

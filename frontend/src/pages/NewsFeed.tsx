@@ -1,10 +1,11 @@
-// src/pages/NewsFeed.tsx
+// frontend/src/pages/NewsFeed.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import useWebSocket from '../hooks/useWebSocket';
 import Posts from '../components/CentralNewsFeed/Posts';
 import Album from '../components/FeedItem/Album';
 import SharedItem from '../components/FeedItem/SharedItem';
+import StoryCarousel from '../components/FeedItem/StoryCarousel';
 import Profile from '../components/LeftSidebar/Profile';
 import FriendRequests from '../components/RightSidebar/FriendRequests';
 import Birthdays from '../components/RightSidebar/Birthdays';
@@ -16,245 +17,206 @@ import { Post as PostType } from '../types/post';
 import { Album as AlbumType } from '../types/album';
 import { SharedItem as SharedItemType } from '../types/sharedItem';
 import { useAuth } from '../contexts/AuthContext';
+import { useOnlineStatus } from '../contexts/OnlineStatusContext';
 import { Toast, ToastContainer } from 'react-bootstrap';
 
-// Import online status context
-import { useOnlineStatus } from '../contexts/OnlineStatusContext';
+interface StoryType {
+  id: string;
+  user: { id: string; full_name: string; profile_picture: string };
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const NewsFeed: React.FC = () => {
   const { token, user, loading: authLoading } = useAuth();
+  const { onlineUsers, userDetails } = useOnlineStatus();
 
   const [posts, setPosts] = useState<PostType[]>([]);
   const [albums, setAlbums] = useState<AlbumType[]>([]);
   const [sharedItems, setSharedItems] = useState<SharedItemType[]>([]);
-  const [dataLoading, setDataLoading] = useState<boolean>(true);
+  const [stories, setStories] = useState<StoryType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
-
   const [updatingPostIds, setUpdatingPostIds] = useState<string[]>([]);
   const [deletingPostIds, setDeletingPostIds] = useState<string[]>([]);
-
   const [toast, setToast] = useState<{ show: boolean; message: string; variant: string }>({
     show: false,
     message: '',
     variant: 'success',
   });
 
-  // Import online status data
-  const { onlineUsers, userDetails } = useOnlineStatus();
-
-  // Callbacks for adding new items (unchanged)
-  const addNewPost = (newPost: PostType) => {
-    setPosts((prevPosts) => [newPost, ...prevPosts]);
+  // Helpers for adding new items
+  const addNewPost = (np: PostType) => {
+    setPosts((p) => [np, ...p]);
     setToast({ show: true, message: 'Post created successfully!', variant: 'success' });
   };
-
-  const addNewAlbum = (newAlbum: AlbumType) => {
-    setAlbums((prevAlbums) => [newAlbum, ...prevAlbums]);
+  const addNewAlbum = (na: AlbumType) => {
+    setAlbums((a) => [na, ...a]);
     setToast({ show: true, message: 'Album created successfully!', variant: 'success' });
   };
-
-  const addNewSharedItem = (newSharedItem: SharedItemType) => {
-    setSharedItems((prevSharedItems) => [newSharedItem, ...prevSharedItems]);
+  const addNewSharedItem = (ns: SharedItemType) => {
+    setSharedItems((s) => [ns, ...s]);
     setToast({ show: true, message: 'Content shared successfully!', variant: 'success' });
   };
 
-  // WebSocket handlers (unchanged)
-  const handlePostsMessage = useCallback(
-    (data: any) => {
-      if (data.message && data.type === 'post') {
-        setPosts((prev) => {
-          const exists = prev.some((p) => p.id === data.message.id);
-          return exists ? prev : [data.message, ...prev];
-        });
-      } else if (data.message && data.type === 'shared_item') {
-        setSharedItems((prev) => {
-          const exists = prev.some((s) => s.id === data.message.id);
-          return exists ? prev : [data.message, ...prev];
-        });
-      }
-    },
-    []
-  );
-
-  const handleAlbumsMessage = useCallback(
-    (data: any) => {
-      if (data.message && data.type === 'album') {
-        setAlbums((prev) => {
-          const exists = prev.some((a) => a.id === data.message.id);
-          return exists ? prev : [data.message, ...prev];
-        });
-      }
-    },
-    []
-  );
-
-  // Use our custom WebSocket hook for posts and albums.
-  const { sendMessage: sendPostMessage } = useWebSocket('posts', { onMessage: handlePostsMessage });
-  const { sendMessage: sendAlbumMessage } = useWebSocket('albums', { onMessage: handleAlbumsMessage });
-
-  // Fetch Data on Mount
+  // Fetch feed + stories
   useEffect(() => {
     if (authLoading) return;
     if (!token) {
-      setError('User is not authenticated.');
-      setDataLoading(false);
+      setError('User not authenticated.');
+      setLoading(false);
       return;
     }
-
-    const fetchData = async () => {
+    (async () => {
       try {
-        const response = await axios.get(`${API_URL}/newsfeed/feed/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setPosts(response.data.posts || []);
-        setAlbums(response.data.albums || []);
-        setSharedItems(response.data.shared_items || []);
+        const [feedRes, storiesRes] = await Promise.all([
+          axios.get(`${API_URL}/newsfeed/feed/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${API_URL}/stories/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        setPosts(feedRes.data.posts || []);
+        setAlbums(feedRes.data.albums || []);
+        setSharedItems(feedRes.data.shared_items || []);
+        setStories(storiesRes.data || []);
         setError(null);
-      } catch (err: any) {
-        setError('Failed to fetch news feed data');
+      } catch (e) {
+        setError('Failed to fetch newsfeed or stories.');
       } finally {
-        setDataLoading(false);
+        setLoading(false);
       }
-    };
-
-    fetchData();
+    })();
   }, [token, authLoading]);
 
-  // CRUD handlers (unchanged)
+  // WebSocket handlers
+  const onPostEvent = useCallback((data: any) => {
+    if (data.type === 'post') addNewPost(data.message);
+    else if (data.type === 'shared_item') addNewSharedItem(data.message);
+  }, []);
+  const onAlbumEvent = useCallback((data: any) => {
+    if (data.type === 'album') addNewAlbum(data.message);
+  }, []);
+  const { sendMessage: sendPostMessage } = useWebSocket('posts', { onMessage: onPostEvent });
+  const { sendMessage: sendAlbumMessage } = useWebSocket('albums', { onMessage: onAlbumEvent });
+
+  // CRUD handlers
   const handleDeletePost = async (id: string) => {
     if (!token) {
-      setDeleteError('You must be logged in to delete a post.');
+      setDeleteError('Login required.');
       return;
     }
-    setDeletingPostIds((prev) => [...prev, id]);
+    setDeletingPostIds((ids) => [...ids, id]);
     try {
       await axios.delete(`${API_URL}/social/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setPosts((prev) => prev.filter((p) => p.id !== id));
-      setDeleteSuccess('Post deleted successfully.');
-      setToast({ show: true, message: 'Post deleted successfully!', variant: 'success' });
-    } catch (err: any) {
-      setDeleteError('Error deleting post.');
-      setToast({ show: true, message: 'Error deleting post.', variant: 'danger' });
+      setPosts((p) => p.filter((x) => x.id !== id));
+      setDeleteSuccess('Post deleted.');
+    } catch {
+      setDeleteError('Error deleting.');
     } finally {
-      setDeletingPostIds((prev) => prev.filter((p) => p !== id));
+      setDeletingPostIds((ids) => ids.filter((x) => x !== id));
+      setToast({ show: true, message: deleteSuccess || 'Deleted!', variant: 'success' });
     }
   };
-
-  const handleUpdatePost = async (updatedPost: PostType) => {
+  const handleUpdatePost = async (up: PostType) => {
     if (!token) {
-      setError('You must be logged in to update a post.');
+      setError('Login required.');
       return;
     }
-    setUpdatingPostIds((prev) => [...prev, updatedPost.id]);
+    setUpdatingPostIds((ids) => [...ids, up.id]);
     try {
-      const response = await axios.put(`${API_URL}/social/${updatedPost.id}/`, updatedPost, {
+      const res = await axios.put(`${API_URL}/social/${up.id}/`, up, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-      setPosts((prev) =>
-        prev.map((p) => (p.id === updatedPost.id ? response.data : p))
-      );
-      setToast({ show: true, message: 'Post updated successfully!', variant: 'success' });
-    } catch (err: any) {
-      setError('Error updating post.');
-      setToast({ show: true, message: 'Error updating post.', variant: 'danger' });
+      setPosts((p) => p.map((x) => (x.id === up.id ? res.data : x)));
+      setToast({ show: true, message: 'Post updated!', variant: 'success' });
+    } catch {
+      setError('Error updating.');
     } finally {
-      setUpdatingPostIds((prev) => prev.filter((p) => p !== updatedPost.id));
+      setUpdatingPostIds((ids) => ids.filter((x) => x !== up.id));
     }
   };
-
   const handleDeleteAlbum = async (id: string) => {
     if (!token) {
-      setDeleteError('You must be logged in to delete an album.');
+      setDeleteError('Login required.');
       return;
     }
     try {
       await axios.delete(`${API_URL}/albums/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAlbums((prev) => prev.filter((a) => a.id !== id));
-      setDeleteSuccess('Album deleted successfully.');
-      setToast({ show: true, message: 'Album deleted successfully!', variant: 'success' });
-    } catch (err: any) {
+      setAlbums((a) => a.filter((x) => x.id !== id));
+      setToast({ show: true, message: 'Album deleted!', variant: 'success' });
+    } catch {
       setDeleteError('Error deleting album.');
-      setToast({ show: true, message: 'Error deleting album.', variant: 'danger' });
     }
   };
-
-  const handleUpdateAlbum = async (updatedAlbum: AlbumType) => {
+  const handleUpdateAlbum = async (ua: AlbumType) => {
     if (!token) {
-      setError('You must be logged in to update an album.');
+      setError('Login required.');
       return;
     }
     try {
-      const formData = new FormData();
-      formData.append('title', updatedAlbum.title);
-      formData.append('description', updatedAlbum.description);
-      formData.append('visibility', updatedAlbum.visibility);
-
-      if (updatedAlbum.photos) {
-        updatedAlbum.photos.forEach((photo) => {
-          formData.append('image_files', photo.image);
-        });
-      }
-
-      const response = await axios.put(`${API_URL}/albums/${updatedAlbum.id}/`, formData, {
+      const fd = new FormData();
+      fd.append('title', ua.title);
+      fd.append('description', ua.description);
+      fd.append('visibility', ua.visibility);
+      ua.photos?.forEach((ph) => fd.append('image_files', ph.image));
+      const res = await axios.put(`${API_URL}/albums/${ua.id}/`, fd, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
-      setAlbums((prev) =>
-        prev.map((a) => (a.id === updatedAlbum.id ? response.data : a))
-      );
-      setToast({ show: true, message: 'Album updated successfully!', variant: 'success' });
-    } catch (err: any) {
+      setAlbums((a) => a.map((x) => (x.id === ua.id ? res.data : x)));
+      setToast({ show: true, message: 'Album updated!', variant: 'success' });
+    } catch {
       setError('Error updating album.');
-      setToast({ show: true, message: 'Error updating album.', variant: 'danger' });
     }
   };
-
   const handleDeleteSharedItem = async (id: string) => {
     if (!token) {
-      setDeleteError('You must be logged in to delete shared content.');
+      setDeleteError('Login required.');
       return;
     }
     try {
       await axios.delete(`${API_URL}/shared/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSharedItems((prev) => prev.filter((s) => s.id !== id));
-      setDeleteSuccess('Shared content deleted successfully.');
-      setToast({ show: true, message: 'Shared content deleted successfully!', variant: 'success' });
-    } catch (err: any) {
-      setDeleteError('Error deleting shared content.');
-      setToast({ show: true, message: 'Error deleting shared content.', variant: 'danger' });
+      setSharedItems((s) => s.filter((x) => x.id !== id));
+      setToast({ show: true, message: 'Shared item deleted!', variant: 'success' });
+    } catch {
+      setDeleteError('Error deleting shared item.');
     }
   };
 
   return (
-    <div className="newsfeed-container d-flex">
-      {/* Optionally display online status (for example, at the top of the NewsFeed or in a sidebar) */}
-      <div className="online-status-bar">
-        <strong>{onlineUsers.length}</strong> user(s) online
-        {/* If you want to display details, you could map over onlineUsers and/or use userDetails */}
-      </div>
-
+    <div className="newsfeed-container">
       {/* Left Sidebar */}
-      <div className="left-sidebar me-3">
+      <aside className="left-sidebar">
         <Profile />
-      </div>
+      </aside>
 
       {/* Main Feed */}
-      <div className="main-feed flex-grow-1">
+      <main className="main-feed">
+        {/* Header + online count badge */}
+        <div className="feed-header">
+          <h4>Home</h4>
+          <span className="online-badge">{onlineUsers.length} online</span>
+        </div>
+
+        {/* Composer */}
         <CreatePosting
           onPostCreated={addNewPost}
           onAlbumCreated={addNewAlbum}
@@ -262,16 +224,25 @@ const NewsFeed: React.FC = () => {
           sendAlbumMessage={sendAlbumMessage}
         />
 
-        {dataLoading ? (
-          <div className="text-center mt-5">Loading...</div>
+        {/* Stories */}
+        <StoryCarousel stories={stories} />
+
+        {/* Loading / Errors */}
+        {loading ? (
+          <div className="text-center my-5">Loading...</div>
         ) : (
           <>
             {error && <div className="alert alert-danger">{error}</div>}
             {deleteError && <div className="alert alert-danger">{deleteError}</div>}
             {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
 
-            <SharedItem sharedItems={sharedItems} onDeleteSharedItem={handleDeleteSharedItem} />
+            {/* Shared items */}
+            <SharedItem
+              sharedItems={sharedItems}
+              onDeleteSharedItem={handleDeleteSharedItem}
+            />
 
+            {/* Posts */}
             <Posts
               posts={posts}
               onDeletePost={handleDeletePost}
@@ -280,34 +251,36 @@ const NewsFeed: React.FC = () => {
               updatingPostIds={updatingPostIds}
             />
 
+            {/* Albums */}
             {albums.length > 0 ? (
-              albums.map((album) => (
-                <Album
-                  key={album.id}
-                  album={album}
-                  onDelete={handleDeleteAlbum}
-                  onUpdate={handleUpdateAlbum}
-                />
+              albums.map((alb) => (
+                <div key={alb.id} className="post-card">
+                  <Album
+                    album={alb}
+                    onDelete={handleDeleteAlbum}
+                    onUpdate={handleUpdateAlbum}
+                  />
+                </div>
               ))
             ) : (
               <div>No albums available</div>
             )}
           </>
         )}
-      </div>
+      </main>
 
       {/* Right Sidebar */}
-      <div className="right-sidebar ms-3">
+      <aside className="right-sidebar">
         <FriendRequests />
         <Birthdays />
         <Contacts />
-      </div>
+      </aside>
 
-      {/* Toast Notifications */}
+      {/* Toast */}
       <ToastContainer position="bottom-end">
         <Toast
           show={toast.show}
-          onClose={() => setToast({ ...toast, show: false })}
+          onClose={() => setToast((t) => ({ ...t, show: false }))}
           bg={toast.variant}
           delay={3000}
           autohide

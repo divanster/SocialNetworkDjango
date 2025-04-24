@@ -1,0 +1,27 @@
+.stories-bar {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 10px 0 20px;
+}
+
+.story-wrapper {
+  flex: 0 0 90px;
+  position: relative;
+  cursor: pointer;
+}
+
+.story-wrapper img {
+  width: 90px;
+  height: 150px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 8px rgba(0,0,0,.3);
+}
+
+.story-scroll-hint {
+  align-self: center;
+  font-size: 2rem;
+  color: #999;
+  padding-right: 8px;
+}
