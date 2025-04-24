@@ -1,9 +1,10 @@
-// frontend/src/App.tsx
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
+// Add this import:
+import useNotificationsSocket from './hooks/useNotificationsSocket';
 
 const NewsFeed = lazy(() => import('./pages/NewsFeed'));
 const Messenger = lazy(() => import('./pages/Messenger'));
@@ -12,21 +13,22 @@ const Signup = lazy(() => import('./components/Auth/Signup'));
 const NotFound = lazy(() => import('./components/NotFound'));
 
 const App: React.FC = () => {
+  // Opens WS for notifications and logs them to console
+  useNotificationsSocket();
+
   return (
     <>
       <Navbar />
       <ErrorBoundary>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>
-            {/* Public Routes */}
+            {/* Public */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-
-            {/* Protected Routes */}
+            {/* Protected */}
             <Route path="/" element={<ProtectedRoute><NewsFeed /></ProtectedRoute>} />
             <Route path="/messenger" element={<ProtectedRoute><Messenger /></ProtectedRoute>} />
-
-            {/* Catch-All */}
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

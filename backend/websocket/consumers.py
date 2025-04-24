@@ -214,8 +214,40 @@ class TaggingConsumer(BaseConsumer):
     group_name = "tagging"
 
 
-class NotificationConsumer(BaseConsumer):
-    group_name = "notifications"
+class NotificationConsumer(AuthenticatedWebsocketConsumer):
+    """
+    Per-user notifications.
+    Clients connect to:
+      ws://<host>/ws/notifications/?token=<access_token>
+    After handshake, this consumer joins the group "user_<user_id>"
+    and will receive every new Notification via its notify() handler.
+    """
+
+    async def connect(self):
+        # Authenticate, then set dynamic group and join it
+        user = await self.authenticate_user()
+        if not user:
+            return await self.close()
+        self.scope["user"] = user
+        self.group_name = f"user_{user.id}"
+        await super().connect()  # BaseConsumer.connect() will group_add & accept()
+
+    async def disconnect(self, close_code):
+        # Clean up
+        if hasattr(self, "group_name"):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        await super().disconnect(close_code)
+
+    async def notify(self, event):
+        """
+        Called by your post_save signal via:
+          channel_layer.group_send("user_<id>", { "type":"notify", ... })
+        """
+        await self.send(json.dumps({
+            "type": event["event"],    # e.g. "notification"
+            "data": event["payload"],  # serialized Notification instance
+        }))
+
 
 
 class UserConsumer(AuthenticatedWebsocketConsumer):
