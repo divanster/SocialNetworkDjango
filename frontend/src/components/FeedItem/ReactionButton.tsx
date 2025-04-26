@@ -1,47 +1,62 @@
-// frontend/src/components/FeedItem/ReactionButton.tsx
-import React, { useState } from 'react';
-import { Button } from 'react-bootstrap';
-import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
+import { Button } from 'react-bootstrap'
+import { useAuth } from '../../contexts/AuthContext'
 
 interface ReactionButtonProps {
-  postId: string;   // <— change here
+  postId: string  // UUID of the object being reacted to
+  contentType?: 'post' | 'comment'  // Specify content type (post or comment)
 }
 
-const ReactionButton: React.FC<ReactionButtonProps> = ({ postId }) => {
-  const { token } = useAuth();
-  const [reactionsCount, setReactionsCount] = useState<number>(0);
+const ReactionButton: React.FC<ReactionButtonProps> = ({ postId, contentType = 'post' }) => {
+  const { token, user } = useAuth()
+  const [count, setCount] = useState(0)
+  const [liked, setLiked] = useState(false)
 
-  const handleReaction = async () => {
-    if (!token) {
-      console.error('No authentication token available.');
-      return;
-    }
+  const api = axios.create({
+    baseURL: process.env.REACT_APP_API_URL,
+    headers: { Authorization: `Bearer ${token}` },
+  })
 
+  useEffect(() => {
+    if (!token) return
+    api
+      .get(`/reactions/?content_type=${contentType}&object_id=${postId}`)
+      .then((res) => {
+        const arr = Array.isArray(res.data) ? res.data : res.data.results ?? []
+        setCount(arr.length)
+        setLiked(arr.some((r: any) => r.user === user?.username))
+      })
+      .catch(console.error)
+  }, [postId, token, contentType, api, user?.username])
+
+  const toggle = async () => {
     try {
-      const response = await axios.post(
-        `${API_URL}/posts/${postId}/reactions/`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      // assume your API returns { reactionsCount: number }
-      setReactionsCount(response.data.reactionsCount);
-    } catch (error) {
-      console.error('Error reacting to post', error);
+      if (liked) {
+        await api.delete('/reactions/remove_reaction/', {
+          data: { content_type: contentType, object_id: postId, emoji: 'like' },
+        })
+      } else {
+        await api.post('/reactions/', {
+          content_type: contentType,
+          object_id: postId,
+          emoji: 'like',
+        })
+      }
+      const res = await api.get(`/reactions/?content_type=${contentType}&object_id=${postId}`)
+      const arr = Array.isArray(res.data) ? res.data : res.data.results ?? []
+      setCount(arr.length)
+      setLiked(!liked)
+    } catch (err) {
+      console.error('Reaction error', err)
     }
-  };
+  }
 
   return (
-    <Button variant="link" className="p-0 me-3" onClick={handleReaction}>
-      👍 {reactionsCount > 0 ? reactionsCount : ''}
+    <Button size="sm" variant={liked ? 'primary' : 'outline-primary'} onClick={toggle}>
+      {liked ? <>👍 {count}</> : <>{count > 0 ? <>👍 {count}</> : '👍 Like'}</>}
     </Button>
-  );
-};
+  )
+}
 
-export default ReactionButton;
+export default ReactionButton
