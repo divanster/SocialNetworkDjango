@@ -6,7 +6,7 @@ from core.models.base_models import BaseModel, UUIDModel, SoftDeleteModel
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from tagging.models import TaggedItem
-from django.utils import timezone  # Correct import for timezone
+from django.utils import timezone  # Correct import for timezones
 
 # Get the custom User model
 User = get_user_model()
