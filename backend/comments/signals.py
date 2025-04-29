@@ -29,7 +29,7 @@ def comment_created_or_updated(sender, instance, created, **kwargs):
     Args:
         sender (Model class): The model class that sent the signal.
         instance (Comment): The actual instance being saved.
-        created (boolean): Boolean; True if a new record was created.
+        created (bool): Boolean; True if a new record was created.
     """
     event_type = 'created' if created else 'updated'
 
