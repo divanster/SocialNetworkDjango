@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class UUIDEncoder(json.JSONEncoder):
     """
-    Converts UUID objects to strings before JSON encoding..
+    Converts UUID objects to strings before JSON encoding.
     """
     def default(self, obj):
         if isinstance(obj, uuid.UUID):
