@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def _get_message_data(message_instance):
     """
-    Extract relevant data from the message instance.
+    Extract relevant data from the messageс instance.
     """
     return {
         'message_id': str(message_instance.id),
