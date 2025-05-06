@@ -39,7 +39,7 @@ def process_message_event_task(self, message_id, event_type):
 
     Args:
         self: Celery task instance.
-        message_id (UUID): The UUID of the message.
+        message_id (UUID): The UUID of the messages.
         event_type (str): Type of event (e.g., MESSAGE_CREATED, MESSAGE_UPDATED, MESSAGE_DELETED).
 
     Returns:
