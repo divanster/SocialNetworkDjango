@@ -1,6 +1,6 @@
 import logging
 from celery import shared_task
-from kafka.errors import KafkaTimeoutError
+from aiokafka.errors import KafkaTimeoutError
 from kafka_app.tasks.base_task import BaseTask
 from kafka_app.services import KafkaService
 from kafka_app.constants import (

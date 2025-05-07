@@ -29,6 +29,7 @@ daphne==4.0.0                           # ASGI server for Django Channels
 
 # Kafka and Messaging
 kafka-python==2.0.2                     # Kafka integration for Python applications
+aiokafka>=0.9.0
 
 # Storage and Image Processing
 Pillow==9.5.0                           # Image processing library for Python

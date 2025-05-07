@@ -4,7 +4,8 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from users.models import CustomUser, UserProfile
-from kafka_app.tasks.user_tasks import process_user_event_task  # Ensure this task exists
+from kafka_app.tasks.user_tasks import \
+    process_user_event_task  # Ensure this task exists
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from utils.group_names import get_user_group_name  # Ensure this utility exists
@@ -19,6 +20,7 @@ from kafka_app.constants import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 # ===========================
 # CustomUser Signals
@@ -36,7 +38,8 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
             if created_flag:
                 logger.info(f"UserProfile created for new user with ID {instance.id}")
             else:
-                logger.info(f"UserProfile already existed for user with ID {instance.id}")
+                logger.info(
+                    f"UserProfile already existed for user with ID {instance.id}")
 
             event_type = USER_CREATED
             message = f"Welcome to the platform, {instance.username}!"
@@ -60,7 +63,8 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
                 'username': instance.username,
             }
         )
-        logger.info(f"Real-time WebSocket notification sent for user {event_type} with ID {instance.id}")
+        logger.info(
+            f"Real-time WebSocket notification sent for user {event_type} with ID {instance.id}")
     except Exception as e:
         logger.error(f"Error in create_or_update_user_profile signal: {e}")
 
@@ -87,7 +91,8 @@ def handle_soft_delete_user(sender, instance, **kwargs):
                 'username': instance.username,
             }
         )
-        logger.info(f"Real-time WebSocket notification sent for user soft deletion with ID {instance.id}")
+        logger.info(
+            f"Real-time WebSocket notification sent for user soft deletion with ID {instance.id}")
 
     except Exception as e:
         logger.error(f"Error handling soft delete for user ID {instance.id}: {e}")
@@ -115,7 +120,8 @@ def handle_restore_user(sender, instance, **kwargs):
                 'username': instance.username,
             }
         )
-        logger.info(f"Real-time WebSocket notification sent for user restoration with ID {instance.id}")
+        logger.info(
+            f"Real-time WebSocket notification sent for user restoration with ID {instance.id}")
 
     except Exception as e:
         logger.error(f"Error handling restore for user ID {instance.id}: {e}")

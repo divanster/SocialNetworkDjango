@@ -2,8 +2,7 @@
 
 import logging
 from celery import shared_task
-from kafka.errors import KafkaTimeoutError
-from django.conf import settings
+from aiokafka.errors import KafkaTimeoutError
 
 from core.task_utils import BaseTask
 from kafka_app.services import KafkaService

@@ -1,7 +1,7 @@
 # backend/core/utils.py
 
 # Kafka producer utility
-from kafka_app.services import KafkaService
+from kafka_app.producer import KafkaProducerClient as KafkaService
 from django.contrib.auth import get_user_model
 from friends.models import Friendship, User, Block
 from django.db import models

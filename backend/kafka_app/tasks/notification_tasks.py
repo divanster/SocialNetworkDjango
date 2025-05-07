@@ -1,6 +1,6 @@
 import logging
 from celery import shared_task
-from kafka.errors import KafkaTimeoutError
+from aiokafka.errors import KafkaTimeoutError
 from django.utils import timezone
 from django.conf import settings
 

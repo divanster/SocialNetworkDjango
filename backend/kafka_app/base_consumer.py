@@ -5,7 +5,7 @@ import json
 import django
 import jwt  # Import jwt for decoding tokens
 from pydantic import BaseModel, ValidationError  # Import BaseModel and ValidationError from Pydantic
-from kafka.errors import KafkaError, NoBrokersAvailable, KafkaTimeoutError
+from aiokafka.errors import KafkaError, KafkaConnectionError as NoBrokersAvailable, KafkaTimeoutError
 from kafka import KafkaConsumer
 from django.conf import settings
 from django.db import close_old_connections

@@ -1,7 +1,7 @@
 services:
   # PostgreSQL for SQL models in Django
   db:
-    image: postgres:13-alpine
+    image: postgres:14-alpine
     platform: linux/arm64
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-app_db}

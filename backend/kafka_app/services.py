@@ -1,10 +1,10 @@
-# backend/kafka_app/services.py
-
+import asyncio
+import threading
 import json
 import logging
-import threading
 import uuid
-from kafka import KafkaProducer
+
+from aiokafka import AIOKafkaProducer
 from django.conf import settings
 from cryptography.fernet import Fernet
 
@@ -22,83 +22,116 @@ class UUIDEncoder(json.JSONEncoder):
 
 
 class KafkaService:
+    """
+    Singleton wrapper around an async AIOKafkaProducer, exposing a sync API.
+    """
     _instance = None
     _lock = threading.Lock()
 
     def __new__(cls):
-        if not cls._instance:
+        if cls._instance is None:
             with cls._lock:
-                if not cls._instance:
-                    cls._instance = super(KafkaService, cls).__new__(cls)
-                    cls._instance._initialize()
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    # One‐time setup of encryption
+                    key = settings.KAFKA_ENCRYPTION_KEY
+                    if not key:
+                        raise ValueError("KAFKA_ENCRYPTION_KEY must be set")
+                    cls._instance._cipher_suite = Fernet(key.encode())
+                    cls._instance._producer = None
         return cls._instance
 
-    def _initialize(self):
-        try:
-            self.producer = KafkaProducer(
-                bootstrap_servers=[settings.KAFKA_BROKER_URL],
-                retries=5,
-                # Removed value_serializer to handle serialization manually
+    async def _get_producer(self):
+        """
+        Lazily start the AIOKafkaProducer with idempotence, acks, compression, and linger.
+        """
+        if self._producer is None:
+            p = AIOKafkaProducer(
+                bootstrap_servers=settings.KAFKA_BROKER_URL,
+                acks="all",
+                enable_idempotence=True,
+                compression_type="lz4",
+                linger_ms=100,
             )
-            self.key = settings.KAFKA_ENCRYPTION_KEY.encode()
-            self.cipher_suite = Fernet(self.key)
-            logger.info("KafkaProducer initialized successfully.")
-        except Exception as e:
-            logger.error(f"Failed to initialize KafkaProducer: {e}")
-            raise e
+            await p.start()
+            self._producer = p
+            logger.info("AIOKafkaProducer started (idempotent, acks=all, compression=lz4)")
+        return self._producer
 
-    def encrypt_message(self, message):
+    def _encrypt(self, message: dict) -> bytes:
         """
-        Encrypts a message. The 'message' should be a dictionary.
+        JSON-encode + encrypt via Fernet.
         """
         try:
-            json_bytes = json.dumps(message, cls=UUIDEncoder).encode('utf-8')
-            encrypted = self.cipher_suite.encrypt(json_bytes)
-            return encrypted
+            raw = json.dumps(message, cls=UUIDEncoder).encode("utf-8")
+            return self._cipher_suite.encrypt(raw)
         except Exception as e:
-            logger.error(f"Error encrypting message: {e}")
-            raise e
+            logger.error(f"Error encrypting Kafka message: {e}")
+            raise
 
-    def send_message(self, topic_key, message, retries=3):
+    def send_message(self, topic_key: str, message: dict, retries: int = 3):
         """
-        Sends 'message' to Kafka after encryption.
-        Retries on failure up to 'retries' times.
+        Synchronously send an encrypted message to Kafka, retrying up to `retries` times.
         """
-        logger.info(f"send_message called with topic_key: {topic_key} and message: {message}")
-        attempt = 0
-        while attempt < retries:
+        topic = settings.KAFKA_TOPICS.get(topic_key)
+        if not topic:
+            raise ValueError(f"Unknown Kafka topic key: {topic_key}")
+
+        payload = self._encrypt(message)
+        last_exc = None
+
+        for attempt in range(1, retries + 1):
             try:
-                topic = settings.KAFKA_TOPICS.get(topic_key)
-                if not topic:
-                    raise ValueError(f"Topic key '{topic_key}' not found in KAFKA_TOPICS settings.")
+                async def _do_send():
+                    producer = await self._get_producer()
+                    # send_and_wait returns RecordMetadata
+                    return await producer.send_and_wait(topic, value=payload)
 
-                encrypted_message = self.encrypt_message(message)
-                future = self.producer.send(topic, value=encrypted_message)
-                result = future.get(timeout=10)  # Wait for send to complete
-                logger.info(f"Message sent to topic '{topic}': {message}")
-                return result
+                loop = asyncio.new_event_loop()
+                try:
+                    result = loop.run_until_complete(_do_send())
+                    logger.info(f"[KafkaService] Sent to '{topic}' (attempt {attempt}): {message}")
+                    return result
+                finally:
+                    loop.close()
+
             except Exception as e:
-                attempt += 1
-                logger.error(f"Attempt {attempt}: Failed to send message to topic '{topic_key}': {e}")
-                if attempt >= retries:
-                    logger.error(f"Exceeded maximum retries ({retries}) for sending message to topic '{topic_key}'.")
-                    raise e
+                last_exc = e
+                logger.error(f"[KafkaService] Attempt {attempt} failed for topic '{topic}': {e}")
+                if attempt == retries:
+                    logger.error(f"[KafkaService] Gave up after {retries} attempts.")
+                    raise
+
+        # in case somehow the loop never sends
+        raise last_exc or RuntimeError("Failed to send message to Kafka")
 
     def flush(self):
-        try:
-            self.producer.flush()
-            logger.info("KafkaProducer flush completed.")
-        except Exception as e:
-            logger.error(f"Failed to flush KafkaProducer: {e}")
-            raise e
+        """
+        Flush any pending messages.
+        """
+        if self._producer:
+            async def _do_flush():
+                await self._producer.flush()
+
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(_do_flush())
+                logger.info("AIOKafkaProducer flush completed")
+            finally:
+                loop.close()
 
     def close(self):
-        try:
-            if hasattr(self, 'producer') and self.producer is not None:
-                self.producer.flush()
-                self.producer.close(timeout=10)
-                self.producer = None
-                logger.info("KafkaProducer closed.")
-        except Exception as e:
-            logger.error(f"Failed to close KafkaProducer: {e}")
-            raise e
+        """
+        Stop the producer and release resources.
+        """
+        if self._producer:
+            async def _do_close():
+                await self._producer.stop()
+
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(_do_close())
+                logger.info("AIOKafkaProducer stopped")
+            finally:
+                loop.close()
+            self._producer = None
