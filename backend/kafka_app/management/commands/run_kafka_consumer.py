@@ -1,13 +1,22 @@
+import asyncio
 import logging
 import sys
-
 from django.core.management.base import BaseCommand
-from django.conf import settings
-
+from config import settings
 from kafka_app.consumer import KafkaConsumerApp
 
 logger = logging.getLogger(__name__)
 
+# Ensure that any thread running async code gets an event loop
+def set_event_loop():
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
 class Command(BaseCommand):
     help = (
@@ -21,8 +30,11 @@ class Command(BaseCommand):
 
         consumer_app = KafkaConsumerApp(topics, group_id)
 
+        # Ensure event loop is set before starting Kafka consumer
+        set_event_loop()
+
         try:
-            consumer_app.start()
+            asyncio.get_event_loop().run_until_complete(consumer_app._consume_loop())
         except KeyboardInterrupt:
             logger.info("Kafka consumer interrupted by user.")
         except Exception as e:

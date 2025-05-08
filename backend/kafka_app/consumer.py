@@ -28,7 +28,6 @@ django.setup()
 
 logger = logging.getLogger(__name__)
 
-
 class KafkaConsumerApp:
     """
     Async Kafka consumer powered by aiokafka.  Dispatches events to your services

@@ -3,13 +3,11 @@ import threading
 import json
 import logging
 import uuid
-
 from aiokafka import AIOKafkaProducer
 from django.conf import settings
 from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
-
 
 class UUIDEncoder(json.JSONEncoder):
     """
@@ -19,7 +17,6 @@ class UUIDEncoder(json.JSONEncoder):
         if isinstance(obj, uuid.UUID):
             return str(obj)
         return super().default(obj)
-
 
 class KafkaService:
     """
@@ -33,12 +30,14 @@ class KafkaService:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
-                    # One‐time setup of encryption
+                    # One-time setup of encryption
                     key = settings.KAFKA_ENCRYPTION_KEY
                     if not key:
                         raise ValueError("KAFKA_ENCRYPTION_KEY must be set")
                     cls._instance._cipher_suite = Fernet(key.encode())
                     cls._instance._producer = None
+                    cls._instance._loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(cls._instance._loop)
         return cls._instance
 
     async def _get_producer(self):
@@ -50,12 +49,12 @@ class KafkaService:
                 bootstrap_servers=settings.KAFKA_BROKER_URL,
                 acks="all",
                 enable_idempotence=True,
-                compression_type="lz4",
+                compression_type="gzip",
                 linger_ms=100,
             )
             await p.start()
             self._producer = p
-            logger.info("AIOKafkaProducer started (idempotent, acks=all, compression=lz4)")
+            logger.info("AIOKafkaProducer started (idempotent, acks=all, compression=gzip)")
         return self._producer
 
     def _encrypt(self, message: dict) -> bytes:
@@ -84,16 +83,12 @@ class KafkaService:
             try:
                 async def _do_send():
                     producer = await self._get_producer()
-                    # send_and_wait returns RecordMetadata
                     return await producer.send_and_wait(topic, value=payload)
 
-                loop = asyncio.new_event_loop()
-                try:
-                    result = loop.run_until_complete(_do_send())
-                    logger.info(f"[KafkaService] Sent to '{topic}' (attempt {attempt}): {message}")
-                    return result
-                finally:
-                    loop.close()
+                loop = self._loop
+                result = loop.run_until_complete(_do_send())
+                logger.info(f"[KafkaService] Sent to '{topic}' (attempt {attempt}): {message}")
+                return result
 
             except Exception as e:
                 last_exc = e
@@ -102,7 +97,6 @@ class KafkaService:
                     logger.error(f"[KafkaService] Gave up after {retries} attempts.")
                     raise
 
-        # in case somehow the loop never sends
         raise last_exc or RuntimeError("Failed to send message to Kafka")
 
     def flush(self):
@@ -113,12 +107,9 @@ class KafkaService:
             async def _do_flush():
                 await self._producer.flush()
 
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(_do_flush())
-                logger.info("AIOKafkaProducer flush completed")
-            finally:
-                loop.close()
+            loop = self._loop
+            loop.run_until_complete(_do_flush())
+            logger.info("AIOKafkaProducer flush completed")
 
     def close(self):
         """
@@ -128,10 +119,7 @@ class KafkaService:
             async def _do_close():
                 await self._producer.stop()
 
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(_do_close())
-                logger.info("AIOKafkaProducer stopped")
-            finally:
-                loop.close()
+            loop = self._loop
+            loop.run_until_complete(_do_close())
+            logger.info("AIOKafkaProducer stopped")
             self._producer = None
