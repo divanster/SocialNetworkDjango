@@ -44,7 +44,7 @@ services:
       KAFKA_CFG_ADVERTISED_LISTENERS: "BROKER://kafka:9092"  # Kafka advertised listeners
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,BROKER:PLAINTEXT"  # Security protocol
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"  # Controller listener names
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Auto-create topics
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"  # Auto-create topics
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"  # Set replication factor for internal topics
       KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"  # Set JVM heap options
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "BROKER"
