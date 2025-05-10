@@ -170,7 +170,7 @@ class KafkaConsumerApp:
             max_poll_interval_ms=300000,
         )
         await self.consumer.start()
-        logger.info(f"Started aiokafka consumer on topics: {self.topics}")
+        logger.info(f"Started aiokafka consumer on1 topics: {self.topics}")
 
         try:
             async for msg in self.consumer:
