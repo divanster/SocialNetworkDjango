@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def _get_post_data(post):
     """
-    Extract relevant data from the post instances.
+    Extract relevant data from the post instance.
     """
     return {
         'id': str(post.id),
