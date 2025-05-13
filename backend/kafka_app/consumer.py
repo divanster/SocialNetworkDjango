@@ -1,12 +1,10 @@
-# backend/kafka_app/consumer.py
-
 import os
 import django
 import json
 import logging
 import asyncio
 
-import jwt  # JWT for in‐message token validation
+import jwt  # JWT for in-message token validation
 from pydantic import ValidationError
 from aiokafka import AIOKafkaConsumer
 from cryptography.fernet import Fernet
@@ -44,7 +42,7 @@ class KafkaConsumerApp:
     """
     Async Kafka consumer powered by aiokafka.
     Dispatches events to your sync services and forwards to Channels groups,
-    with optional JWT in‐message validation.
+    with optional JWT in-message validation.
     """
     def __init__(self, topics, group_id):
         self.topics = topics if isinstance(topics, list) else [topics]
@@ -54,7 +52,7 @@ class KafkaConsumerApp:
         self.handlers = self._load_handlers()
 
     def _load_handlers(self):
-        # import your sync‐style business logic
+        # import your sync-style business logic
         from albums.services import process_album_event
         from comments.services import process_comment_event
         from follows.services import process_follow_event
@@ -71,19 +69,17 @@ class KafkaConsumerApp:
         def make_async_handler(fn, group_name, label, event_type_key):
             """
             Wrap a sync fn(data) as an async handler:
-              1) inject `event_type` into data
-              2) run fn(data) in threadpool via sync_to_async
-              3) await group_send
+              - data already contains 'id'
+              - event_type_key: exact key from the wire
             """
             async def handler(data):
-                # 1. copy & inject the real event_type
-                data = dict(data)
+                # inject the real event_type
                 data["event_type"] = event_type_key
 
-                # 2. run your sync business logic
+                # run your sync business logic
                 await sync_to_async(fn)(data)
 
-                # 3. broadcast over WebSocket
+                # broadcast over WebSocket
                 await self.channel_layer.group_send(
                     group_name,
                     {
@@ -139,9 +135,21 @@ class KafkaConsumerApp:
             POST_DELETED: make_async_handler(process_social_event, "social", "Post deleted",       POST_DELETED),
         }
 
-        # backwards‐compat for producer keys:
-        h["user_created"]           = h.get(USER_REGISTERED)
-        h["post_newsfeed_created"]  = h.get(NEWSFEED_CREATED)
+        # legacy key → newsfeed handler
+        h["post_newsfeed_created"] = make_async_handler(
+            process_newsfeed_event,
+            "newsfeed",
+            "Feed item created",
+            "post_newsfeed_created"
+        )
+
+        # accept plain newsfeed_* keys
+        h["newsfeed_created"] = h[NEWSFEED_CREATED]
+        h["newsfeed_updated"] = h[NEWSFEED_UPDATED]
+        h["newsfeed_deleted"] = h[NEWSFEED_DELETED]
+
+        # user_registered alias
+        h["user_created"] = h.get(USER_REGISTERED)
 
         return h
 
@@ -156,16 +164,16 @@ class KafkaConsumerApp:
                 NewTopic(name=t, num_partitions=1, replication_factor=1)
                 for t in missing
             ])
+        # close the admin client cleanly
         await admin.close()
 
-        # 1) now start your consumer as before
+        # 1) start the consumer
         self.consumer = AIOKafkaConsumer(
             *self.topics,
             bootstrap_servers=settings.KAFKA_BROKER_URL,
             group_id=self.group_id,
             auto_offset_reset="earliest",
             enable_auto_commit=True,
-            # you can tune these if you get rebalance errors
             max_poll_records=10,
             max_poll_interval_ms=300000,
         )
@@ -178,18 +186,21 @@ class KafkaConsumerApp:
 
                 raw = msg.value
                 if settings.KAFKA_ENCRYPTION_KEY:
-                    cipher = Fernet(settings.KAFKA_ENCRYPTION_KEY.encode())
-                    raw = cipher.decrypt(raw)
+                    raw = Fernet(settings.KAFKA_ENCRYPTION_KEY.encode()).decrypt(raw)
 
-                # JSON‐decode + Pydantic validation
+                # decode + validate
                 try:
                     payload = json.loads(raw.decode("utf-8"))
-                    event = EventData.parse_obj(payload)
+                    event   = EventData.parse_obj(payload)
                 except (ValidationError, json.JSONDecodeError) as e:
                     logger.error(f"Invalid message payload: {e}")
                     continue
 
-                # Optional in‐message JWT validation
+                # debug
+                logger.info(f"[DEBUG] Received {event.event_type}, id={event.id}")
+                logger.info(f"[DEBUG] Handler keys: {list(self.handlers.keys())}")
+
+                # optional JWT check
                 tok = event.data.get("jwt_token")
                 if tok:
                     try:
@@ -206,20 +217,24 @@ class KafkaConsumerApp:
                         logger.warning("Skipping invalid JWT in event")
                         continue
 
-                # Dispatch to the appropriate handler
+                # merge id back into data
+                data = dict(event.data)
+                data["id"] = event.id
+
                 handler = self.handlers.get(event.event_type)
-                if handler:
-                    try:
-                        await handler(event.data)
-                    except Exception as e:
-                        logger.error(f"Error in handler for {event.event_type}: {e}", exc_info=True)
-                else:
+                if not handler:
                     logger.warning(f"No handler for event type: {event.event_type}")
+                    continue
+
+                try:
+                    await handler(data)
+                except Exception:
+                    logger.exception(f"Error in handler for {event.event_type}")
 
         finally:
             await self.consumer.stop()
             logger.info("aiokafka consumer stopped")
 
     def start(self):
-        """Blocking entry‐point to run the async consumer loop."""
+        """Blocking entry-point to run the async consumer loop."""
         asyncio.run(self._consume_loop())
