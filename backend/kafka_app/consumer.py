@@ -1,3 +1,5 @@
+# backend/kafka_app/consumer.py
+
 import os
 import django
 import json
@@ -38,6 +40,30 @@ django.setup()
 logger = logging.getLogger(__name__)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Helper to make sure post_id is present before calling your business logic
+# ──────────────────────────────────────────────────────────────────────────────
+from social.services import process_social_event
+
+def handle_post_created(data: dict):
+    """
+    Safely extract post_id from Kafka event and invoke your service.
+    Logs an error if no 'id' in payload.
+    """
+    post_id = data.get("id")
+    if not post_id:
+        logger.error(f"[KafkaConsumer] Missing post_id in event data: {data}")
+        return
+    # Now call your existing service with normalized payload
+    return process_social_event({
+        "event_type": "post_created",
+        "post_id": post_id
+    })
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Main consumer application
+# ──────────────────────────────────────────────────────────────────────────────
 class KafkaConsumerApp:
     """
     Async Kafka consumer powered by aiokafka.
@@ -60,7 +86,6 @@ class KafkaConsumerApp:
         from messenger.services import process_messenger_event
         from newsfeed.services import process_newsfeed_event
         from reactions.services import process_reaction_event
-        from social.services import process_social_event
         from stories.services import process_story_event
         from tagging.services import process_tagging_event
         from users.services import process_user_event
@@ -89,6 +114,7 @@ class KafkaConsumerApp:
                 )
             return handler
 
+        # ── Register handlers ────────────────────────────────────────────────
         h = {
             # Albums
             ALBUM_CREATED: make_async_handler(process_album_event, "albums", "New album created", ALBUM_CREATED),
@@ -129,8 +155,8 @@ class KafkaConsumerApp:
             # Notifications
             NOTIFICATION_SENT: make_async_handler(create_notification, "notifications", "Notification sent", NOTIFICATION_SENT),
 
-            # Social (Posts)
-            POST_CREATED: make_async_handler(process_social_event, "social", "New post created", POST_CREATED),
+            # Social (Posts) ─── use our safe helper for creation
+            POST_CREATED: make_async_handler(handle_post_created, "social", "New post created", POST_CREATED),
             POST_UPDATED: make_async_handler(process_social_event, "social", "Post updated",       POST_UPDATED),
             POST_DELETED: make_async_handler(process_social_event, "social", "Post deleted",       POST_DELETED),
         }
@@ -143,12 +169,10 @@ class KafkaConsumerApp:
             "post_newsfeed_created"
         )
 
-        # accept plain newsfeed_* keys
+        # plain aliases
         h["newsfeed_created"] = h[NEWSFEED_CREATED]
         h["newsfeed_updated"] = h[NEWSFEED_UPDATED]
         h["newsfeed_deleted"] = h[NEWSFEED_DELETED]
-
-        # user_registered alias
         h["user_created"] = h.get(USER_REGISTERED)
 
         return h
@@ -164,7 +188,6 @@ class KafkaConsumerApp:
                 NewTopic(name=t, num_partitions=1, replication_factor=1)
                 for t in missing
             ])
-        # close the admin client cleanly
         await admin.close()
 
         # 1) start the consumer
@@ -196,11 +219,9 @@ class KafkaConsumerApp:
                     logger.error(f"Invalid message payload: {e}")
                     continue
 
-                # debug
                 logger.info(f"[DEBUG] Received {event.event_type}, id={event.id}")
-                logger.info(f"[DEBUG] Handler keys: {list(self.handlers.keys())}")
 
-                # optional JWT check
+                # optional JWT in message
                 tok = event.data.get("jwt_token")
                 if tok:
                     try:

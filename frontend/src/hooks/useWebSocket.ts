@@ -19,9 +19,8 @@ export default function useWebSocket<T>(
   useEffect(() => {
     if (!token || !groupName) return;
 
-    // Build URL e.g. "ws://localhost:8000/ws/users/?token=..."
-    const baseUrl = process.env.REACT_APP_WEBSOCKET_BASE || 'ws://localhost:8000/ws';
-    const wsUrl = `${baseUrl}/${groupName}/?token=${token}`;
+    const baseUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000';
+    const wsUrl = `${baseUrl}/ws/${groupName}/?token=${token}`;
     console.log(`Attempting WebSocket: ${wsUrl}`);
 
     const socket = new WebSocket(wsUrl);
@@ -49,9 +48,7 @@ export default function useWebSocket<T>(
     };
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.close(1000, 'Component unmounted');
-      }
+      socket.close(1000, 'Component unmounted');
     };
   }, [token, groupName, onMessage]);
 

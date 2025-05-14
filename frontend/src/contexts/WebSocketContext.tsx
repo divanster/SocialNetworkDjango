@@ -36,9 +36,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!baseWsUrl) {
       console.error("No REACT_APP_WEBSOCKET_URL defined");
       return;
-    }
+  }
     // Build URL for connecting to the "users" endpoint:
-    const wsUrl = `${baseWsUrl}/users/?token=${token}`;
+    const wsUrl = `${baseWsUrl}/ws/users/?token=${token}`;
     console.log(`Attempting WebSocket connection to ${wsUrl}`);
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
