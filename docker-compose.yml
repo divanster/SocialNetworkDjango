@@ -186,7 +186,7 @@ services:
       - frontend_network
       - backend_network
 
-# Volumes for data persistence
+# Volume for data persistence
 volumes:
   postgres_data:
   redis_data:
