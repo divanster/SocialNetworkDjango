@@ -56,7 +56,8 @@ export default function useWebSocket<T>(
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(msg);
     } else {
-      console.warn(`Cannot send message; socket not open -> ${groupName}`);
+      console.warn(`Cannot send
+       message; socket not open -> ${groupName}`);
     }
   };
 
