@@ -57,7 +57,7 @@ export default function useWebSocket<T>(
       socketRef.current.send(msg);
     } else {
       console.warn(`Cannot send
-       messages; socket not open -> ${groupName}`);
+       message; socket not open -> ${groupName}`);
     }
   };
 
