@@ -1,4 +1,4 @@
-// frontend/src/index.tsx
+// frontend/src/index.tsx (FINAL)
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -9,7 +9,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import store from './store';
 import { AuthProvider } from './contexts/AuthContext';
-import { WebSocketProvider } from './contexts/WebSocketContext';
 import { PresenceWebSocketProvider } from './contexts/PresenceWebSocketContext';
 import { OnlineStatusProvider } from './contexts/OnlineStatusContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -18,23 +17,19 @@ const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
   root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <BrowserRouter>
-          <Provider store={store}>
-            <AuthProvider>
-              <WebSocketProvider>
-                <PresenceWebSocketProvider>
-                  <OnlineStatusProvider>
-                    <App />
-                  </OnlineStatusProvider>
-                </PresenceWebSocketProvider>
-              </WebSocketProvider>
-            </AuthProvider>
-          </Provider>
-        </BrowserRouter>
-      </ErrorBoundary>
-    </React.StrictMode>
+    <BrowserRouter>
+      <Provider store={store}>
+        <AuthProvider>
+          <PresenceWebSocketProvider>
+            <OnlineStatusProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </OnlineStatusProvider>
+          </PresenceWebSocketProvider>
+        </AuthProvider>
+      </Provider>
+    </BrowserRouter>
   );
 }
 reportWebVitals();

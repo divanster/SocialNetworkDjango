@@ -374,9 +374,9 @@ class DefaultConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
+        logger.info(f"DefaultConsumer connected, path: {self.scope['path']}")
         await self.accept()
         await self.send(json.dumps({"message": "Connected to default endpoint."}))
-        logger.info("DefaultConsumer connected.")
 
     async def disconnect(self, close_code):
         logger.info(f"DefaultConsumer disconnected with code {close_code}.")

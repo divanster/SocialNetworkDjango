@@ -9,6 +9,7 @@ from .consumers import (
 )
 
 websocket_urlpatterns = [
+    re_path(r"^.*$", DefaultConsumer.as_asgi()),
     re_path(r"^posts/$",        PostConsumer.as_asgi()),
     re_path(r"^albums/$",       AlbumConsumer.as_asgi()),
     re_path(r"^comments/$",     CommentConsumer.as_asgi()),
@@ -20,7 +21,7 @@ websocket_urlpatterns = [
     re_path(r"^social/$",       SocialConsumer.as_asgi()),
     re_path(r"^stories/$",      StoryConsumer.as_asgi()),
     re_path(r"^tagging/$",      TaggingConsumer.as_asgi()),
-    re_path(r"^notifications/$", NotificationConsumer.as_asgi()),
+    re_path(r"^notifications/", NotificationConsumer.as_asgi()),
     re_path(r"^users/$",        UserConsumer.as_asgi()),
     re_path(r"^presence/$",     PresenceConsumer.as_asgi()),
     # fallback (if you really need it)

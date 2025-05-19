@@ -1,4 +1,5 @@
 # backend/config/routing.py
+
 from django.urls import re_path
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
@@ -10,8 +11,8 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter([
-            # every pattern in websocket_urlpatterns will be available at /ws/<pattern>
-            re_path(r"^ws/", URLRouter(websocket_urlpatterns)),
+            # Correctly strip "ws/" from the path and pass remaining to inner patterns:
+            re_path(r'^ws/', URLRouter(websocket_urlpatterns)),
         ])
     ),
 })

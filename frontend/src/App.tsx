@@ -3,8 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
-// Add this import:
-import useNotificationsSocket from './hooks/useNotificationsSocket';
 
 const NewsFeed = lazy(() => import('./pages/NewsFeed'));
 const Messenger = lazy(() => import('./pages/Messenger'));
@@ -13,8 +11,6 @@ const Signup = lazy(() => import('./components/Auth/Signup'));
 const NotFound = lazy(() => import('./components/NotFound'));
 
 const App: React.FC = () => {
-  // Opens WS for notifications and logs them to console
-  useNotificationsSocket();
 
   return (
     <>
