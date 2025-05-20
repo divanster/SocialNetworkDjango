@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback
+} from 'react';
 import { useAuth } from './AuthContext';
 
 interface PresenceWebSocketContextType {
@@ -8,71 +15,106 @@ interface PresenceWebSocketContextType {
 const PresenceWebSocketContext = createContext<PresenceWebSocketContextType | undefined>(undefined);
 
 export const PresenceWebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<WebSocket | null>(null);
 
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<number | null>(null);
+
+  // open socket once when token appears
   const connectWebSocket = useCallback(() => {
-    if (!token) return;
+    if (!token || socketRef.current) return;
+
     const baseWsUrl = process.env.REACT_APP_WEBSOCKET_URL;
     if (!baseWsUrl) {
-      console.error('No REACT_APP_WEBSOCKET_URL set');
+      console.error('PresenceWebSocket ▶ no REACT_APP_WEBSOCKET_URL defined');
       return;
     }
-    const wsUrl = `${baseWsUrl}/users/?token=${token}`;
-    console.log('PresenceWebSocket: Connecting to', wsUrl);
 
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
+    // hit /presence/ on the root
+    const wsUrl = `${baseWsUrl}/presence/?token=${token}`;
+    console.log('PresenceWebSocket ▶ connecting to', wsUrl);
 
-    socket.onopen = () => {
-      console.log('PresenceWebSocket: connected');
+    const sock = new WebSocket(wsUrl);
+    socketRef.current = sock;
+
+    sock.onopen = () => {
+      console.log('PresenceWebSocket ▶ connected');
       setIsConnected(true);
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
     };
 
-    socket.onmessage = (event) => {
+    sock.onmessage = (ev) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.event === 'user_online' || data.event === 'user_offline') {
+        const data = JSON.parse(ev.data);
+        const rawType = data.event ?? data.type;
+        const evType = rawType.replace(/\./g, '_');
+        if (evType === 'user_online' || evType === 'user_offline') {
           window.dispatchEvent(new CustomEvent('ws-users', {
             detail: {
-              type: data.event,
-              user_id: data.user_id,
+              type: evType,
+              user_id: String(data.user_id),
               username: data.username,
             },
           }));
         }
-      } catch (err) {
-        console.warn('PresenceWebSocket: Error parsing message:', event.data);
+      } catch {
+        console.warn('PresenceWebSocket ▶ malformed message', ev.data);
       }
     };
 
-    socket.onerror = (error) => {
-      console.error('PresenceWebSocket error:', error);
+    sock.onerror = (err) => {
+      console.error('PresenceWebSocket ▶ error', err);
     };
 
-    socket.onclose = (closeEvent) => {
-      console.log('PresenceWebSocket closed:', closeEvent.code, closeEvent.reason);
+    sock.onclose = (closeEvent) => {
+      if (closeEvent.code !== 1000) {
+        console.warn(
+          `PresenceWebSocket ▶ closed code=${closeEvent.code} reason="${closeEvent.reason}"`
+        );
+        reconnectTimer.current = window.setTimeout(connectWebSocket, 5000);
+      } else {
+        console.log('PresenceWebSocket ▶ closed normally');
+      }
       setIsConnected(false);
       socketRef.current = null;
     };
   }, [token]);
 
+  // open/close lifecycle
   useEffect(() => {
-    if (token && !socketRef.current) {
+    if (token) {
       connectWebSocket();
-    }
-    if (!token && socketRef.current) {
-      socketRef.current.close();
+    } else if (socketRef.current) {
+      socketRef.current.close(1000, 'Logging out');
       socketRef.current = null;
     }
     return () => {
       if (socketRef.current) {
-        socketRef.current.close();
+        socketRef.current.close(1000, 'Unmount');
         socketRef.current = null;
+      }
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
       }
     };
   }, [token, connectWebSocket]);
+
+  // once connected and user loads, announce ourselves
+  useEffect(() => {
+    if (isConnected && user?.id && user.username) {
+      window.dispatchEvent(new CustomEvent('ws-users', {
+        detail: {
+          type: 'user_online',
+          user_id: String(user.id),
+          username: user.username,
+        },
+      }));
+    }
+  }, [isConnected, user]);
 
   return (
     <PresenceWebSocketContext.Provider value={{ isConnected }}>
@@ -82,9 +124,7 @@ export const PresenceWebSocketProvider: React.FC<{ children: React.ReactNode }> 
 };
 
 export const usePresenceWebSocket = () => {
-  const context = useContext(PresenceWebSocketContext);
-  if (!context) {
-    throw new Error('usePresenceWebSocket must be used within PresenceWebSocketProvider');
-  }
-  return context;
+  const ctx = useContext(PresenceWebSocketContext);
+  if (!ctx) throw new Error('usePresenceWebSocket must be used within PresenceWebSocketProvider');
+  return ctx;
 };

@@ -1,117 +1,74 @@
-// src/contexts/OnlineStatusContext.tsx
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { useWebSocketContext } from './WebSocketContext';
+// frontend/src/contexts/OnlineStatusContext.tsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import useWebSocket from '../hooks/useWebSocket';
 import { useAuth } from './AuthContext';
 
-interface OnlineStatusContextType {
-  onlineUsers: string[];
-  userDetails: { [key: string]: string };
-  addUser: (userId: string, username: string) => void;
-  removeUser: (userId: string) => void;
-  fetchOnlineUsers: () => Promise<void>;
+interface PresenceEvent {
+  event?: string;
+  type?: string;
+  user_id: string;
+  username: string;
 }
 
-const OnlineStatusContext = createContext<OnlineStatusContextType | undefined>(undefined);
+// define the shape of your context value
+interface OnlineStatusValue {
+  onlineUsers: string[];
+  // if you also need details (e.g. usernames), add:
+  userDetails?: Record<string, string>;
+}
 
-export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+const OnlineStatusContext = createContext<OnlineStatusValue | undefined>(undefined);
+
+export const OnlineStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, token } = useAuth();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [userDetails, setUserDetails] = useState<{ [key: string]: string }>({});
-  const { token } = useAuth();
-  const { subscribe, unsubscribe } = useWebSocketContext();
+  const [userDetails, setUserDetails] = useState<Record<string,string>>({});
 
-  const addUser = useCallback((userId: string, username: string) => {
-    setOnlineUsers((prev) => [...new Set([...prev, userId])]);
-    setUserDetails((prev) => ({ ...prev, [userId]: username }));
-    console.log(`User added: ${userId} (${username})`);
-  }, []);
-
-  const removeUser = useCallback((userId: string) => {
-    setOnlineUsers((prev) => prev.filter(id => id !== userId));
-    setUserDetails((prev) => {
-      const newDetails = { ...prev };
-      delete newDetails[userId];
-      return newDetails;
-    });
-    console.log(`User removed: ${userId}`);
-  }, []);
-
-  const fetchOnlineUsers = useCallback(async () => {
-    try {
-      if (!token) {
-        console.error('No token found.');
-        return;
-      }
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/get_online_users/`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const onlineIds = response.data.map((user: any) => user.id);
-      const details = response.data.reduce(
-        (acc: any, user: any) => ({ ...acc, [user.id]: user.username }),
-        {}
-      );
-      setOnlineUsers(onlineIds);
-      setUserDetails(details);
-      console.log('Fetched online users:', onlineIds);
-    } catch (error) {
-      console.error('Error fetching online users:', error);
-    }
+  // initial fetch
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/get_online_users/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const { users, details }: { users: string[]; details?: Record<string,string> } = await res.json();
+      setOnlineUsers(users);
+      if (details) setUserDetails(details);
+    })().catch(console.error);
   }, [token]);
 
-  // Listen for WebSocket events dispatched via custom events
-  useEffect(() => {
-    const handleUsersEvent = (event: Event) => {
-      const customEvent = event as CustomEvent<any>;
-      if (customEvent.detail && customEvent.detail.type === 'user_online') {
-        addUser(customEvent.detail.user_id, customEvent.detail.username);
-      } else if (customEvent.detail && customEvent.detail.type === 'user_offline') {
-        removeUser(customEvent.detail.user_id);
+  // websocket logic as before...
+  useWebSocket<PresenceEvent>('presence', {
+    onOpen: () => {
+      if (user?.id && user.username) {
+        window.dispatchEvent(new CustomEvent('ws-users', {
+          detail: { type: 'user_online', user_id: user.id, username: user.username }
+        }));
       }
-    };
-
-    window.addEventListener('ws-users', handleUsersEvent as EventListener);
-    return () => {
-      window.removeEventListener('ws-users', handleUsersEvent as EventListener);
-    };
-  }, [addUser, removeUser]);
-
-  useEffect(() => {
-    if (token) {
-      fetchOnlineUsers();
+    },
+    onMessage: (data) => {
+      const raw = data.event ?? data.type ?? '';
+      const evType = raw.replace(/\./g, '_');
+      if (evType === 'user_online') {
+        setOnlineUsers(prev => Array.from(new Set([...prev, data.user_id])));
+        setUserDetails(d => ({ ...d, [data.user_id]: data.username }));
+      }
+      if (evType === 'user_offline') {
+        setOnlineUsers(prev => prev.filter(id => id !== data.user_id));
+        // optionally: remove details[data.user_id]
+      }
     }
-  }, [token, fetchOnlineUsers]);
-
-  // Optional: Refresh online users list on tab focus
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchOnlineUsers();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [fetchOnlineUsers]);
-
-  const contextValue: OnlineStatusContextType = {
-    onlineUsers,
-    userDetails,
-    addUser,
-    removeUser,
-    fetchOnlineUsers,
-  };
+  });
 
   return (
-    <OnlineStatusContext.Provider value={contextValue}>
+    <OnlineStatusContext.Provider value={{ onlineUsers, userDetails }}>
       {children}
     </OnlineStatusContext.Provider>
   );
 };
 
-export const useOnlineStatus = (): OnlineStatusContextType => {
-  const context = useContext(OnlineStatusContext);
-  if (context === undefined) {
-    throw new Error('useOnlineStatus must be used within OnlineStatusProvider');
-  }
-  return context;
+export const useOnlineStatus = () => {
+  const ctx = useContext(OnlineStatusContext);
+  if (!ctx) throw new Error('useOnlineStatus must be inside <OnlineStatusProvider>');
+  return ctx;
 };

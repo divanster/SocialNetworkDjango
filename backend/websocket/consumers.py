@@ -254,80 +254,62 @@ class NotificationConsumer(AuthenticatedWebsocketConsumer):
         }))
 
 
-class UserConsumer(AuthenticatedWebsocketConsumer):
-    """
-    Tracks user presence in the 'users' group.
-    Broadcasts 'user_online' and 'user_offline' events with user_id and username.
-    """
+class UserConsumer(AsyncWebsocketConsumer):
     group_name = "users"
 
     async def connect(self):
-        await super().connect()
         user = self.scope.get("user")
-        self.user_id = str(user.id) if user else None
-        self.username = user.username if user else "Unknown"
-        if self.user_id:
-            # Join the per-user group for individual notifications
-            await self.channel_layer.group_add(f"user_{self.user_id}",
-                                               self.channel_name)
-            # Update online status: call the decorated function directly
+        if user and user.is_authenticated:
+            self.user_id = str(user.id)
+            self.username = user.username
+
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
+            await self.channel_layer.group_add(f"user_{self.user_id}", self.channel_name)
+            await self.accept()
+
             await self.update_online_users_cache(self.user_id, online=True)
-            # Broadcast the online event to the entire 'users' group
+
             await self.channel_layer.group_send(
                 self.group_name,
-                {"type": "user_online", "user_id": self.user_id,
-                 "username": self.username},
+                {
+                    "type": "user_online",
+                    "user_id": self.user_id,
+                    "username": self.username,
+                },
             )
-            logger.info(f"Broadcasted user_online for {self.user_id}")
-        # (The connection is already accepted in the parent.)
+
+            logger.info(f"UserConsumer connected and user_online broadcasted for {self.username}")
+        else:
+            logger.warning("UserConsumer connection rejected: user not authenticated")
+            await self.close()
 
     async def disconnect(self, close_code):
-        if self.user_id:
-            # Leave the per-user group
-            await self.channel_layer.group_discard(f"user_{self.user_id}",
-                                                   self.channel_name)
-            # Update online status and remove from Redis
+        if hasattr(self, 'user_id'):
             await self.update_online_users_cache(self.user_id, online=False)
-            # Broadcast the offline event
+
             await self.channel_layer.group_send(
                 self.group_name,
-                {"type": "user_offline", "user_id": self.user_id,
-                 "username": self.username},
+                {
+                    "type": "user_offline",
+                    "user_id": self.user_id,
+                    "username": self.username,
+                },
             )
-            logger.info(f"Broadcasted user_offline for {self.user_id}")
-        await super().disconnect(close_code)
 
-    async def force_disconnect(self, event):
-        logger.info(f"Force disconnect received for user {self.user_id}")
-        await self.update_online_users_cache(self.user_id, online=False)
-        await self.channel_layer.group_send(
-            self.group_name,
-            {"type": "user_offline", "user_id": self.user_id,
-             "username": self.username},
-        )
-        await self.close()
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+            await self.channel_layer.group_discard(f"user_{self.user_id}", self.channel_name)
+
+            logger.info(f"UserConsumer disconnected and user_offline broadcasted for {self.username}")
 
     @database_sync_to_async
     def update_online_users_cache(self, user_id, online=True):
         redis_conn = get_redis_connection("default")
-        user_id_str = str(user_id)
         if online:
-            redis_conn.sadd("online_users", user_id_str)
-            current = redis_conn.smembers("online_users")
-            logger.info(
-                f"User {user_id_str} added. Online set now: {[uid.decode('utf-8') for uid in current]}")
+            redis_conn.sadd("online_users", user_id)
         else:
-            redis_conn.srem("online_users", user_id_str)
-            current = redis_conn.smembers("online_users")
-            logger.info(
-                f"User {user_id_str} removed. Online set now: {[uid.decode('utf-8') for uid in current]}")
+            redis_conn.srem("online_users", user_id)
 
-    # --- New Handlers Below ---
     async def user_online(self, event):
-        """
-        Handler for group messages with type "user_online".
-        This forwards the event as a JSON object to the WebSocket client.
-        """
         await self.send(json.dumps({
             "event": "user_online",
             "user_id": event["user_id"],
@@ -335,10 +317,6 @@ class UserConsumer(AuthenticatedWebsocketConsumer):
         }))
 
     async def user_offline(self, event):
-        """
-        Handler for group messages with type "user_offline".
-        This forwards the event as a JSON object to the WebSocket client.
-        """
         await self.send(json.dumps({
             "event": "user_offline",
             "user_id": event["user_id"],

@@ -3,7 +3,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface WebSocketHandler<T> {
+  onOpen?: () => void;
   onMessage: (data: T) => void;
+  onClose?: (ev: CloseEvent) => void;
+  onError?: (err: Event) => void;
 }
 
 export interface UseWebSocketReturn {
@@ -12,69 +15,77 @@ export interface UseWebSocketReturn {
 
 export default function useWebSocket<T>(
   groupName: string,
-  { onMessage }: WebSocketHandler<T>
+  handlers: WebSocketHandler<T>
 ): UseWebSocketReturn {
   const { token } = useAuth();
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimer = useRef<number | null>(null);
+  const handlersRef = useRef(handlers);
+  const isMounted = useRef(true);
 
-  const connectWebSocket = useCallback(() => {
-    if (!token || !groupName) return;
+  // keep the latest handlers in a ref
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
 
-    const baseUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000/ws';
-    const wsUrl = `${baseUrl}/${groupName}/?token=${token}`;
-    console.log(`Attempting WebSocket connection to ${wsUrl}`);
+  const connect = useCallback(() => {
+    if (!token || !groupName || !isMounted.current) return;
 
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
+    const baseUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000';
+    const url = `${baseUrl}/${groupName}/?token=${token}`;
+    console.log(`Attempting WebSocket connection to ${url}`);
 
-    socket.onopen = () => {
+    const ws = new WebSocket(url);
+    socketRef.current = ws;
+
+    ws.onopen = () => {
       console.log(`✅ WebSocket connected (${groupName})`);
+      handlersRef.current.onOpen?.();
     };
 
-    socket.onmessage = (event) => {
+    ws.onmessage = (evt) => {
       try {
-        const data: T = JSON.parse(event.data);
-        onMessage(data);
+        const data: T = JSON.parse(evt.data);
+        handlersRef.current.onMessage(data);
       } catch (err) {
         console.error(`❌ Failed to parse message (${groupName}):`, err);
       }
     };
 
-    socket.onerror = (error) => {
-      console.error(`⚠️ WebSocket error (${groupName}):`, error);
+    ws.onerror = (err) => {
+      console.error(`⚠️ WebSocket error (${groupName}):`, err);
+      handlersRef.current.onError?.(err);
     };
 
-    socket.onclose = (event) => {
-      console.warn(`🚧 WebSocket closed (${groupName})`, event);
-      if (event.code !== 1000) {
-        reconnectTimer.current = setTimeout(connectWebSocket, 5000);
+    ws.onclose = (evt) => {
+      console.warn(`🚧 WebSocket closed (${groupName})`, evt);
+      handlersRef.current.onClose?.(evt);
+      if (evt.code !== 1000 && isMounted.current) {
+        reconnectTimer.current = window.setTimeout(connect, 5000);
       }
     };
-  }, [token, groupName, onMessage]);
+  }, [token, groupName]);
 
   useEffect(() => {
-    connectWebSocket();
-
+    isMounted.current = true;
+    connect();
     return () => {
-      if (socketRef.current) {
-        socketRef.current.close(1000, 'Component unmounted');
-        socketRef.current = null;
-      }
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-        reconnectTimer.current = null;
-      }
+      isMounted.current = false;
+      socketRef.current?.close(1000, 'Component unmounted');
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
-  }, [connectWebSocket]);
+  }, [connect]);
 
-  const sendMessage = useCallback((msg: string) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(msg);
-    } else {
-      console.warn(`🚫 Cannot send message; WebSocket not open (${groupName})`);
-    }
-  }, [groupName]);
+  const sendMessage = useCallback(
+    (msg: string) => {
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(msg);
+      } else {
+        console.warn(`🚫 Cannot send message; WebSocket not open (${groupName})`);
+      }
+    },
+    [groupName]
+  );
 
   return { sendMessage };
 }
