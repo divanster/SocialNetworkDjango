@@ -1,8 +1,7 @@
-// frontend/src/hooks/useWebSocket.ts
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-interface WebSocketHandler<T> {
+export interface WebSocketHandler<T> {
   onOpen?: () => void;
   onMessage: (data: T) => void;
   onClose?: (ev: CloseEvent) => void;
@@ -23,7 +22,7 @@ export default function useWebSocket<T>(
   const handlersRef = useRef(handlers);
   const isMounted = useRef(true);
 
-  // keep the latest handlers in a ref
+  // Keep handlers fresh even if the user re-renders
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
@@ -31,15 +30,15 @@ export default function useWebSocket<T>(
   const connect = useCallback(() => {
     if (!token || !groupName || !isMounted.current) return;
 
-    const baseUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:8000';
-    const url = `${baseUrl}/${groupName}/?token=${token}`;
-    console.log(`Attempting WebSocket connection to ${url}`);
+    const base = process.env.REACT_APP_WEBSOCKET_URL!;
+    const url = `${base}/${groupName}/?token=${token}`;
+    console.log(`🔌 WS→ ${url}`);
 
     const ws = new WebSocket(url);
     socketRef.current = ws;
 
     ws.onopen = () => {
-      console.log(`✅ WebSocket connected (${groupName})`);
+      console.log(`✅ WS(${groupName}) opened`);
       handlersRef.current.onOpen?.();
     };
 
@@ -48,19 +47,19 @@ export default function useWebSocket<T>(
         const data: T = JSON.parse(evt.data);
         handlersRef.current.onMessage(data);
       } catch (err) {
-        console.error(`❌ Failed to parse message (${groupName}):`, err);
+        console.error(`❌ WS(${groupName}) parse error`, err);
       }
     };
 
     ws.onerror = (err) => {
-      console.error(`⚠️ WebSocket error (${groupName}):`, err);
+      console.error(`⚠️ WS(${groupName}) error`, err);
       handlersRef.current.onError?.(err);
     };
 
-    ws.onclose = (evt) => {
-      console.warn(`🚧 WebSocket closed (${groupName})`, evt);
-      handlersRef.current.onClose?.(evt);
-      if (evt.code !== 1000 && isMounted.current) {
+    ws.onclose = (ev) => {
+      console.warn(`🚧 WS(${groupName}) closed`, ev);
+      handlersRef.current.onClose?.(ev);
+      if (ev.code !== 1000 && isMounted.current) {
         reconnectTimer.current = window.setTimeout(connect, 5000);
       }
     };
@@ -71,7 +70,7 @@ export default function useWebSocket<T>(
     connect();
     return () => {
       isMounted.current = false;
-      socketRef.current?.close(1000, 'Component unmounted');
+      socketRef.current?.close(1000, 'Component unmount');
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
   }, [connect]);
@@ -81,7 +80,7 @@ export default function useWebSocket<T>(
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(msg);
       } else {
-        console.warn(`🚫 Cannot send message; WebSocket not open (${groupName})`);
+        console.warn(`🚫 WS(${groupName}) not open; cannot send`);
       }
     },
     [groupName]

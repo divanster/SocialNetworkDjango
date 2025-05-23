@@ -1,67 +1,90 @@
 // frontend/src/contexts/OnlineStatusContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import useWebSocket from '../hooks/useWebSocket';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from 'react';
+import axios from 'axios';
 import { useAuth } from './AuthContext';
+import useWebSocket from '../hooks/useWebSocket';
 
 interface PresenceEvent {
-  event?: string;
-  type?: string;
+  event?: string;   // e.g. 'user_online'
+  type?: string;    // fallback 'user.online'
   user_id: string;
   username: string;
 }
 
-// define the shape of your context value
 interface OnlineStatusValue {
   onlineUsers: string[];
-  // if you also need details (e.g. usernames), add:
-  userDetails?: Record<string, string>;
+  userDetails: Record<string,string>;
+  refresh: () => Promise<void>;
 }
 
-const OnlineStatusContext = createContext<OnlineStatusValue | undefined>(undefined);
+const defaultCtx: OnlineStatusValue = {
+  onlineUsers: [],
+  userDetails: {},
+  refresh: async () => {},
+};
 
-export const OnlineStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, token } = useAuth();
+const OnlineStatusContext = createContext<OnlineStatusValue>(defaultCtx);
+
+export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { token, loading: authLoading } = useAuth();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [userDetails, setUserDetails] = useState<Record<string,string>>({});
 
-  // initial fetch
-  useEffect(() => {
+  // REST fetch
+  const refresh = useCallback(async () => {
     if (!token) return;
-    (async () => {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/get_online_users/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const { users, details }: { users: string[]; details?: Record<string,string> } = await res.json();
-      setOnlineUsers(users);
-      if (details) setUserDetails(details);
-    })().catch(console.error);
+    try {
+      const { data } = await axios.get(
+        `${process.env.REACT_APP_API_URL}/get_online_users/`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const ids = data.map((u:any) => u.id);
+      const details = Object.fromEntries(data.map((u:any) => [u.id, u.username]));
+      setOnlineUsers(ids);
+      setUserDetails(details);
+      console.log('🔄 Refreshed onlineUsers:', ids);
+    } catch (err) {
+      console.error('❌ fetch online users failed', err);
+    }
   }, [token]);
 
-  // websocket logic as before...
-  useWebSocket<PresenceEvent>('presence', {
-    onOpen: () => {
-      if (user?.id && user.username) {
-        window.dispatchEvent(new CustomEvent('ws-users', {
-          detail: { type: 'user_online', user_id: user.id, username: user.username }
-        }));
-      }
-    },
-    onMessage: (data) => {
-      const raw = data.event ?? data.type ?? '';
-      const evType = raw.replace(/\./g, '_');
-      if (evType === 'user_online') {
-        setOnlineUsers(prev => Array.from(new Set([...prev, data.user_id])));
-        setUserDetails(d => ({ ...d, [data.user_id]: data.username }));
-      }
-      if (evType === 'user_offline') {
-        setOnlineUsers(prev => prev.filter(id => id !== data.user_id));
-        // optionally: remove details[data.user_id]
-      }
+  // WebSocket => listen for server-side user_online / user_offline
+  useWebSocket<PresenceEvent>(
+    'users',
+    {
+      onMessage: ({ event, type, user_id, username }) => {
+        const raw = event ?? type ?? '';
+        const ev = raw.replace(/\./g, '_');
+        if (ev === 'user_online') {
+          setOnlineUsers((prev) => Array.from(new Set([...prev, user_id])));
+          setUserDetails((d) => ({ ...d, [user_id]: username }));
+        } else if (ev === 'user_offline') {
+          setOnlineUsers((prev) => prev.filter((id) => id !== user_id));
+          setUserDetails((d) => {
+            const c = { ...d };
+            delete c[user_id];
+            return c;
+          });
+        }
+      },
     }
-  });
+  );
+
+  // Only kick off after Auth is finished loading **and** we have a token
+  useEffect(() => {
+    if (authLoading || !token) return;
+    refresh();
+  }, [authLoading, token, refresh]);
 
   return (
-    <OnlineStatusContext.Provider value={{ onlineUsers, userDetails }}>
+    <OnlineStatusContext.Provider value={{ onlineUsers, userDetails, refresh }}>
       {children}
     </OnlineStatusContext.Provider>
   );
@@ -69,6 +92,8 @@ export const OnlineStatusProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const useOnlineStatus = () => {
   const ctx = useContext(OnlineStatusContext);
-  if (!ctx) throw new Error('useOnlineStatus must be inside <OnlineStatusProvider>');
+  if (!ctx) {
+    throw new Error('useOnlineStatus must be used within OnlineStatusProvider');
+  }
   return ctx;
 };
