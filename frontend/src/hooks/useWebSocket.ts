@@ -22,7 +22,7 @@ export default function useWebSocket<T>(
   const handlersRef = useRef(handlers);
   const isMounted = useRef(true);
 
-  // Keep handlers fresh even if the user re-renders
+  // always keep handlersRef up to date
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
@@ -30,10 +30,13 @@ export default function useWebSocket<T>(
   const connect = useCallback(() => {
     if (!token || !groupName || !isMounted.current) return;
 
-    const base = process.env.REACT_APP_WEBSOCKET_URL!;
-    const url = `${base}/${groupName}/?token=${token}`;
-    console.log(`🔌 WS→ ${url}`);
+    // strip trailing /ws if your .env accidentally put one on:
+    const rawBase = process.env.REACT_APP_WEBSOCKET_URL!;
+    const cleanBase = rawBase.replace(/\/ws\/?$/, "");
 
+    // now build exactly one /ws/<groupName> path:
+    const url = `${cleanBase}/ws/${groupName}/?token=${token}`;
+    console.log(`🔌 WS → ${url}`);
     const ws = new WebSocket(url);
     socketRef.current = ws;
 
@@ -41,26 +44,22 @@ export default function useWebSocket<T>(
       console.log(`✅ WS(${groupName}) opened`);
       handlersRef.current.onOpen?.();
     };
-
     ws.onmessage = (evt) => {
       try {
-        const data: T = JSON.parse(evt.data);
-        handlersRef.current.onMessage(data);
-      } catch (err) {
-        console.error(`❌ WS(${groupName}) parse error`, err);
+        handlersRef.current.onMessage(JSON.parse(evt.data));
+      } catch (e) {
+        console.error(`❌ WS(${groupName}) parse error`, e);
       }
     };
-
     ws.onerror = (err) => {
       console.error(`⚠️ WS(${groupName}) error`, err);
       handlersRef.current.onError?.(err);
     };
-
     ws.onclose = (ev) => {
       console.warn(`🚧 WS(${groupName}) closed`, ev);
       handlersRef.current.onClose?.(ev);
       if (ev.code !== 1000 && isMounted.current) {
-        reconnectTimer.current = window.setTimeout(connect, 5000);
+        reconnectTimer.current = window.setTimeout(connect, 5_000);
       }
     };
   }, [token, groupName]);
@@ -70,21 +69,18 @@ export default function useWebSocket<T>(
     connect();
     return () => {
       isMounted.current = false;
-      socketRef.current?.close(1000, 'Component unmount');
+      socketRef.current?.close(1000, "Component unmount");
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
   }, [connect]);
 
-  const sendMessage = useCallback(
-    (msg: string) => {
+  return {
+    sendMessage: (msg: string) => {
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(msg);
       } else {
         console.warn(`🚫 WS(${groupName}) not open; cannot send`);
       }
     },
-    [groupName]
-  );
-
-  return { sendMessage };
+  };
 }

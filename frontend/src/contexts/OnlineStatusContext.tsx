@@ -1,52 +1,37 @@
 // frontend/src/contexts/OnlineStatusContext.tsx
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-  useCallback,
-} from 'react';
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 import useWebSocket from '../hooks/useWebSocket';
 
-interface PresenceEvent {
-  event?: string;   // e.g. 'user_online'
-  type?: string;    // fallback 'user.online'
-  user_id: string;
-  username: string;
-}
+interface UserType { id: string; username: string; }
 
-interface OnlineStatusValue {
+export const OnlineStatusContext = createContext<{
   onlineUsers: string[];
   userDetails: Record<string,string>;
   refresh: () => Promise<void>;
-}
-
-const defaultCtx: OnlineStatusValue = {
+}>({
   onlineUsers: [],
   userDetails: {},
   refresh: async () => {},
-};
+});
 
-const OnlineStatusContext = createContext<OnlineStatusValue>(defaultCtx);
-
-export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const OnlineStatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, loading: authLoading } = useAuth();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [userDetails, setUserDetails] = useState<Record<string,string>>({});
 
-  // REST fetch
   const refresh = useCallback(async () => {
     if (!token) return;
     try {
-      const { data } = await axios.get(
+      const { data } = await axios.get<{ online_users: UserType[] }>(
         `${process.env.REACT_APP_API_URL}/get_online_users/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const ids = data.map((u:any) => u.id);
-      const details = Object.fromEntries(data.map((u:any) => [u.id, u.username]));
+      const list = data.online_users;
+      const ids = list.map(u => u.id);
+      const details = Object.fromEntries(list.map(u => [u.id, u.username]));
       setOnlineUsers(ids);
       setUserDetails(details);
       console.log('🔄 Refreshed onlineUsers:', ids);
@@ -55,32 +40,27 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [token]);
 
-  // WebSocket => listen for server-side user_online / user_offline
-  useWebSocket<PresenceEvent>(
-    'users',
+  useWebSocket<{ event?:string; type?:string; user_id:string; username:string }>(
+    'presence',
     {
       onMessage: ({ event, type, user_id, username }) => {
-        const raw = event ?? type ?? '';
-        const ev = raw.replace(/\./g, '_');
+        const ev = (event ?? type ?? '').replace(/[.\-]/g, '_');
         if (ev === 'user_online') {
-          setOnlineUsers((prev) => Array.from(new Set([...prev, user_id])));
-          setUserDetails((d) => ({ ...d, [user_id]: username }));
+          setOnlineUsers(prev => Array.from(new Set([...prev, user_id])));
+          setUserDetails(d => ({ ...d, [user_id]: username }));
         } else if (ev === 'user_offline') {
-          setOnlineUsers((prev) => prev.filter((id) => id !== user_id));
-          setUserDetails((d) => {
-            const c = { ...d };
-            delete c[user_id];
-            return c;
+          setOnlineUsers(prev => prev.filter(id => id !== user_id));
+          setUserDetails(d => {
+            const { [user_id]: _, ...rest } = d;
+            return rest;
           });
         }
       },
     }
   );
 
-  // Only kick off after Auth is finished loading **and** we have a token
   useEffect(() => {
-    if (authLoading || !token) return;
-    refresh();
+    if (!authLoading && token) refresh();
   }, [authLoading, token, refresh]);
 
   return (
@@ -92,8 +72,6 @@ export const OnlineStatusProvider: React.FC<{ children: ReactNode }> = ({ childr
 
 export const useOnlineStatus = () => {
   const ctx = useContext(OnlineStatusContext);
-  if (!ctx) {
-    throw new Error('useOnlineStatus must be used within OnlineStatusProvider');
-  }
+  if (!ctx) throw new Error('useOnlineStatus must be under OnlineStatusProvider');
   return ctx;
 };

@@ -1,5 +1,5 @@
 # backend/users/views.py
-
+from django.http import JsonResponse
 from rest_framework import viewsets, status, generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -201,19 +201,12 @@ class CustomUserSignupView(CreateAPIView):
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-@extend_schema(
-    summary="Get online users",
-    description="Retrieves list of currently online users",
-    responses={200: CustomUserSerializer(many=True)}
-)
 def get_online_users(request):
-    """
-    Retrieves the list of online users using Redis.
-    """
     redis_conn = get_redis_connection("default")
     online_user_ids = [uid.decode('utf-8') for uid in redis_conn.smembers("online_users")]
     users = CustomUser.objects.filter(id__in=online_user_ids)
-    return Response(CustomUserSerializer(users, many=True).data)
+    serializer = CustomUserSerializer(users, many=True)
+    return Response({"online_users": serializer.data})
 
 
 @api_view(['POST'])

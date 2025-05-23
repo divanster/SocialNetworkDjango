@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -14,6 +15,7 @@ from django_redis import get_redis_connection
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
+REDIS_KEY = "online_users"
 User = get_user_model()
 
 
@@ -255,95 +257,77 @@ class NotificationConsumer(AuthenticatedWebsocketConsumer):
 
 
 class UserConsumer(AsyncWebsocketConsumer):
-    group_name = "users"
+    group_name = "presence"
 
     async def connect(self):
         user = self.scope.get("user")
-        if user and user.is_authenticated:
-            self.user_id = str(user.id)
-            self.username = user.username
+        if not user or not user.is_authenticated:
+            logger.error("Unauthenticated WS connection.")
+            await self.close(4000)
+            return
 
-            await self.channel_layer.group_add(self.group_name, self.channel_name)
-            await self.channel_layer.group_add(f"user_{self.user_id}", self.channel_name)
-            await self.accept()
-
-            await self.update_online_users_cache(self.user_id, online=True)
-
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    "type": "user_online",
-                    "user_id": self.user_id,
-                    "username": self.username,
-                },
-            )
-
-            logger.info(f"UserConsumer connected and user_online broadcasted for {self.username}")
-        else:
-            logger.warning("UserConsumer connection rejected: user not authenticated")
-            await self.close()
-
-    async def disconnect(self, close_code):
-        if hasattr(self, 'user_id'):
-            await self.update_online_users_cache(self.user_id, online=False)
-
-            await self.channel_layer.group_send(
-                self.group_name,
-                {
-                    "type": "user_offline",
-                    "user_id": self.user_id,
-                    "username": self.username,
-                },
-            )
-
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            await self.channel_layer.group_discard(f"user_{self.user_id}", self.channel_name)
-
-            logger.info(f"UserConsumer disconnected and user_offline broadcasted for {self.username}")
-
-    @database_sync_to_async
-    def update_online_users_cache(self, user_id, online=True):
-        redis_conn = get_redis_connection("default")
-        if online:
-            redis_conn.sadd("online_users", user_id)
-        else:
-            redis_conn.srem("online_users", user_id)
-
-    async def user_online(self, event):
-        await self.send(json.dumps({
-            "event": "user_online",
-            "user_id": event["user_id"],
-            "username": event["username"],
-        }))
-
-    async def user_offline(self, event):
-        await self.send(json.dumps({
-            "event": "user_offline",
-            "user_id": event["user_id"],
-            "username": event["username"],
-        }))
-
-
-class PresenceConsumer(AsyncWebsocketConsumer):
-    """
-    A simple consumer that does not require authentication.
-    Used for testing or lightweight presence interactions.
-    """
-
-    async def connect(self):
-        self.group_name = "presence"
+        self.user_id = str(user.id)
+        self.username = user.username
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        logger.info("PresenceConsumer connected.")
+
+        await self._set_online(True)
+
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                "type": "user_online",
+                "user_id": self.user_id,
+                "username": self.username,
+            }
+        )
+
+        self.ping_task = asyncio.create_task(self._ping_loop())
+        logger.info(f"{self.username} ({self.user_id}) connected and online.")
 
     async def disconnect(self, close_code):
+        if hasattr(self, "ping_task"):
+            self.ping_task.cancel()
+
+        await self._set_online(False)
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
-        logger.info("PresenceConsumer disconnected.")
+
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                "type": "user_offline",
+                "user_id": self.user_id,
+                "username": self.username,
+            }
+        )
+        logger.info(f"{self.username} ({self.user_id}) disconnected and offline.")
+
+    async def user_online(self, event):
+        await self.send(json.dumps(event))
+
+    async def user_offline(self, event):
+        await self.send(json.dumps(event))
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data.get("message")
-        await self.send(json.dumps({"message": message}))
+        if text_data == "ping":
+            await self.send("pong")
+
+    async def _ping_loop(self):
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await self.send(text_data="ping")
+            except Exception:
+                break
+
+    @database_sync_to_async
+    def _set_online(self, online: bool):
+        r = get_redis_connection("default")
+        if online:
+            r.sadd(REDIS_KEY, self.user_id)
+        else:
+            r.srem(REDIS_KEY, self.user_id)
+        r.expire(REDIS_KEY, 86400)
 
 
 class DefaultConsumer(AsyncWebsocketConsumer):
