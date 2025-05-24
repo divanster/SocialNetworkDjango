@@ -60,9 +60,7 @@ def create_notification(data):
         # Create a new notification object
         notification = Notification.objects.create(
             sender_id=sender_id,
-            sender_username=sender_username,
             receiver_id=receiver_id,
-            receiver_username=receiver_username,
             notification_type=notification_type,
             text=text,
             content_type=content_type,
