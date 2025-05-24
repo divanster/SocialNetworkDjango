@@ -1,4 +1,3 @@
-# backend/tagging/services.py
 import logging
 from .models import TaggedItem
 from notifications.services import create_notification
@@ -30,11 +29,11 @@ def process_tagging_event(data):
             )
             logger.info(f"[TAGGING] Created tag: {tagged_item}")
 
-            # Optionally trigger a notification for the user being tagged
+            # Trigger a notification for the user being tagged
             send_tag_notification(tagged_item)
 
         elif event_type == 'updated':
-            # Handle tag update event (although in tagging, updates are less common)
+            # Handle tag update event (rare for tagging)
             tagged_item = TaggedItem.objects.get(
                 tagged_item_type=data.get('tagged_item_type'),
                 tagged_item_id=tagged_item_id,
@@ -83,7 +82,6 @@ def send_tag_notification(tagged_item):
             'object_id': tagged_item.tagged_item_id,
         }
 
-        # Call the notification processing service
         create_notification(notification_data)
         logger.info(
             f"[TAGGING] Sent notification for tag on {tagged_item.tagged_item_type} {tagged_item.tagged_item_id}")

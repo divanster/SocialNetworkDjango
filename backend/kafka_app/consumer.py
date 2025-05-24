@@ -1,14 +1,13 @@
-# backend/kafka_app/consumer.py
-
 import os
 import django
 import json
 import logging
 import asyncio
 
-import jwt  # JWT for in-message token validation
+import jwt
 from pydantic import ValidationError
 from aiokafka import AIOKafkaConsumer
+from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 from cryptography.fernet import Fernet
 
 from django.conf import settings
@@ -16,60 +15,50 @@ from django.db import close_old_connections
 from channels.layers import get_channel_layer
 from asgiref.sync import sync_to_async
 
-from aiokafka.admin import AIOKafkaAdminClient, NewTopic
-
 from kafka_app.schemas import EventData
 from kafka_app.constants import (
-    USER_REGISTERED,
-    ALBUM_CREATED, ALBUM_UPDATED, ALBUM_DELETED,
-    COMMENT_CREATED, COMMENT_UPDATED, COMMENT_DELETED,
-    FOLLOW_CREATED, FOLLOW_DELETED,
-    FRIEND_ADDED, FRIEND_REMOVED,
-    MESSAGE_EVENT,
-    NEWSFEED_CREATED, NEWSFEED_UPDATED, NEWSFEED_DELETED,
+    USER_REGISTERED, ALBUM_CREATED, ALBUM_UPDATED, ALBUM_DELETED,
+    COMMENT_CREATED, COMMENT_UPDATED, COMMENT_DELETED, FOLLOW_CREATED, FOLLOW_DELETED,
+    FRIEND_ADDED, FRIEND_REMOVED, MESSAGE_EVENT, NEWSFEED_CREATED, NEWSFEED_UPDATED, NEWSFEED_DELETED,
     REACTION_ADDED, REACTION_CREATED, REACTION_UPDATED, REACTION_DELETED,
-    TAG_ADDED, TAG_REMOVED,
-    NOTIFICATION_SENT,
-    POST_CREATED, POST_UPDATED, POST_DELETED,
+    TAG_ADDED, TAG_REMOVED, NOTIFICATION_SENT, POST_CREATED, POST_UPDATED, POST_DELETED,
 )
 
-# Ensure Django settings are loaded before anything else
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 logger = logging.getLogger(__name__)
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Helper to make sure post_id is present before calling your business logic
-# ──────────────────────────────────────────────────────────────────────────────
 from social.services import process_social_event
+from social.models import Post
+
 
 def handle_post_created(data: dict):
-    """
-    Safely extract post_id from Kafka event and invoke your service.
-    Logs an error if no 'id' in payload.
-    """
     post_id = data.get("id")
     if not post_id:
         logger.error(f"[KafkaConsumer] Missing post_id in event data: {data}")
         return
-    # Now call your existing service with normalized payload
-    return process_social_event({
+
+    post = Post.objects.filter(id=post_id).first()
+    if not post:
+        logger.error(f"[KafkaConsumer] Post ID {post_id} not found.")
+        return
+
+    event_payload = {
         "event_type": "post_created",
-        "post_id": post_id
-    })
+        "post_id": post_id,
+        "user_id": str(post.user.id),
+        "username": post.user.username,
+        "title": post.title,
+        "content": post.content,
+        "visibility": post.visibility,
+        "created_at": post.created_at.isoformat(),
+    }
+
+    process_social_event(event_payload)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Main consumer application
-# ──────────────────────────────────────────────────────────────────────────────
 class KafkaConsumerApp:
-    """
-    Async Kafka consumer powered by aiokafka.
-    Dispatches events to your sync services and forwards to Channels groups,
-    with optional JWT in-message validation.
-    """
     def __init__(self, topics, group_id):
         self.topics = topics if isinstance(topics, list) else [topics]
         self.group_id = group_id
@@ -78,7 +67,6 @@ class KafkaConsumerApp:
         self.handlers = self._load_handlers()
 
     def _load_handlers(self):
-        # import your sync-style business logic
         from albums.services import process_album_event
         from comments.services import process_comment_event
         from follows.services import process_follow_event
@@ -86,25 +74,13 @@ class KafkaConsumerApp:
         from messenger.services import process_messenger_event
         from newsfeed.services import process_newsfeed_event
         from reactions.services import process_reaction_event
-        from stories.services import process_story_event
         from tagging.services import process_tagging_event
-        from users.services import process_user_event
         from notifications.services import create_notification
 
         def make_async_handler(fn, group_name, label, event_type_key):
-            """
-            Wrap a sync fn(data) as an async handler:
-              - data already contains 'id'
-              - event_type_key: exact key from the wire
-            """
             async def handler(data):
-                # inject the real event_type
                 data["event_type"] = event_type_key
-
-                # run your sync business logic
                 await sync_to_async(fn)(data)
-
-                # broadcast over WebSocket
                 await self.channel_layer.group_send(
                     group_name,
                     {
@@ -114,71 +90,42 @@ class KafkaConsumerApp:
                 )
             return handler
 
-        # ── Register handlers ────────────────────────────────────────────────
-        h = {
-            # Albums
+        handlers = {
             ALBUM_CREATED: make_async_handler(process_album_event, "albums", "New album created", ALBUM_CREATED),
-            ALBUM_UPDATED: make_async_handler(process_album_event, "albums", "Album updated",       ALBUM_UPDATED),
-            ALBUM_DELETED: make_async_handler(process_album_event, "albums", "Album deleted",       ALBUM_DELETED),
-
-            # Comments
+            ALBUM_UPDATED: make_async_handler(process_album_event, "albums", "Album updated", ALBUM_UPDATED),
+            ALBUM_DELETED: make_async_handler(process_album_event, "albums", "Album deleted", ALBUM_DELETED),
             COMMENT_CREATED: make_async_handler(process_comment_event, "comments", "New comment", COMMENT_CREATED),
             COMMENT_UPDATED: make_async_handler(process_comment_event, "comments", "Comment updated", COMMENT_UPDATED),
             COMMENT_DELETED: make_async_handler(process_comment_event, "comments", "Comment deleted", COMMENT_DELETED),
-
-            # Follows
             FOLLOW_CREATED: make_async_handler(process_follow_event, "follows", "New follow", FOLLOW_CREATED),
             FOLLOW_DELETED: make_async_handler(process_follow_event, "follows", "Follow removed", FOLLOW_DELETED),
-
-            # Friends
-            FRIEND_ADDED:   make_async_handler(process_friend_event, "friends", "New friend", FRIEND_ADDED),
+            FRIEND_ADDED: make_async_handler(process_friend_event, "friends", "New friend", FRIEND_ADDED),
             FRIEND_REMOVED: make_async_handler(process_friend_event, "friends", "Friend removed", FRIEND_REMOVED),
-
-            # Messenger
             MESSAGE_EVENT: make_async_handler(process_messenger_event, "messenger", "New message", MESSAGE_EVENT),
-
-            # Newsfeed
             NEWSFEED_CREATED: make_async_handler(process_newsfeed_event, "newsfeed", "Feed item created", NEWSFEED_CREATED),
-            NEWSFEED_UPDATED: make_async_handler(process_newsfeed_event, "newsfeed", "Feed updated",      NEWSFEED_UPDATED),
-            NEWSFEED_DELETED: make_async_handler(process_newsfeed_event, "newsfeed", "Feed removed",      NEWSFEED_DELETED),
-
-            # Reactions
-            REACTION_ADDED:   make_async_handler(process_reaction_event, "reactions", "Reaction added",   REACTION_ADDED),
-            REACTION_CREATED: make_async_handler(process_reaction_event, "reactions", "New reaction",     REACTION_CREATED),
+            NEWSFEED_UPDATED: make_async_handler(process_newsfeed_event, "newsfeed", "Feed updated", NEWSFEED_UPDATED),
+            NEWSFEED_DELETED: make_async_handler(process_newsfeed_event, "newsfeed", "Feed removed", NEWSFEED_DELETED),
+            REACTION_ADDED: make_async_handler(process_reaction_event, "reactions", "Reaction added", REACTION_ADDED),
+            REACTION_CREATED: make_async_handler(process_reaction_event, "reactions", "New reaction", REACTION_CREATED),
             REACTION_UPDATED: make_async_handler(process_reaction_event, "reactions", "Reaction updated", REACTION_UPDATED),
             REACTION_DELETED: make_async_handler(process_reaction_event, "reactions", "Reaction deleted", REACTION_DELETED),
-
-            # Tagging
-            TAG_ADDED:   make_async_handler(process_tagging_event, "tagging", "Tag added",   TAG_ADDED),
+            TAG_ADDED: make_async_handler(process_tagging_event, "tagging", "Tag added", TAG_ADDED),
             TAG_REMOVED: make_async_handler(process_tagging_event, "tagging", "Tag removed", TAG_REMOVED),
-
-            # Notifications
             NOTIFICATION_SENT: make_async_handler(create_notification, "notifications", "Notification sent", NOTIFICATION_SENT),
-
-            # Social (Posts) ─── use our safe helper for creation
             POST_CREATED: make_async_handler(handle_post_created, "social", "New post created", POST_CREATED),
-            POST_UPDATED: make_async_handler(process_social_event, "social", "Post updated",       POST_UPDATED),
-            POST_DELETED: make_async_handler(process_social_event, "social", "Post deleted",       POST_DELETED),
+            POST_UPDATED: make_async_handler(process_social_event, "social", "Post updated", POST_UPDATED),
+            POST_DELETED: make_async_handler(process_social_event, "social", "Post deleted", POST_DELETED),
         }
 
-        # legacy key → newsfeed handler
-        h["post_newsfeed_created"] = make_async_handler(
-            process_newsfeed_event,
-            "newsfeed",
-            "Feed item created",
-            "post_newsfeed_created"
+        handlers["post_newsfeed_created"] = make_async_handler(
+            process_newsfeed_event, "newsfeed", "Feed item created", "post_newsfeed_created"
         )
 
-        # plain aliases
-        h["newsfeed_created"] = h[NEWSFEED_CREATED]
-        h["newsfeed_updated"] = h[NEWSFEED_UPDATED]
-        h["newsfeed_deleted"] = h[NEWSFEED_DELETED]
-        h["user_created"] = h.get(USER_REGISTERED)
+        handlers["user_created"] = handlers.get(USER_REGISTERED)
 
-        return h
+        return handlers
 
     async def _consume_loop(self):
-        # 0) auto-create missing topics
         admin = AIOKafkaAdminClient(bootstrap_servers=settings.KAFKA_BROKER_URL)
         await admin.start()
         existing = await admin.list_topics()
@@ -190,7 +137,6 @@ class KafkaConsumerApp:
             ])
         await admin.close()
 
-        # 1) start the consumer
         self.consumer = AIOKafkaConsumer(
             *self.topics,
             bootstrap_servers=settings.KAFKA_BROKER_URL,
@@ -201,61 +147,31 @@ class KafkaConsumerApp:
             max_poll_interval_ms=300000,
         )
         await self.consumer.start()
-        logger.info(f"Started aiokafka consumer on topics: {self.topics}")
+        logger.info(f"Started Kafka consumer on topics: {self.topics}")
 
         try:
             async for msg in self.consumer:
                 close_old_connections()
-
                 raw = msg.value
                 if settings.KAFKA_ENCRYPTION_KEY:
                     raw = Fernet(settings.KAFKA_ENCRYPTION_KEY.encode()).decrypt(raw)
-
-                # decode + validate
                 try:
                     payload = json.loads(raw.decode("utf-8"))
-                    event   = EventData.parse_obj(payload)
+                    event = EventData.parse_obj(payload)
                 except (ValidationError, json.JSONDecodeError) as e:
-                    logger.error(f"Invalid message payload: {e}")
+                    logger.error(f"Invalid payload: {e}")
                     continue
 
-                logger.info(f"[DEBUG] Received {event.event_type}, id={event.id}")
-
-                # optional JWT in message
-                tok = event.data.get("jwt_token")
-                if tok:
-                    try:
-                        jwt.decode(
-                            tok,
-                            settings.SIMPLE_JWT["SIGNING_KEY"],
-                            algorithms=["HS256"],
-                            options={"verify_exp": True},
-                        )
-                    except jwt.ExpiredSignatureError:
-                        logger.warning("Skipping expired JWT in event")
-                        continue
-                    except jwt.DecodeError:
-                        logger.warning("Skipping invalid JWT in event")
-                        continue
-
-                # merge id back into data
                 data = dict(event.data)
                 data["id"] = event.id
-
                 handler = self.handlers.get(event.event_type)
-                if not handler:
-                    logger.warning(f"No handler for event type: {event.event_type}")
-                    continue
-
-                try:
+                if handler:
                     await handler(data)
-                except Exception:
-                    logger.exception(f"Error in handler for {event.event_type}")
-
+                else:
+                    logger.warning(f"No handler for {event.event_type}")
         finally:
             await self.consumer.stop()
-            logger.info("aiokafka consumer stopped")
+            logger.info("Kafka consumer stopped")
 
     def start(self):
-        """Blocking entry-point to run the async consumer loop."""
         asyncio.run(self._consume_loop())

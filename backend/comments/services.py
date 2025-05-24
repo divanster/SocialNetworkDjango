@@ -16,10 +16,10 @@ def process_comment_event(data):
     comment_id = data.get('comment_id')
     try:
         # Fetch the comment using Django's ORM, with related post details.
-        comment = Comment.objects.select_related('post__author').get(id=comment_id)
+        comment = Comment.objects.select_related('post__user').get(id=comment_id)
         logger.info(f"[SERVICE] Processing comment event for Comment ID: {comment_id}")
 
-        # Notify the post author about the new comment.
+        # Notify the post user about the new comment.
         notify_user_about_comment(comment)
 
     except Comment.DoesNotExist:
@@ -30,38 +30,37 @@ def process_comment_event(data):
 
 def notify_user_about_comment(comment):
     """
-    Send a notification to the author of the post about a new comment.
+    Send a notification to the user of the post about a new comment.
 
     Args:
         comment (Comment): The comment instance for which to send the notification.
     """
     try:
-        # Access related fields to get the post and author details.
+        # Access related fields to get the post and user details.
         post = comment.post
-        post_author = post.author  # Assuming `post` has a ForeignKey to `User` model
-        # named `author`.
+        post_user = post.user
 
-        # Create a notification for the post author.
-        create_notification(
-            sender_id=comment.user.id,
-            sender_username=comment.user.username,
-            receiver_id=post_author.id,
-            receiver_username=post_author.username,
-            notification_type='comment',
-            text=f"{comment.user.username} commented on your post: '{comment.content[:30]}...'"
-        )
+        # Create a notification for the post user.
+        notification_data = {
+            'sender_id': comment.user.id,
+            'sender_username': comment.user.username,
+            'receiver_id': post_user.id,
+            'receiver_username': post_user.username,
+            'notification_type': 'comment',
+            'text': f"{comment.user.username} commented on your post: '{comment.content[:30]}...'",
+        }
+        create_notification(notification_data)
 
         logger.info(
-            f"[NOTIFICATION] Sent notification to post author {post_author.id} about comment {comment.id}"
+            f"[NOTIFICATION] Sent notification to post user {post_user.id} about comment {comment.id}"
         )
 
     except AttributeError as e:
-        # Handle case where post might not have an author properly linked.
         logger.error(
             f"[NOTIFICATION] AttributeError while accessing post/user related fields "
             f"for comment {comment.id}: {e}"
         )
     except Exception as e:
         logger.error(
-            f"[NOTIFICATION] Failed to notify post author for comment {comment.id}: {e}"
+            f"[NOTIFICATION] Failed to notify post user for comment {comment.id}: {e}"
         )

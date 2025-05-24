@@ -22,7 +22,8 @@ def process_album_event(data):
 
         logger.info(f"[SERVICE] Processing album event for Album ID: {album_id}")
 
-        # Trigger notification logic, e.g., notifying followers that a new album has been posted
+        # Trigger notification logic, e.g., notifying followers that a new album has
+        # been posted
         if album.visibility != VisibilityChoices.PRIVATE:
             notify_followers_about_album(album)
         else:
@@ -52,14 +53,14 @@ def notify_followers_about_album(album):
             try:
                 # Only send notification if the follower has access based on album visibility
                 if album.visibility == VisibilityChoices.PUBLIC or (album.visibility == VisibilityChoices.FRIENDS and is_friend(user, follower)):
-                    create_notification(
-                        sender_id=user.id,
-                        sender_username=user.username,
-                        receiver_id=follower.id,
-                        receiver_username=follower.username,
-                        notification_type='album_created',
-                        text=f"{user.username} created a new album: {album.title}"
-                    )
+                    create_notification({
+                        'sender_id': user.id,
+                        'sender_username': user.username,
+                        'receiver_id': follower.id,
+                        'receiver_username': follower.username,
+                        'notification_type': 'album_created',
+                        'text': f"{user.username} created a new album: {album.title}"
+                    })
                     logger.info(f"[NOTIFICATION] Notified follower {follower.id} about album {album.id}")
                 else:
                     logger.info(f"[NOTIFICATION] Follower {follower.id} cannot view album {album.id} due to visibility settings.")

@@ -36,14 +36,14 @@ def notify_user_about_follow(follow):
     Sends a notification to the followed user.
     """
     try:
-        create_notification(
-            sender_id=follow.follower.id,
-            sender_username=follow.follower.username,
-            receiver_id=follow.followed.id,
-            receiver_username=follow.followed.username,
-            notification_type='follow',
-            text=f"{follow.follower.username} started following you."
-        )
+        create_notification({
+            'sender_id': follow.follower.id,
+            'sender_username': follow.follower.username,
+            'receiver_id': follow.followed.id,
+            'receiver_username': follow.followed.username,
+            'notification_type': 'follow',
+            'text': f"{follow.follower.username} started following you."
+        })
         logger.info(
             f"[NOTIFICATION] Notification created for user {follow.followed.id} about follow by {follow.follower.id}")
 

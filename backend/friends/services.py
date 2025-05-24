@@ -10,10 +10,9 @@ def process_friend_event(data):
     Processes a friend event, which could be a new friend request, acceptance, or removal.
     """
     try:
-        event_type = data.get('event')
+        event_type = data.get('event')  # Or 'event_type' if your event schema uses that
 
         if event_type == 'friend_request_created':
-            # Handle friend request creation
             friend_request_id = data.get('friend_request_id')
             friend_request = FriendRequest.objects.get(id=friend_request_id)
             logger.info(
@@ -21,7 +20,6 @@ def process_friend_event(data):
             notify_users_about_friend_request(friend_request)
 
         elif event_type == 'friend_request_accepted':
-            # Handle friend request accepted and create friendship
             friendship_id = data.get('friendship_id')
             friendship = Friendship.objects.get(id=friendship_id)
             logger.info(
@@ -29,7 +27,6 @@ def process_friend_event(data):
             notify_users_about_friendship(friendship)
 
         elif event_type == 'friend_removed':
-            # Handle friend removal
             friendship_id = data.get('friendship_id')
             friendship = Friendship.objects.get(id=friendship_id)
             logger.info(
@@ -48,7 +45,6 @@ def notify_users_about_friend_request(friend_request):
     Notify the receiver about a new friend request.
     """
     try:
-        # Notify receiver about friend request
         notification_data = {
             "sender_id": friend_request.sender.id,
             "sender_username": friend_request.sender.username,
@@ -67,7 +63,6 @@ def notify_users_about_friendship(friendship):
     Notify both users about the new friendship.
     """
     try:
-        # Create notifications for both users
         notification_data_user1 = {
             "sender_id": friendship.user1.id,
             "sender_username": friendship.user1.username,
@@ -95,7 +90,6 @@ def notify_users_about_friend_removal(friendship):
     Notify users when a friendship is removed.
     """
     try:
-        # Notify both users about friend removal
         notification_data_user1 = {
             "sender_id": friendship.user1.id,
             "sender_username": friendship.user1.username,

@@ -1,8 +1,10 @@
 import logging
 from .models import Story
-from notifications.services import create_notification  # Assuming notification is used here
+from notifications.services import \
+    create_notification  # Assuming notification is used here
 
 logger = logging.getLogger(__name__)
+
 
 def process_story_event(data):
     """
@@ -48,6 +50,7 @@ def process_story_event(data):
     except Exception as e:
         logger.error(f"[STORY] Error processing story event: {e}")
 
+
 # Define handle_story_creation
 def handle_story_creation(data):
     """
@@ -62,16 +65,17 @@ def handle_story_creation(data):
         # Example: Send a notification to followers
         story_id = data.get('story_id')
         story = Story.objects.get(id=story_id)
-        create_notification(
-            sender_id=story.user.id,
-            receiver_ids=[friend.id for friend in get_friends(story.user)],
-            notification_type='story_created',
-            message=f"{story.user.username} created a new story: {story.content[:30]}"
-        )
+        create_notification({
+            'sender_id': story.user.id,
+            'receiver_ids': [friend.id for friend in get_friends(story.user)],
+            'notification_type': 'story_created',
+            'message': f"{story.user.username} created a new story: {story.content[:30]}"
+        })
     except Story.DoesNotExist:
         logger.error(f"[STORY] Story with ID {story_id} not found for creation event.")
     except Exception as e:
         logger.error(f"[STORY] Error handling story creation: {e}")
+
 
 # Define update_story
 def update_story(story, data):
@@ -98,6 +102,7 @@ def update_story(story, data):
 
     except Exception as e:
         logger.error(f"[STORY] Error updating story with ID {story.id}: {e}")
+
 
 # Helper function for getting friends
 def get_friends(user):

@@ -98,6 +98,10 @@ class Post(UUIDModel, SoftDeleteModel, BaseModel):
         return self.title
 
     @property
+    def author(self):
+        return self.user
+
+    @property
     def average_rating(self):
         """
         Calculates the average rating of the post.
