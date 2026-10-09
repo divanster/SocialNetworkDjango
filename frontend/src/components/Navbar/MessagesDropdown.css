@@ -5,8 +5,14 @@
   font-weight: bold;
 }
 
-.messages-dropdown .dropdown-item.read {
+.messages-dropdown .dropdown-item.read,
+.messages-dropdown .dropdown-item-text.read {
   background-color: #fff;
+}
+
+.messages-dropdown .dropdown-item-text.unread {
+  background-color: #eef6ff;
+  font-weight: 600;
 }
 
 .messages-dropdown .message-content {
@@ -42,4 +48,19 @@
 
 .messages-dropdown .dropdown-menu {
   width: min(420px, 94vw);
+}
+
+.message-open-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-open-btn:hover,
+.message-open-btn:focus-visible {
+  text-decoration: underline;
+  outline: none;
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Container, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchProfileData, fetchUserById, updateProfileData, UserData } from '../services/api';
 import Avatar from '../components/Common/Avatar';
@@ -339,114 +339,124 @@ const ProfilePage: React.FC = () => {
       </Row>
 
       {isEditOpen && isOwnProfile && (
-        <div className="profile-edit-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
-          <Card className="profile-edit-card">
-            <Card.Body>
-              <h2 id="edit-profile-title" className="h5 mb-3">Edit Profile</h2>
-              {fieldErrors.form && <Alert variant="danger">{fieldErrors.form}</Alert>}
-              <Form onSubmit={handleSave}>
-                <Form.Group className="mb-2" controlId="profile-username">
-                  <Form.Label>Username</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.username}
-                    onChange={(e) => handleInputChange('username', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.username)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.username}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-2" controlId="profile-first-name">
-                  <Form.Label>First name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.first_name}
-                    onChange={(e) => handleInputChange('first_name', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.first_name)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.first_name}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-2" controlId="profile-last-name">
-                  <Form.Label>Last name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.last_name}
-                    onChange={(e) => handleInputChange('last_name', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.last_name)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.last_name}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-2" controlId="profile-bio">
-                  <Form.Label>Bio</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    value={form.bio}
-                    onChange={(e) => handleInputChange('bio', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.bio)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.bio}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-2" controlId="profile-town">
-                  <Form.Label>Town</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.town}
-                    onChange={(e) => handleInputChange('town', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.town)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.town}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-2" controlId="profile-country">
-                  <Form.Label>Country</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.country}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.country)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.country}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-2" controlId="profile-relationship">
-                  <Form.Label>Relationship status</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.relationship_status}
-                    onChange={(e) => handleInputChange('relationship_status', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.relationship_status)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.relationship_status}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-3" controlId="profile-phone">
-                  <Form.Label>Phone</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={form.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    isInvalid={Boolean(fieldErrors.phone)}
-                  />
-                  <Form.Control.Feedback type="invalid">{fieldErrors.phone}</Form.Control.Feedback>
-                </Form.Group>
+        <Modal
+          show={isEditOpen}
+          onHide={() => {
+            setIsEditOpen(false);
+            setFieldErrors({});
+            resetFormFromProfile(profileUser);
+          }}
+          centered
+          scrollable
+          aria-labelledby="edit-profile-title"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title id="edit-profile-title">Edit Profile</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {fieldErrors.form && <Alert variant="danger">{fieldErrors.form}</Alert>}
+            <Form onSubmit={handleSave}>
+              <Form.Group className="mb-2" controlId="profile-username">
+                <Form.Label>Username</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.username}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.username)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.username}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-2" controlId="profile-first-name">
+                <Form.Label>First name</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.first_name}
+                  onChange={(e) => handleInputChange('first_name', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.first_name)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.first_name}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-2" controlId="profile-last-name">
+                <Form.Label>Last name</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.last_name}
+                  onChange={(e) => handleInputChange('last_name', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.last_name)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.last_name}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-2" controlId="profile-bio">
+                <Form.Label>Bio</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={form.bio}
+                  onChange={(e) => handleInputChange('bio', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.bio)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.bio}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-2" controlId="profile-town">
+                <Form.Label>Town</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.town}
+                  onChange={(e) => handleInputChange('town', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.town)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.town}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-2" controlId="profile-country">
+                <Form.Label>Country</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.country}
+                  onChange={(e) => handleInputChange('country', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.country)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.country}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-2" controlId="profile-relationship">
+                <Form.Label>Relationship status</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.relationship_status}
+                  onChange={(e) => handleInputChange('relationship_status', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.relationship_status)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.relationship_status}</Form.Control.Feedback>
+              </Form.Group>
+              <Form.Group className="mb-3" controlId="profile-phone">
+                <Form.Label>Phone</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  isInvalid={Boolean(fieldErrors.phone)}
+                />
+                <Form.Control.Feedback type="invalid">{fieldErrors.phone}</Form.Control.Feedback>
+              </Form.Group>
 
-                <div className="d-flex justify-content-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline-secondary"
-                    onClick={() => {
-                      setIsEditOpen(false);
-                      setFieldErrors({});
-                      resetFormFromProfile(profileUser);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="primary" disabled={saving}>
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                </div>
-              </Form>
-            </Card.Body>
-          </Card>
-        </div>
+              <div className="d-flex justify-content-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline-secondary"
+                  onClick={() => {
+                    setIsEditOpen(false);
+                    setFieldErrors({});
+                    resetFormFromProfile(profileUser);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </Form>
+          </Modal.Body>
+        </Modal>
       )}
 
       {!isOwnProfile && (

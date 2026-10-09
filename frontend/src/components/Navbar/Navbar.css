@@ -87,6 +87,35 @@
   gap: 4px;
 }
 
+.app-navbar__mobile-links {
+  border-top: 1px solid var(--sn-border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.app-navbar__mobile-links .nav-link {
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.app-navbar__mobile-links .nav-link.active {
+  background: var(--sn-accent-soft);
+  color: var(--sn-accent);
+}
+
+.app-navbar__mobile-logout {
+  margin-top: 6px;
+  border: 1px solid #dc2626;
+  color: #b91c1c;
+  text-align: left;
+}
+
+.app-navbar__mobile-logout:hover,
+.app-navbar__mobile-logout:focus-visible {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .account-trigger {
   display: inline-flex;
   align-items: center;
@@ -116,15 +145,23 @@
 @media (max-width: 991.98px) {
   .app-navbar__left {
     min-width: 0;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .app-navbar__center {
     justify-content: flex-start;
     margin-top: 8px;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
 
   .account-name {
     display: none;
   }
-}
 
+  .app-navbar__right {
+    display: none;
+  }
+}

@@ -24,6 +24,11 @@ export default function useWebSocket<T>(
   const reconnectAttempts = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
 
+  const buildDefaultSocketBase = () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
+  };
+
   // always keep handlersRef up to date
   useEffect(() => {
     handlersRef.current = handlers;
@@ -33,10 +38,7 @@ export default function useWebSocket<T>(
     if (!token || !groupName || !isMounted.current) return;
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) return;
 
-    const rawBase = process.env.REACT_APP_WEBSOCKET_URL;
-    if (!rawBase) {
-      return;
-    }
+    const rawBase = process.env.REACT_APP_WEBSOCKET_URL || buildDefaultSocketBase();
     const cleanBase = rawBase.replace(/\/ws\/?$/, "");
     const url = `${cleanBase}/ws/${groupName}/?token=${token}`;
     const ws = new WebSocket(url);

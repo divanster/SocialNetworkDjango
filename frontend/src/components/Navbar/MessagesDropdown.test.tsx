@@ -51,7 +51,8 @@ describe('MessagesDropdown', () => {
     );
 
     fireEvent.click(screen.getByText(/Messages/i));
-    fireEvent.click(await screen.findByRole('button', { name: /Unread/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Open conversation with Friend One/i }));
+    await waitFor(() => expect(messagesService.markMessageAsRead).toHaveBeenCalledWith('m-1'));
     expect(mockNavigate).toHaveBeenCalledWith('/messenger?userId=friend-1');
   });
 
@@ -76,7 +77,7 @@ describe('MessagesDropdown', () => {
     );
 
     fireEvent.click(screen.getByText(/Messages/i));
-    fireEvent.click(await screen.findByRole('button', { name: /Unread/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Open conversation with Friend One/i }));
     await waitFor(() => expect(messagesService.markMessageAsRead).toHaveBeenCalledWith('m-1'));
   });
 });

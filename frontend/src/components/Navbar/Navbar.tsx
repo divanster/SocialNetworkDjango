@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navbar, Nav, NavDropdown, Badge, Container } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BsFillHouseDoorFill, BsPeopleFill, BsMessenger, BsBellFill } from 'react-icons/bs';
+import { BsFillHouseDoorFill, BsPeopleFill, BsMessenger, BsBellFill, BsImages } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_URL, fetchMessagesCount, fetchNotificationsCount } from '../../services/api';
 import SearchBar from '../Search/SearchBar';
@@ -18,6 +18,7 @@ const CustomNavbar: React.FC = () => {
   const location = useLocation();
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
   const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchUnreadMessages = async () => {
@@ -53,8 +54,26 @@ const CustomNavbar: React.FC = () => {
     fetchUnreadNotifications();
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    setExpanded(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExpanded(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [expanded]);
+
   const handleLogout = () => {
     logout();
+    setExpanded(false);
     navigate('/login');
   };
 
@@ -62,10 +81,19 @@ const CustomNavbar: React.FC = () => {
   const isMessenger = location.pathname.startsWith('/messenger');
   const isFriends = location.pathname.startsWith(friendsBasePath);
   const isNotifications = location.pathname.startsWith(notificationsBasePath);
+  const isAlbums = location.pathname.startsWith(albumsBasePath);
+  const isProfile = location.pathname.startsWith(profileBasePath);
   const docsUrl = `${API_URL.replace(/\/api\/v1$/, '')}/api/docs/`;
 
   return (
-    <Navbar className="app-navbar" expand="lg" sticky="top">
+    <Navbar
+      className="app-navbar"
+      expand="lg"
+      sticky="top"
+      collapseOnSelect
+      expanded={expanded}
+      onToggle={(nextExpanded) => setExpanded(Boolean(nextExpanded))}
+    >
       <Container fluid className="app-navbar__inner">
         <div className="app-navbar__left">
           <LinkContainer to="/">
@@ -80,17 +108,38 @@ const CustomNavbar: React.FC = () => {
             <>
               <Nav className="app-navbar__center">
                 <LinkContainer to="/">
-                  <Nav.Link className={`icon-link ${isHome ? 'active' : ''}`} aria-label="Home">
+                  <Nav.Link
+                    className={`icon-link ${isHome ? 'active' : ''}`}
+                    aria-label="Home"
+                    onClick={() => setExpanded(false)}
+                  >
                     <BsFillHouseDoorFill />
                   </Nav.Link>
                 </LinkContainer>
                 <LinkContainer to={friendsBasePath}>
-                  <Nav.Link className={`icon-link ${isFriends ? 'active' : ''}`} aria-label="Friends">
+                  <Nav.Link
+                    className={`icon-link ${isFriends ? 'active' : ''}`}
+                    aria-label="Friends"
+                    onClick={() => setExpanded(false)}
+                  >
                     <BsPeopleFill />
                   </Nav.Link>
                 </LinkContainer>
+                <LinkContainer to={albumsBasePath}>
+                  <Nav.Link
+                    className={`icon-link ${isAlbums ? 'active' : ''}`}
+                    aria-label="Albums"
+                    onClick={() => setExpanded(false)}
+                  >
+                    <BsImages />
+                  </Nav.Link>
+                </LinkContainer>
                 <LinkContainer to="/messenger">
-                  <Nav.Link className={`icon-link ${isMessenger ? 'active' : ''}`} aria-label="Messenger">
+                  <Nav.Link
+                    className={`icon-link ${isMessenger ? 'active' : ''}`}
+                    aria-label="Messenger"
+                    onClick={() => setExpanded(false)}
+                  >
                     <span className="icon-badge-wrap">
                       <BsMessenger />
                       {unreadMessages > 0 && <Badge bg="danger">{unreadMessages}</Badge>}
@@ -98,13 +147,39 @@ const CustomNavbar: React.FC = () => {
                   </Nav.Link>
                 </LinkContainer>
                 <LinkContainer to={notificationsBasePath}>
-                  <Nav.Link className={`icon-link ${isNotifications ? 'active' : ''}`} aria-label="Notifications">
-                  <span className="icon-badge-wrap">
-                    <BsBellFill />
-                    {unreadNotifications > 0 && <Badge bg="danger">{unreadNotifications}</Badge>}
-                  </span>
+                  <Nav.Link
+                    className={`icon-link ${isNotifications ? 'active' : ''}`}
+                    aria-label="Notifications"
+                    onClick={() => setExpanded(false)}
+                  >
+                    <span className="icon-badge-wrap">
+                      <BsBellFill />
+                      {unreadNotifications > 0 && <Badge bg="danger">{unreadNotifications}</Badge>}
+                    </span>
                   </Nav.Link>
                 </LinkContainer>
+              </Nav>
+
+              <Nav className="app-navbar__mobile-links d-lg-none" aria-label="Mobile primary navigation">
+                <Nav.Link
+                  as={Link}
+                  to={profileBasePath}
+                  className={isProfile ? 'active' : ''}
+                  onClick={() => setExpanded(false)}
+                >
+                  My Profile
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to={albumsBasePath}
+                  className={isAlbums ? 'active' : ''}
+                  onClick={() => setExpanded(false)}
+                >
+                  Albums
+                </Nav.Link>
+                <Nav.Link as="button" onClick={handleLogout} className="app-navbar__mobile-logout">
+                  Logout
+                </Nav.Link>
               </Nav>
 
               <Nav className="app-navbar__right">
@@ -131,10 +206,10 @@ const CustomNavbar: React.FC = () => {
                   id="account-dropdown"
                   align="end"
                 >
-                  <NavDropdown.Item as={Link} to={profileBasePath}>
+                  <NavDropdown.Item as={Link} to={profileBasePath} onClick={() => setExpanded(false)}>
                     My Profile
                   </NavDropdown.Item>
-                  <NavDropdown.Item as={Link} to={albumsBasePath}>
+                  <NavDropdown.Item as={Link} to={albumsBasePath} onClick={() => setExpanded(false)}>
                     Albums
                   </NavDropdown.Item>
                   <NavDropdown.Divider />

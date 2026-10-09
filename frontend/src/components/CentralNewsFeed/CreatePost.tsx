@@ -5,13 +5,12 @@ import { Form, Button, Alert, Spinner } from 'react-bootstrap';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Post as PostType } from '../../types/post';
+import { API_URL } from '../../services/api';
 
 interface CreatePostProps {
   onPostCreated: (newPost: PostType) => void;
   sendMessage: (message: string) => void;
 }
-
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, sendMessage }) => {
   const { token } = useAuth();
@@ -60,7 +59,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, sendMessage }) =
       setContent('');
       setImages(null);
     } catch (err) {
-      console.error('Error creating post:', err);
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.detail || 'An error occurred while creating the post.');
       } else {

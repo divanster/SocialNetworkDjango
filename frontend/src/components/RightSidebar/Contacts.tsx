@@ -10,6 +10,11 @@ interface User {
   username: string;
 }
 
+interface ApiUser {
+  id: string | number;
+  username: string;
+}
+
 const Contacts: React.FC = () => {
   const { onlineUsers, userDetails } = useOnlineStatus();
   const { user: currentUser } = useAuth();
@@ -25,14 +30,13 @@ const Contacts: React.FC = () => {
       .then((users) => {
         if (!mounted) return;
         setAllUsers(
-          users.map((u: any) => ({
+          users.map((u: ApiUser) => ({
             id: String(u.id),
             username: u.username,
           }))
         );
       })
-      .catch((err) => {
-        console.error('Contacts.fetchUsers error', err);
+      .catch(() => {
         if (mounted) setError('Failed to load contacts.');
       })
       .finally(() => mounted && setLoading(false));

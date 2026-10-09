@@ -39,7 +39,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
       </div>
 
       {loading ? (
-        <div className="py-2 px-2">
+        <div className="py-2 px-2" role="status" aria-live="polite">
           <Spinner animation="border" size="sm" className="me-2" />
           Loading notifications...
         </div>
@@ -60,10 +60,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
             return (
               <ListGroup.Item
                 key={notification.id}
-                action
                 className={`notification-item ${notification.read ? 'notification-read' : 'notification-unread'}`}
-                onClick={() => onSelect(notification, destination)}
-                aria-label={notification.read ? 'Read notification' : 'Unread notification'}
               >
                 <div className="d-flex align-items-start justify-content-between gap-2">
                   <div>
@@ -79,13 +76,22 @@ const NotificationList: React.FC<NotificationListProps> = ({
                         <span>{senderName}</span>
                       )}
                     </div>
-                    <div>{notification.text}</div>
+                    <button
+                      type="button"
+                      className="notification-item__button"
+                      onClick={() => onSelect(notification, destination)}
+                      aria-label={notification.read ? 'Read notification' : 'Unread notification'}
+                    >
+                      {notification.text}
+                    </button>
                     <small className="text-muted">{new Date(notification.created_at).toLocaleString()}</small>
                     {!destination.canNavigate && (
                       <small className="d-block text-muted">No direct destination</small>
                     )}
                   </div>
-                  {!notification.read && <Badge bg="primary">Unread</Badge>}
+                  <Badge bg={notification.read ? 'secondary' : 'primary'}>
+                    {notification.read ? 'Read' : 'Unread'}
+                  </Badge>
                 </div>
               </ListGroup.Item>
             );

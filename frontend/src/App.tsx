@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Spinner } from 'react-bootstrap';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -21,7 +22,13 @@ const App: React.FC = () => {
     <>
       <Navbar />
       <ErrorBoundary>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={(
+          <div className="py-4 text-center" role="status" aria-live="polite">
+            <Spinner animation="border" size="sm" className="me-2" />
+            Loading...
+          </div>
+        )}
+        >
           <Routes>
             {/* Public */}
             <Route path="/login" element={<Login />} />

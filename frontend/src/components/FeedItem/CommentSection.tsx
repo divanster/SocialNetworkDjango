@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useAuth } from '../../contexts/AuthContext'
 import { Form, Button, ListGroup, Alert, Spinner } from 'react-bootstrap'
+import { API_URL } from '../../services/api'
 
 interface CommentType {
   id: string
@@ -13,8 +14,6 @@ interface CommentType {
 interface Props {
   postId: string
 }
-
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '')
 
 const CommentSection: React.FC<Props> = ({ postId }) => {
   const { token, user } = useAuth()
@@ -38,8 +37,7 @@ const CommentSection: React.FC<Props> = ({ postId }) => {
         setComments(arr)
         setError(null)
       })
-      .catch((err) => {
-        console.error('Failed to fetch comments', err)
+      .catch(() => {
         setError('Could not load comments.')
       })
       .finally(() => setLoading(false))
@@ -57,9 +55,12 @@ const CommentSection: React.FC<Props> = ({ postId }) => {
       setComments((prev) => [res.data, ...prev])
       setNewComment('')
       setError(null)
-    } catch (err: any) {
-      console.error('Failed to post comment', err)
-      setError(err.response?.data?.detail || 'Could not post comment.')
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail || 'Could not post comment.')
+      } else {
+        setError('Could not post comment.')
+      }
     } finally {
       setSubmitting(false)
     }

@@ -130,7 +130,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
       </NavDropdown.Header>
       <NavDropdown.Divider />
       {loading ? (
-        <NavDropdown.ItemText>
+        <NavDropdown.ItemText role="status" aria-live="polite">
           <Spinner animation="border" size="sm" className="me-2" /> Loading...
         </NavDropdown.ItemText>
       ) : error ? (
@@ -139,24 +139,12 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
         <NavDropdown.ItemText>No messages yet.</NavDropdown.ItemText>
       ) : (
         previews.slice(0, 8).map((preview) => (
-          <NavDropdown.Item
-            key={preview.partnerId}
-            as="button"
-            type="button"
-            onClick={() => {
-              if (preview.unread && preview.latestMessage.receiver.id === user?.id) {
-                handleMarkAsRead(preview.latestMessage.id);
-              }
-              navigate(buildMessengerPathForUser(preview.partnerId));
-            }}
-            className={preview.unread ? 'unread' : 'read'}
-          >
+          <NavDropdown.ItemText key={preview.partnerId} className={preview.unread ? 'unread' : 'read'}>
             <div className="message-content">
               <UserIdentityLink
                 userId={preview.partnerId}
                 className="me-2"
                 ariaLabel={`Open ${preview.partnerName} profile`}
-                onClick={(event) => event.stopPropagation()}
               >
                 {preview.partnerAvatar ? (
                   <img src={preview.partnerAvatar} alt={`${preview.partnerName} avatar`} className="profile-picture me-2" />
@@ -168,16 +156,27 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
                 <strong>
                   <UserIdentityLink userId={preview.partnerId}>{preview.partnerName}</UserIdentityLink>
                 </strong>
-                <span className="text-truncate d-block" style={{ maxWidth: 200 }}>
+                <button
+                  type="button"
+                  className="message-open-btn text-truncate d-block"
+                  style={{ maxWidth: 200 }}
+                  onClick={() => {
+                    if (preview.unread && preview.latestMessage.receiver.id === user?.id) {
+                      handleMarkAsRead(preview.latestMessage.id);
+                    }
+                    navigate(buildMessengerPathForUser(preview.partnerId));
+                  }}
+                  aria-label={`Open conversation with ${preview.partnerName}`}
+                >
                   {preview.latestMessage.content}
-                </span>
+                </button>
                 <small className="text-muted">
                   {new Date(preview.latestMessage.created_at).toLocaleString()}
                 </small>
                 {preview.unread && <small className="d-block fw-semibold">Unread</small>}
               </div>
             </div>
-          </NavDropdown.Item>
+          </NavDropdown.ItemText>
         ))
       )}
     </NavDropdown>

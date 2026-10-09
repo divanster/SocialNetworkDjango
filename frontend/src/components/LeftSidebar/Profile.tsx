@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BsFillHouseDoorFill, BsPeopleFill, BsImages, BsCollectionPlay, BsMessenger, BsBellFill } from 'react-icons/bs';
+import { BsFillHouseDoorFill, BsPeopleFill, BsImages, BsMessenger, BsBellFill } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../Common/Avatar';
 import { albumsBasePath, friendsBasePath, notificationsBasePath, profileBasePath } from '../../utils/profileRoutes';
@@ -11,7 +11,6 @@ const shortcuts = [
   { key: 'feed', label: 'Feed', icon: <BsFillHouseDoorFill />, to: '/' },
   { key: 'friends', label: 'Friends', icon: <BsPeopleFill />, to: friendsBasePath },
   { key: 'albums', label: 'Albums', icon: <BsImages />, to: albumsBasePath },
-  { key: 'stories', label: 'Stories', icon: <BsCollectionPlay />, to: '/#stories' },
   { key: 'messenger', label: 'Messenger', icon: <BsMessenger />, to: '/messenger' },
   { key: 'notifications', label: 'Notifications', icon: <BsBellFill />, to: notificationsBasePath },
 ];

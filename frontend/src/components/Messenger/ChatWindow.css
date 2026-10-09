@@ -13,6 +13,8 @@
   padding: 1rem;
   border-bottom: 1px solid #ddd;
   background-color: #f6f6f6;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .online-indicator {
@@ -62,6 +64,7 @@
   display: inline-flex;
   flex-direction: column;
   gap: 4px;
+  overflow-wrap: anywhere;
 }
 
 .message-mine .message-bubble {

@@ -14,3 +14,18 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.notification-item__button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-item__button:hover,
+.notification-item__button:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}

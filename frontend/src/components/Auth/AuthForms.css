@@ -1,0 +1,26 @@
+.auth-page {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  padding: 20px 12px 32px;
+}
+
+.auth-card {
+  width: min(760px, 100%);
+  border-radius: 12px;
+}
+
+.auth-card .card-body {
+  padding: 20px;
+}
+
+.auth-form-grid {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 767.98px) {
+  .auth-card .card-body {
+    padding: 16px;
+  }
+}

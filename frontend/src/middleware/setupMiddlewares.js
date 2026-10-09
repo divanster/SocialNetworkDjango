@@ -1,7 +1,5 @@
 module.exports = (middlewares, devServer) => {
-  // Custom middleware setup can go here
-  devServer.app.use((req, res, next) => {
-    console.log(`Request URL: ${req.url}`);
+  devServer.app.use((_req, _res, next) => {
     next();
   });
   return middlewares;

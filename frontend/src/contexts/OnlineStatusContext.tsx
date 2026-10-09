@@ -35,7 +35,6 @@ export const OnlineStatusProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const details = Object.fromEntries(list.map(u => [u.id, u.username]));
       setOnlineUsers(ids);
       setUserDetails(details);
-      console.log('🔄 Refreshed onlineUsers:', ids);
     } catch (err) {
       console.error('❌ fetch online users failed', err);
     }

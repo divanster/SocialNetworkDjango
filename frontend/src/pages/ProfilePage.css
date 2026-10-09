@@ -71,27 +71,6 @@
   box-shadow: var(--sn-shadow);
 }
 
-.profile-edit-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 30, 33, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  z-index: 1050;
-}
-
-.profile-edit-card {
-  width: 100%;
-  max-width: 580px;
-  border: 1px solid var(--sn-border);
-  border-radius: var(--sn-radius);
-  box-shadow: var(--sn-shadow);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
 .profile-own-link-row {
   margin-top: 12px;
 }

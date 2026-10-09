@@ -5,6 +5,7 @@ import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { Post as PostType } from '../../types/post';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_URL } from '../../services/api';
 
 interface EditPostModalProps {
   show: boolean;
@@ -12,8 +13,6 @@ interface EditPostModalProps {
   post: PostType;
   onSave: (updatedPost: PostType) => void;
 }
-
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 const EditPostModal: React.FC<EditPostModalProps> = ({ show, onHide, post, onSave }) => {
   const { token } = useAuth();
@@ -52,8 +51,11 @@ const EditPostModal: React.FC<EditPostModalProps> = ({ show, onHide, post, onSav
       onSave(updatedPost);
       onHide();
     } catch (err) {
-      console.error('Error updating post:', err);
-      setError('Failed to update post.');
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.detail || 'Failed to update post.');
+      } else {
+        setError('Failed to update post.');
+      }
     } finally {
       setSaving(false);
     }
