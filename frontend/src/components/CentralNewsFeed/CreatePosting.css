@@ -1,41 +1,88 @@
-/* frontend/src/components/CentralNewsFeed/CreatePosting.css */
-
-.create-posting-container {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
+.composer-card {
+  background: var(--sn-card);
+  border-radius: var(--sn-radius);
+  box-shadow: var(--sn-shadow);
+  padding: 14px;
+  margin-bottom: 16px;
 }
 
-.create-posting-textarea {
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  padding: 10px 15px;
-  resize: none;
-  height: 50px;
-  transition: border-color 0.3s;
+.composer-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.create-posting-textarea:focus {
-  border-color: #007bff;
+.composer-input {
+  border: 1px solid var(--sn-border);
+  border-radius: 18px;
+  padding: 10px 14px;
+  min-height: 44px;
+  resize: vertical;
+  background: #f6f7f9;
+}
+
+.composer-input:focus {
+  border-color: var(--sn-accent);
+  box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.15);
+}
+
+.composer-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--sn-border);
+  padding-top: 12px;
+}
+
+.composer-action-btn {
+  border: none;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sn-text);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.composer-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.composer-action-btn:hover:not(:disabled),
+.composer-action-btn:focus-visible {
+  background: var(--sn-accent-soft);
+  color: var(--sn-accent);
   outline: none;
 }
 
-.create-posting-icon-label {
+.composer-attachments {
+  margin-top: 10px;
   display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.create-posting-icon-label svg {
-  margin-right: 4px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .post-attached-image {
-  width: 100px;
-  height: 100px;
+  width: 78px;
+  height: 78px;
   object-fit: cover;
   border-radius: 8px;
-  margin-right: 10px;
+  border: 1px solid var(--sn-border);
 }
+
+@media (max-width: 768px) {
+  .composer-top {
+    flex-wrap: wrap;
+  }
+
+  .composer-top .btn-primary {
+    margin-left: auto;
+  }
+}
+

@@ -2,12 +2,7 @@
 import React from 'react';
 
 const FriendRequests: React.FC = () => {
-    return (
-        <div className="friend-requests">
-            <h4>Friend Requests</h4>
-            {/* Render friend requests */}
-        </div>
-    );
+    return null;
 };
 
 export default FriendRequests;

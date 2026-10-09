@@ -6,6 +6,7 @@ import ReactionButton from '../FeedItem/ReactionButton'
 import CommentSection from '../FeedItem/CommentSection'
 import { useAuth } from '../../contexts/AuthContext'
 import { Post as PostType } from '../../types/post'
+import Avatar from '../Common/Avatar'
 
 interface PostsProps {
   posts: PostType[]
@@ -40,6 +41,18 @@ const Posts: React.FC<PostsProps> = ({
     closeEdit()
   }
 
+  const formatTimestamp = (value?: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date);
+  };
+
   return (
     <>
       {posts.map((post) => {
@@ -50,17 +63,24 @@ const Posts: React.FC<PostsProps> = ({
           (post.author.id === user.id ||
             post.author.username === user.username)
         const images = post.images ?? []
-        const createdAt = post.created_at
-          ? new Date(post.created_at).toLocaleString()
-          : ''
+        const createdAt = formatTimestamp(post.created_at)
+        const showTitle = Boolean(post.title && post.title.trim().length > 0)
 
         return (
           <Card key={post.id} className="mb-4 post-card">
             <Card.Body>
-              <Card.Title>{post.title}</Card.Title>
-              <Card.Subtitle className="mb-2 text-muted">
-                By {authorUsername} on {createdAt}
-              </Card.Subtitle>
+              <div className="post-header">
+                <Avatar
+                  size={40}
+                  name={authorUsername}
+                  alt={`${authorUsername} avatar`}
+                />
+                <div>
+                  <div className="post-author">{authorUsername}</div>
+                  <div className="post-meta">{createdAt}</div>
+                </div>
+              </div>
+              {showTitle && <Card.Title className="mt-3 mb-2">{post.title}</Card.Title>}
               <Card.Text>{post.content}</Card.Text>
               {images.length > 0 && (
                 <div className="d-flex flex-wrap mb-3">
@@ -68,18 +88,27 @@ const Posts: React.FC<PostsProps> = ({
                     <img
                       key={img.id}
                       src={img.image}
-                      alt=""
+                      alt={`${authorUsername} post`}
                       style={{
-                        width: 100,
-                        height: 100,
+                        width: 132,
+                        height: 132,
                         objectFit: 'cover',
-                        borderRadius: 4,
+                        borderRadius: 8,
                         marginRight: 8,
+                        marginBottom: 8,
                       }}
                     />
                   ))}
                 </div>
               )}
+              <div className="post-stats">
+                {typeof post.reactions_count === 'number' && (
+                  <span>{post.reactions_count} likes</span>
+                )}
+                {typeof post.comments_count === 'number' && (
+                  <span>{post.comments_count} comments</span>
+                )}
+              </div>
             </Card.Body>
 
             <Card.Footer className="d-flex justify-content-between align-items-center">

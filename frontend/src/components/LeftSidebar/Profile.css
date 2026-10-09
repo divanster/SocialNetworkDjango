@@ -1,27 +1,62 @@
-.profile-container {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 10px;
+.left-profile-card {
+  background: var(--sn-card);
+  border-radius: var(--sn-radius);
+  box-shadow: var(--sn-shadow);
+  padding: 12px;
 }
 
-.profile-picture {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto;
-  display: block;
-  object-fit: cover;
+.left-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 12px;
+  border-bottom: 1px solid var(--sn-border);
+  margin-bottom: 10px;
 }
 
-.profile-form {
-  margin-top: 20px;
+.left-profile-name {
+  font-weight: 700;
+  color: var(--sn-text);
 }
 
-.profile-form .form-group {
-  margin-bottom: 15px;
+.left-profile-subtitle {
+  font-size: 0.85rem;
+  color: var(--sn-muted);
 }
 
-.profile-form .btn {
-  width: 100%;
+.left-shortcuts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
+
+.shortcut-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--sn-text);
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: 500;
+}
+
+.shortcut-link:hover,
+.shortcut-link:focus-visible {
+  background: var(--sn-accent-soft);
+  color: var(--sn-accent);
+  outline: none;
+}
+
+.shortcut-link.active {
+  background: var(--sn-accent-soft);
+  color: var(--sn-accent);
+}
+
+.shortcut-icon {
+  width: 24px;
+  display: inline-flex;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+

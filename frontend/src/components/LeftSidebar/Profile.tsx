@@ -1,91 +1,59 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { BsFillHouseDoorFill, BsPeopleFill, BsImages, BsCollectionPlay, BsMessenger, BsBellFill } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
-import { API_URL } from '../../services/api';
+import Avatar from '../Common/Avatar';
+import './Profile.css';
 
-interface UserProfile {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  profile: {
-    profile_picture: string | null;
-    bio: string;
-    phone: string | null;
-    town: string | null;
-    country: string | null;
-    relationship_status: string;
-  } | null;
-}
+const shortcuts = [
+  { key: 'feed', label: 'Feed', icon: <BsFillHouseDoorFill />, to: '/' },
+  { key: 'friends', label: 'Friends', icon: <BsPeopleFill />, to: '/' },
+  { key: 'albums', label: 'Albums', icon: <BsImages />, to: '/#albums' },
+  { key: 'stories', label: 'Stories', icon: <BsCollectionPlay />, to: '/#stories' },
+  { key: 'messenger', label: 'Messenger', icon: <BsMessenger />, to: '/messenger' },
+  { key: 'notifications', label: 'Notifications', icon: <BsBellFill />, to: '/' },
+];
 
 const Profile: React.FC = () => {
-  const { token } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (token) {
-        try {
-          const response = await fetch(`${API_URL}/users/me/`, {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch profile');
-          }
-
-          const data = await response.json();
-          setProfile(data);
-        } catch (error: any) {
-          setError(error.message);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchProfile();
-  }, [token]);
-
-  if (loading) {
-    return <p>Loading profile...</p>;
-  }
-
-  if (error) {
-    return <p>Error fetching profile: {error}</p>;
-  }
+  const { user } = useAuth();
+  const location = useLocation();
+  const displayName = user?.username || 'User';
 
   return (
-    <div>
-      {profile ? (
+    <div className="left-profile-card">
+      <div className="left-profile-header">
+        <Avatar
+          size={48}
+          src={user?.profile?.profile_picture}
+          name={displayName}
+          alt={`${displayName} avatar`}
+        />
         <div>
-          <h2>{profile.username}</h2>
-          <p>{profile.first_name} {profile.last_name}</p>
-          <p>{profile.email}</p>
-          {profile.profile && profile.profile.profile_picture ? (
-            <img src={profile.profile.profile_picture} alt={profile.username} />
-          ) : (
-            <p>No profile picture</p>
-          )}
-          {profile.profile && (
-            <>
-              <p>Bio: {profile.profile.bio}</p>
-              <p>Phone: {profile.profile.phone}</p>
-              <p>Location: {profile.profile.town}, {profile.profile.country}</p>
-              <p>Relationship Status: {profile.profile.relationship_status}</p>
-            </>
-          )}
+          <div className="left-profile-name">{displayName}</div>
+          <div className="left-profile-subtitle">View your feed</div>
         </div>
-      ) : (
-        <p>No profile data available.</p>
-      )}
+      </div>
+
+      <nav aria-label="Shortcuts">
+        <ul className="left-shortcuts">
+          {shortcuts.map((item) => {
+            const isActive =
+              (item.to === '/' && location.pathname === '/') ||
+              (item.to === '/messenger' && location.pathname.startsWith('/messenger'));
+            return (
+              <li key={item.key}>
+                <Link className={`shortcut-link ${isActive ? 'active' : ''}`} to={item.to}>
+                  <span className="shortcut-icon" aria-hidden="true">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
     </div>
   );
 };
 
 export default Profile;
+

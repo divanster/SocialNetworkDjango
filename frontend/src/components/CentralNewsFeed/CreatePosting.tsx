@@ -1,5 +1,3 @@
-// frontend/src/components/CentralNewsFeed/CreatePosting.tsx
-
 import React, { useState } from 'react';
 import { Form, Button, Alert, Spinner, Modal } from 'react-bootstrap';
 import { BsImage, BsPeople, BsCameraVideo, BsEmojiSmile } from 'react-icons/bs';
@@ -7,7 +5,8 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Post as PostType } from '../../types/post';
 import { Album as AlbumType } from '../../types/album';
-import './CreatePosting.css'; // Ensure this file exists and is correctly linked
+import Avatar from '../Common/Avatar';
+import './CreatePosting.css';
 
 interface CreatePostingProps {
   onPostCreated: (newPost: PostType) => void;
@@ -24,16 +23,13 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
   sendMessage,
   sendAlbumMessage,
 }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
-  // State for post
-  const [postTitle, setPostTitle] = useState(''); // Added title state
   const [postContent, setPostContent] = useState('');
   const [postImages, setPostImages] = useState<FileList | null>(null);
   const [savingPost, setSavingPost] = useState<boolean>(false);
   const [postError, setPostError] = useState<string | null>(null);
 
-  // State for album modal
   const [showAlbumModal, setShowAlbumModal] = useState<boolean>(false);
   const [albumTitle, setAlbumTitle] = useState('');
   const [albumDescription, setAlbumDescription] = useState('');
@@ -41,19 +37,16 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
   const [savingAlbum, setSavingAlbum] = useState<boolean>(false);
   const [albumError, setAlbumError] = useState<string | null>(null);
 
-  // Handlers for post
-  const handlePostTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPostTitle(e.target.value);
-  };
-
-  const handlePostContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setPostContent(e.target.value);
-  };
-
   const handlePostImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setPostImages(e.target.files);
     }
+  };
+
+  const deriveTitle = (content: string): string => {
+    const clean = content.trim().replace(/\s+/g, ' ');
+    if (!clean) return 'New post';
+    return clean.slice(0, 60);
   };
 
   const handlePostSubmit = async (e: React.FormEvent) => {
@@ -64,8 +57,8 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
       return;
     }
 
-    if (postTitle.trim() === '' || postContent.trim() === '') {
-      setPostError('Title and content cannot be empty.');
+    if (postContent.trim() === '') {
+      setPostError('Post content cannot be empty.');
       return;
     }
 
@@ -73,9 +66,9 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
     setPostError(null);
 
     const formData = new FormData();
-    formData.append('title', postTitle); // Include title in FormData
-    formData.append('content', postContent); // Required
-    formData.append('visibility', 'public'); // Example, adjust as needed
+    formData.append('title', deriveTitle(postContent));
+    formData.append('content', postContent);
+    formData.append('visibility', 'public');
 
     if (postImages) {
       Array.from(postImages).forEach((file) => {
@@ -95,12 +88,10 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
       onPostCreated(createdPost);
       sendMessage(JSON.stringify({ type: 'new_post', data: createdPost }));
 
-      // Reset post form
-      setPostTitle('');
       setPostContent('');
       setPostImages(null);
-      // Reset file input value
-      (document.getElementById('post-image-input') as HTMLInputElement).value = '';
+      const fileInput = document.getElementById('post-image-input') as HTMLInputElement | null;
+      if (fileInput) fileInput.value = '';
     } catch (error: any) {
       console.error('Error creating post:', error);
       if (axios.isAxiosError(error)) {
@@ -123,31 +114,13 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
     }
   };
 
-  // Handlers for album
-  const handleOpenAlbumModal = () => {
-    setShowAlbumModal(true);
-  };
-
+  const handleOpenAlbumModal = () => setShowAlbumModal(true);
   const handleCloseAlbumModal = () => {
     setShowAlbumModal(false);
     setAlbumTitle('');
     setAlbumDescription('');
     setAlbumImages(null);
     setAlbumError(null);
-  };
-
-  const handleAlbumTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAlbumTitle(e.target.value);
-  };
-
-  const handleAlbumDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setAlbumDescription(e.target.value);
-  };
-
-  const handleAlbumImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setAlbumImages(e.target.files);
-    }
   };
 
   const handleAlbumSubmit = async (e: React.FormEvent) => {
@@ -174,8 +147,7 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
     const formData = new FormData();
     formData.append('title', albumTitle);
     formData.append('description', albumDescription);
-    formData.append('visibility', 'public'); // Or allow user to select
-
+    formData.append('visibility', 'public');
     Array.from(albumImages).forEach((file) => {
       formData.append('image_files', file);
     });
@@ -191,8 +163,6 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
       const createdAlbum: AlbumType = response.data;
       onAlbumCreated(createdAlbum);
       sendAlbumMessage(JSON.stringify({ type: 'new_album', data: createdAlbum }));
-
-      // Reset album form
       handleCloseAlbumModal();
     } catch (error: any) {
       console.error('Error creating album:', error);
@@ -216,84 +186,34 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
     }
   };
 
+  const displayName = user?.username || 'friend';
+
   return (
     <>
-      <div className="create-posting-container p-3 mb-4 bg-white rounded shadow-sm">
-        {/* Post Error Alert */}
+      <div className="composer-card">
         {postError && <Alert variant="danger">{postError}</Alert>}
 
         <Form onSubmit={handlePostSubmit}>
-          {/* Title Input */}
-          <Form.Group className="mb-3" controlId="formPostTitle">
-            <Form.Control
-              type="text"
-              placeholder="Enter title"
-              value={postTitle}
-              onChange={handlePostTitleChange}
-              required
+          <div className="composer-top">
+            <Avatar
+              size={42}
+              src={user?.profile?.profile_picture}
+              name={displayName}
+              alt={`${displayName} avatar`}
             />
-          </Form.Group>
-
-          {/* Content Input */}
-          <Form.Group className="mb-3" controlId="formPostContent">
             <Form.Control
               as="textarea"
               rows={2}
-              placeholder="What's on your mind?"
+              placeholder={`What's on your mind, ${displayName}?`}
               value={postContent}
-              onChange={handlePostContentChange}
-              className="create-posting-textarea"
+              onChange={(e) => setPostContent(e.target.value)}
+              className="composer-input"
               required
             />
-          </Form.Group>
-
-          <div className="d-flex align-items-center justify-content-between">
-            <div className="d-flex">
-              {/* Photo Icon */}
-              <label htmlFor="post-image-input" className="create-posting-icon-label me-3">
-                <BsImage size={24} color="#4CAF50" />
-                <span className="ms-1">Photo</span>
-                <input
-                  type="file"
-                  id="post-image-input"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePostImagesChange}
-                  className="d-none"
-                />
-              </label>
-
-              {/* Album Icon */}
-              <Button variant="outline-secondary" className="me-3 d-flex align-items-center" onClick={handleOpenAlbumModal}>
-                <BsPeople size={24} color="#0084FF" />
-                <span className="ms-1">Album</span>
-              </Button>
-
-              {/* Video Icon */}
-              <div className="create-posting-icon-label me-3">
-                <BsCameraVideo size={24} color="#FF0000" />
-                <span className="ms-1">Video</span>
-              </div>
-
-              {/* Emoji Icon */}
-              <div className="create-posting-icon-label">
-                <BsEmojiSmile size={24} color="#FFD700" />
-                <span className="ms-1">Feeling/Activity</span>
-              </div>
-            </div>
-
-            {/* Post Button */}
             <Button variant="primary" type="submit" disabled={savingPost}>
               {savingPost ? (
                 <>
-                  <Spinner
-                    as="span"
-                    animation="border"
-                    size="sm"
-                    role="status"
-                    aria-hidden="true"
-                  />{' '}
-                  Posting...
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Posting...
                 </>
               ) : (
                 'Post'
@@ -301,26 +221,51 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
             </Button>
           </div>
 
-          {/* Display Selected Images */}
+          <div className="composer-actions" role="group" aria-label="Post actions">
+            <label htmlFor="post-image-input" className="composer-action-btn">
+              <BsImage aria-hidden="true" />
+              <span>Photo</span>
+              <input
+                type="file"
+                id="post-image-input"
+                multiple
+                accept="image/*"
+                onChange={handlePostImagesChange}
+                className="d-none"
+              />
+            </label>
+
+            <button type="button" className="composer-action-btn" onClick={handleOpenAlbumModal}>
+              <BsPeople aria-hidden="true" />
+              <span>Album</span>
+            </button>
+
+            <button type="button" className="composer-action-btn" aria-label="Video (coming soon)" disabled>
+              <BsCameraVideo aria-hidden="true" />
+              <span>Video</span>
+            </button>
+
+            <button type="button" className="composer-action-btn" aria-label="Feeling or activity (coming soon)" disabled>
+              <BsEmojiSmile aria-hidden="true" />
+              <span>Feeling</span>
+            </button>
+          </div>
+
           {postImages && postImages.length > 0 && (
-            <div className="mt-3">
-              <strong>Attached Images:</strong>
-              <div className="d-flex flex-wrap mt-2">
-                {Array.from(postImages).map((file, index) => (
-                  <img
-                    key={index}
-                    src={URL.createObjectURL(file)}
-                    alt={`attachment-${index}`}
-                    className="me-2 mb-2 post-attached-image"
-                  />
-                ))}
-              </div>
+            <div className="composer-attachments">
+              {Array.from(postImages).map((file, index) => (
+                <img
+                  key={index}
+                  src={URL.createObjectURL(file)}
+                  alt={`attachment-${index}`}
+                  className="post-attached-image"
+                />
+              ))}
             </div>
           )}
         </Form>
       </div>
 
-      {/* Album Creation Modal */}
       <Modal show={showAlbumModal} onHide={handleCloseAlbumModal} centered>
         <Modal.Header closeButton>
           <Modal.Title>Create Album</Modal.Title>
@@ -329,19 +274,17 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
           {albumError && <Alert variant="danger">{albumError}</Alert>}
 
           <Form onSubmit={handleAlbumSubmit}>
-            {/* Album Title */}
             <Form.Group className="mb-3" controlId="formAlbumTitle">
               <Form.Label>Title</Form.Label>
               <Form.Control
                 type="text"
                 placeholder="Enter album title"
                 value={albumTitle}
-                onChange={handleAlbumTitleChange}
+                onChange={(e) => setAlbumTitle(e.target.value)}
                 required
               />
             </Form.Group>
 
-            {/* Album Description */}
             <Form.Group className="mb-3" controlId="formAlbumDescription">
               <Form.Label>Description</Form.Label>
               <Form.Control
@@ -349,47 +292,28 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
                 rows={3}
                 placeholder="Enter album description"
                 value={albumDescription}
-                onChange={handleAlbumDescriptionChange}
+                onChange={(e) => setAlbumDescription(e.target.value)}
                 required
               />
             </Form.Group>
 
-            {/* Album Images */}
             <Form.Group className="mb-3" controlId="formAlbumImages">
               <Form.Label>Upload Photos</Form.Label>
               <Form.Control
                 type="file"
                 multiple
                 accept="image/*"
-                onChange={handleAlbumImagesChange}
+                onChange={(e) => {
+                  const files = (e.currentTarget as HTMLInputElement).files;
+                  if (files) setAlbumImages(files);
+                }}
               />
             </Form.Group>
 
-            {/* Album Visibility (Optional) */}
-            <Form.Group className="mb-3" controlId="formAlbumVisibility">
-              <Form.Label>Visibility</Form.Label>
-              <Form.Select
-                value="public"
-                onChange={(e) => {/* Handle visibility if implemented */}}
-              >
-                <option value="public">Public</option>
-                <option value="friends">Friends</option>
-                <option value="private">Private</option>
-              </Form.Select>
-            </Form.Group>
-
-            {/* Submit Button */}
             <Button variant="primary" type="submit" disabled={savingAlbum}>
               {savingAlbum ? (
                 <>
-                  <Spinner
-                    as="span"
-                    animation="border"
-                    size="sm"
-                    role="status"
-                    aria-hidden="true"
-                  />{' '}
-                  Creating...
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Creating...
                 </>
               ) : (
                 'Create Album'
@@ -399,8 +323,7 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
         </Modal.Body>
       </Modal>
     </>
-  ); // Closing the return statement
-
-}; // **Missing Closing Brace Added Here**
+  );
+};
 
 export default CreatePosting;

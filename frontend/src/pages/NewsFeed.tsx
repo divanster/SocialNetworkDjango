@@ -12,6 +12,7 @@ import Birthdays from '../components/RightSidebar/Birthdays';
 import Contacts from '../components/RightSidebar/Contacts';
 import CreatePosting from '../components/CentralNewsFeed/CreatePosting';
 import './NewsFeed.css';
+import { BsChatSquareHeart } from 'react-icons/bs';
 
 import { Post as PostType } from '../types/post';
 import { Album as AlbumType } from '../types/album';
@@ -31,8 +32,8 @@ interface StoryType {
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
 
 const NewsFeed: React.FC = () => {
-  const { token, user, loading: authLoading } = useAuth();
-  const { onlineUsers, userDetails } = useOnlineStatus();
+  const { token, loading: authLoading } = useAuth();
+  const { onlineUsers } = useOnlineStatus();
 
   const [posts, setPosts] = useState<PostType[]>([]);
   const [albums, setAlbums] = useState<AlbumType[]>([]);
@@ -105,6 +106,8 @@ const NewsFeed: React.FC = () => {
   }, []);
   const { sendMessage: sendPostMessage } = useWebSocket('posts', { onMessage: onPostEvent });
   const { sendMessage: sendAlbumMessage } = useWebSocket('albums', { onMessage: onAlbumEvent });
+
+  const hasFeedContent = posts.length > 0 || albums.length > 0 || sharedItems.length > 0;
 
   // CRUD handlers
   const handleDeletePost = async (id: string) => {
@@ -202,18 +205,21 @@ const NewsFeed: React.FC = () => {
   };
 
   return (
-    <div className="newsfeed-container">
+    <div className="newsfeed-page">
+      <div className="newsfeed-container">
       {/* Left Sidebar */}
       <aside className="left-sidebar">
         <Profile />
       </aside>
 
       {/* Main Feed */}
-      <main className="main-feed">
+      <main className="main-feed" aria-label="Main feed">
         {/* Header + online count badge */}
         <div className="feed-header">
           <h4>Home</h4>
-          <span className="online-badge">{onlineUsers.length} online</span>
+          <span className="online-badge" aria-label={`${onlineUsers.length} users online`}>
+            {onlineUsers.length} online
+          </span>
         </div>
 
         {/* Composer */}
@@ -225,7 +231,9 @@ const NewsFeed: React.FC = () => {
         />
 
         {/* Stories */}
-        <StoryCarousel stories={stories} />
+        <section id="stories">
+          <StoryCarousel stories={stories} />
+        </section>
 
         {/* Loading / Errors */}
         {loading ? (
@@ -236,34 +244,49 @@ const NewsFeed: React.FC = () => {
             {deleteError && <div className="alert alert-danger">{deleteError}</div>}
             {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
 
-            {/* Shared items */}
-            <SharedItem
-              sharedItems={sharedItems}
-              onDeleteSharedItem={handleDeleteSharedItem}
-            />
-
-            {/* Posts */}
-            <Posts
-              posts={posts}
-              onDeletePost={handleDeletePost}
-              onUpdatePost={handleUpdatePost}
-              deletingPostIds={deletingPostIds}
-              updatingPostIds={updatingPostIds}
-            />
-
-            {/* Albums */}
-            {albums.length > 0 ? (
-              albums.map((alb) => (
-                <div key={alb.id} className="post-card">
-                  <Album
-                    album={alb}
-                    onDelete={handleDeleteAlbum}
-                    onUpdate={handleUpdateAlbum}
-                  />
-                </div>
-              ))
+            {!hasFeedContent ? (
+              <div className="feed-empty-state">
+                <BsChatSquareHeart className="feed-empty-icon" aria-hidden="true" />
+                <h5>Your feed is quiet right now</h5>
+                <p>Create your first post to start sharing with friends.</p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                >
+                  Create your first post
+                </button>
+              </div>
             ) : (
-              <div>No albums available</div>
+              <>
+                {/* Shared items */}
+                <SharedItem
+                  sharedItems={sharedItems}
+                  onDeleteSharedItem={handleDeleteSharedItem}
+                />
+
+                {/* Posts */}
+                <Posts
+                  posts={posts}
+                  onDeletePost={handleDeletePost}
+                  onUpdatePost={handleUpdatePost}
+                  deletingPostIds={deletingPostIds}
+                  updatingPostIds={updatingPostIds}
+                />
+
+                {/* Albums */}
+                <section id="albums">
+                  {albums.map((alb) => (
+                    <div key={alb.id} className="post-card">
+                      <Album
+                        album={alb}
+                        onDelete={handleDeleteAlbum}
+                        onUpdate={handleUpdateAlbum}
+                      />
+                    </div>
+                  ))}
+                </section>
+              </>
             )}
           </>
         )}
@@ -275,9 +298,10 @@ const NewsFeed: React.FC = () => {
         <Birthdays />
         <Contacts />
       </aside>
+      </div>
 
       {/* Toast */}
-      <ToastContainer position="bottom-end">
+      <ToastContainer position="bottom-end" className="p-3">
         <Toast
           show={toast.show}
           onClose={() => setToast((t) => ({ ...t, show: false }))}
