@@ -1,16 +1,14 @@
-// frontend/src/components/Navbar/MessagesDropdown.tsx
-import React, { useState, useEffect, useCallback } from 'react';
-import { NavDropdown, Badge, Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { NavDropdown, Badge, Spinner } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import useWebSocket from '../../hooks/useWebSocket';
 import {
-  sendMessageToUser,
-  broadcastMessageToAll,
-  markMessageAsRead,
   fetchInboxMessages,
+  markMessageAsRead,
   Message,
+  transformMessage,
 } from '../../services/messagesService';
-import { fetchFriendsList, User } from '../../services/friendsService';
 import UserIdentityLink from '../Common/UserIdentityLink';
 import { buildMessengerPathForUser } from '../../utils/profileRoutes';
 import './MessagesDropdown.css';
@@ -20,218 +18,169 @@ interface MessagesDropdownProps {
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
+interface ConversationPreview {
+  partnerId: string;
+  partnerName: string;
+  partnerAvatar?: string | null;
+  latestMessage: Message;
+  unread: boolean;
+}
+
 const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnreadCount }) => {
-  const { token, user } = useAuth();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal state for sending messages
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const [friends, setFriends] = useState<User[]>([]);
-  const [friendsLoading, setFriendsLoading] = useState<boolean>(false);
-  const [friendsError, setFriendsError] = useState<string | null>(null);
-  const [selectedReceiver, setSelectedReceiver] = useState<string>('');
-  const [messageContent, setMessageContent] = useState<string>('');
-  const [sending, setSending] = useState<boolean>(false);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const mergeById = useCallback((items: Message[]) => {
+    const map = new Map<string, Message>();
+    items.forEach((item) => map.set(item.id, item));
+    return Array.from(map.values()).sort(
+      (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    );
+  }, []);
 
-  const fetchUserMessages = useCallback(async () => {
-    if (!token) {
-      setError('Authentication token is missing.');
-      setLoading(false);
-      return;
-    }
+  const refreshMessages = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const fetchedMessages: Message[] = await fetchInboxMessages();
-      setMessages(fetchedMessages);
-      const unread = fetchedMessages.filter((msg) => !msg.read).length;
-      setUnreadCount(unread);
-      setError(null);
-    } catch (err: any) {
-      console.error('Failed to fetch messages:', err);
+      const fetched = await fetchInboxMessages();
+      const deduped = mergeById(fetched);
+      setMessages(deduped);
+      setUnreadCount(deduped.filter((msg) => !msg.read).length);
+    } catch {
       setError('Failed to load messages.');
     } finally {
       setLoading(false);
     }
-  }, [token, setUnreadCount]);
-
-  const fetchFriends = useCallback(async () => {
-    setFriendsLoading(true);
-    try {
-      if (!user) throw new Error("User not authenticated");
-      const data = await fetchFriendsList(String(user.id));
-      setFriends(Array.isArray(data) ? data : []);
-      setFriendsError(null);
-    } catch (err) {
-      console.error('Failed to fetch friends:', err);
-      setFriendsError('Failed to load friends.');
-    } finally {
-      setFriendsLoading(false);
-    }
-  }, [user]);
+  }, [mergeById, setUnreadCount]);
 
   useEffect(() => {
-    fetchUserMessages();
-    fetchFriends();
-  }, [fetchUserMessages, fetchFriends]);
+    refreshMessages();
+  }, [refreshMessages]);
 
-  const markAsReadHandler = async (id: string) => {
-    try {
-      await markMessageAsRead(id);
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === id ? { ...msg, read: true } : msg))
-      );
-      setUnreadCount((prev) => Math.max(prev - 1, 0));
-    } catch (err) {
-      console.error('Failed to mark message as read:', err);
-    }
-  };
+  useWebSocket<any>('messenger', {
+    onMessage: (payload) => {
+      const raw = payload?.type === 'messenger.message' ? payload.data : payload?.data;
+      if (!raw || !raw.id) return;
+      const incoming = typeof raw.sender === 'string' ? transformMessage(raw) : (raw as Message);
+      setMessages((prev) => {
+        const merged = mergeById([incoming, ...prev]);
+        setUnreadCount(merged.filter((item) => !item.read).length);
+        return merged;
+      });
+    },
+  });
 
-  const handleSendMessage = async () => {
-    if (!selectedReceiver || !messageContent.trim()) {
-      setSendError('Please select a recipient and enter a message.');
-      return;
-    }
-    setSending(true);
-    setSendError(null);
-    try {
-      if (selectedReceiver === 'all') {
-        await broadcastMessageToAll(messageContent.trim());
-      } else {
-        await sendMessageToUser(selectedReceiver, messageContent.trim());
+  const previews = useMemo<ConversationPreview[]>(() => {
+    if (!user) return [];
+    const byPartnerId = new Map<string, ConversationPreview>();
+    messages.forEach((message) => {
+      const partner = message.sender.id === user.id ? message.receiver : message.sender;
+      if (!partner?.id || partner.id === user.id) return;
+      const existing = byPartnerId.get(partner.id);
+      if (!existing || new Date(message.created_at).getTime() > new Date(existing.latestMessage.created_at).getTime()) {
+        byPartnerId.set(partner.id, {
+          partnerId: partner.id,
+          partnerName: partner.full_name || partner.username || 'Unknown user',
+          partnerAvatar: partner.profile_picture,
+          latestMessage: message,
+          unread: !message.read && message.receiver.id === user.id,
+        });
+      } else if (!existing.unread && !message.read && message.receiver.id === user.id) {
+        existing.unread = true;
       }
-      await fetchUserMessages();
-      setShowModal(false);
-      setSelectedReceiver('');
-      setMessageContent('');
-    } catch (err: any) {
-      console.error('Failed to send message:', err);
-      setSendError('Error sending message.');
-    } finally {
-      setSending(false);
+    });
+
+    return Array.from(byPartnerId.values()).sort(
+      (left, right) => new Date(right.latestMessage.created_at).getTime() - new Date(left.latestMessage.created_at).getTime()
+    );
+  }, [messages, user]);
+
+  const handleMarkAsRead = async (messageId: string) => {
+    try {
+      await markMessageAsRead(messageId);
+      setMessages((prev) => {
+        const updated = prev.map((message) => (message.id === messageId ? { ...message, read: true } : message));
+        setUnreadCount(updated.filter((item) => !item.read).length);
+        return updated;
+      });
+    } catch {
+      setError('Failed to mark message as read.');
     }
   };
 
   return (
-    <>
-      <NavDropdown
-        title={
-          <>
-            Messages {unreadCount > 0 && <Badge bg="danger">{unreadCount}</Badge>}
-          </>
-        }
-        id="messages-dropdown"
-        align="end"
-        className="messages-dropdown"
-      >
-        <NavDropdown.Header className="d-flex justify-content-between align-items-center">
-          <span>Messages</span>
-          <Button variant="link" onClick={() => setShowModal(true)}>
-            Send
-          </Button>
-        </NavDropdown.Header>
-        <NavDropdown.Divider />
-        {loading ? (
-          <NavDropdown.ItemText>
-            <Spinner animation="border" size="sm" className="me-2" /> Loading...
-          </NavDropdown.ItemText>
-        ) : error ? (
-          <NavDropdown.ItemText className="text-danger">{error}</NavDropdown.ItemText>
-        ) : messages.length === 0 ? (
-          <NavDropdown.ItemText>No messages.</NavDropdown.ItemText>
-        ) : (
-          messages.map((msg) => (
-            <NavDropdown.Item
-              key={msg.id}
-              as={Link}
-              to={buildMessengerPathForUser(msg.sender.id)}
-              onClick={() => !msg.read && markAsReadHandler(msg.id)}
-              className={msg.read ? 'read' : 'unread'}
-            >
-              <div className="d-flex align-items-center">
-                <UserIdentityLink
-                  userId={msg.sender.id}
-                  className="me-2"
-                  ariaLabel={`Open ${msg.sender.full_name} profile`}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {msg.sender.profile_picture ? (
-                    <img
-                      src={msg.sender.profile_picture}
-                      alt={`${msg.sender.username} avatar`}
-                      className="profile-picture me-2"
-                    />
-                  ) : (
-                    <div className="profile-placeholder me-2" aria-hidden="true">?</div>
-                  )}
-                </UserIdentityLink>
-                <div>
-                  <strong>
-                    <UserIdentityLink userId={msg.sender.id}>
-                      {msg.sender.full_name}
-                    </UserIdentityLink>
-                  </strong>
-                  <div className="text-truncate" style={{ maxWidth: '200px' }}>
-                    {msg.content}
-                  </div>
-                  <small className="text-muted">
-                    {new Date(msg.created_at).toLocaleString()}
-                  </small>
-                </div>
+    <NavDropdown
+      title={
+        <>
+          Messages {unreadCount > 0 && <Badge bg="danger">{unreadCount}</Badge>}
+        </>
+      }
+      id="messages-dropdown"
+      align="end"
+      className="messages-dropdown"
+    >
+      <NavDropdown.Header className="d-flex justify-content-between align-items-center">
+        <span>Recent messages</span>
+        <Link to="/messenger" className="btn btn-link btn-sm">
+          View all messages
+        </Link>
+      </NavDropdown.Header>
+      <NavDropdown.Divider />
+      {loading ? (
+        <NavDropdown.ItemText>
+          <Spinner animation="border" size="sm" className="me-2" /> Loading...
+        </NavDropdown.ItemText>
+      ) : error ? (
+        <NavDropdown.ItemText className="text-danger">{error}</NavDropdown.ItemText>
+      ) : previews.length === 0 ? (
+        <NavDropdown.ItemText>No messages yet.</NavDropdown.ItemText>
+      ) : (
+        previews.slice(0, 8).map((preview) => (
+          <NavDropdown.Item
+            key={preview.partnerId}
+            as="button"
+            type="button"
+            onClick={() => {
+              if (preview.unread && preview.latestMessage.receiver.id === user?.id) {
+                handleMarkAsRead(preview.latestMessage.id);
+              }
+              navigate(buildMessengerPathForUser(preview.partnerId));
+            }}
+            className={preview.unread ? 'unread' : 'read'}
+          >
+            <div className="message-content">
+              <UserIdentityLink
+                userId={preview.partnerId}
+                className="me-2"
+                ariaLabel={`Open ${preview.partnerName} profile`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {preview.partnerAvatar ? (
+                  <img src={preview.partnerAvatar} alt={`${preview.partnerName} avatar`} className="profile-picture me-2" />
+                ) : (
+                  <div className="profile-placeholder me-2" aria-hidden="true">?</div>
+                )}
+              </UserIdentityLink>
+              <div>
+                <strong>
+                  <UserIdentityLink userId={preview.partnerId}>{preview.partnerName}</UserIdentityLink>
+                </strong>
+                <span className="text-truncate d-block" style={{ maxWidth: 200 }}>
+                  {preview.latestMessage.content}
+                </span>
+                <small className="text-muted">
+                  {new Date(preview.latestMessage.created_at).toLocaleString()}
+                </small>
+                {preview.unread && <small className="d-block fw-semibold">Unread</small>}
               </div>
-            </NavDropdown.Item>
-          ))
-        )}
-      </NavDropdown>
-
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Send a Message</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {sendError && <Alert variant="danger">{sendError}</Alert>}
-          <Form>
-            <Form.Group className="mb-3" controlId="recipientSelect">
-              <Form.Label>Recipient</Form.Label>
-              {friendsLoading ? (
-                <div className="d-flex align-items-center">
-                  <Spinner animation="border" size="sm" className="me-2" /> Loading friends...
-                </div>
-              ) : friendsError ? (
-                <Alert variant="danger">{friendsError}</Alert>
-              ) : (
-                <Form.Select
-                  value={selectedReceiver}
-                  onChange={(e) => setSelectedReceiver(e.target.value)}
-                >
-                  <option value="">Select a user</option>
-                  <option value="all">Everyone</option>
-                  {friends.map((friend) => (
-                    <option key={friend.id} value={friend.id}>
-                      {friend.full_name} ({friend.username})
-                    </option>
-                  ))}
-                </Form.Select>
-              )}
-            </Form.Group>
-            <Form.Group className="mb-3" controlId="messageContent">
-              <Form.Label>Message</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-              />
-            </Form.Group>
-            <Button variant="primary" onClick={handleSendMessage} disabled={sending}>
-              {sending ? 'Sending...' : 'Send Message'}
-            </Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
-    </>
+            </div>
+          </NavDropdown.Item>
+        ))
+      )}
+    </NavDropdown>
   );
 };
 

@@ -1,26 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { NavDropdown, Badge } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
-import useWebSocket from '../../hooks/useWebSocket';
-import NotificationList from '../Notifications/NotificationList';
+import { Container } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import NotificationList from '../components/Notifications/NotificationList';
 import {
   listNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   NotificationItem,
-} from '../../services/notificationsService';
+} from '../services/notificationsService';
 import {
   NotificationDestination,
   resolveNotificationDestination,
-} from '../../utils/notificationDestinationResolver';
-import './NotificationsDropdown.css';
+} from '../utils/notificationDestinationResolver';
+import useWebSocket from '../hooks/useWebSocket';
+import './NotificationsPage.css';
 
-interface NotificationsDropdownProps {
-  unreadCount: number;
-  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+interface Props {
+  onUnreadCountChange?: (count: number) => void;
 }
 
-const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCount, setUnreadCount }) => {
+const NotificationsPage: React.FC<Props> = ({ onUnreadCountChange }) => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -34,24 +33,24 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
     );
   }, []);
 
-  const reloadNotifications = useCallback(async () => {
+  const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const fetched = await listNotifications();
-      const deduped = mergeById(fetched);
+      const data = await listNotifications();
+      const deduped = mergeById(data);
       setNotifications(deduped);
-      setUnreadCount(deduped.filter((item) => !item.read).length);
+      onUnreadCountChange?.(deduped.filter((item) => !item.read).length);
     } catch {
       setError('Failed to load notifications.');
     } finally {
       setLoading(false);
     }
-  }, [mergeById, setUnreadCount]);
+  }, [mergeById, onUnreadCountChange]);
 
   useEffect(() => {
-    reloadNotifications();
-  }, [reloadNotifications]);
+    reload();
+  }, [reload]);
 
   useWebSocket<any>('notifications', {
     onMessage: (payload) => {
@@ -59,7 +58,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
       if (!incoming || !incoming.id) return;
       setNotifications((prev) => {
         const merged = mergeById([incoming as NotificationItem, ...prev]);
-        setUnreadCount(merged.filter((item) => !item.read).length);
+        onUnreadCountChange?.(merged.filter((item) => !item.read).length);
         return merged;
       });
     },
@@ -69,7 +68,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
     try {
       await markAllNotificationsAsRead();
       setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      setUnreadCount(0);
+      onUnreadCountChange?.(0);
     } catch {
       setError('Failed to mark all notifications as read.');
     }
@@ -85,49 +84,31 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
         setNotifications((prev) =>
           prev.map((item) => (item.id === notification.id ? { ...item, read: true } : item))
         );
-        setUnreadCount((prev) => Math.max(prev - 1, 0));
       } catch {
         setError('Failed to mark notification as read.');
       }
     }
+
     if (destination.canNavigate && destination.path) {
       navigate(destination.path);
     }
   };
 
   return (
-    <NavDropdown
-      title={
-        <>
-          Notifications {unreadCount > 0 && <Badge bg="danger">{unreadCount}</Badge>}
-        </>
-      }
-      id="notifications-dropdown"
-      align="end"
-      className="notifications-dropdown"
-    >
-      <NavDropdown.Header className="d-flex justify-content-between align-items-center">
-        <span>Notifications</span>
-        <Link to="/notifications" className="btn btn-link btn-sm">
-          View all
-        </Link>
-      </NavDropdown.Header>
-      <NavDropdown.Divider />
-      <div className="notifications-dropdown-body">
-        <NotificationList
-          notifications={notifications.slice(0, 8)}
-          loading={loading}
-          error={error}
-          compact
-          onRetry={reloadNotifications}
-          onSelect={handleSelectNotification}
-          onMarkAllRead={handleMarkAllRead}
-          canMarkAllRead={notifications.some((item) => !item.read)}
-          resolveDestination={resolveNotificationDestination}
-        />
-      </div>
-    </NavDropdown>
+    <Container className="notifications-page py-3">
+      <h1 className="notifications-page__title">Notifications</h1>
+      <NotificationList
+        notifications={notifications}
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        onSelect={handleSelectNotification}
+        onMarkAllRead={handleMarkAllRead}
+        canMarkAllRead={notifications.some((item) => !item.read)}
+        resolveDestination={resolveNotificationDestination}
+      />
+    </Container>
   );
 };
 
-export default NotificationsDropdown;
+export default NotificationsPage;

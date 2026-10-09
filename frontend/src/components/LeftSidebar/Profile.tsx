@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { BsFillHouseDoorFill, BsPeopleFill, BsImages, BsCollectionPlay, BsMessenger, BsBellFill } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../Common/Avatar';
-import { albumsBasePath, friendsBasePath, profileBasePath } from '../../utils/profileRoutes';
+import { albumsBasePath, friendsBasePath, notificationsBasePath, profileBasePath } from '../../utils/profileRoutes';
 import './Profile.css';
 
 const shortcuts = [
@@ -13,7 +13,7 @@ const shortcuts = [
   { key: 'albums', label: 'Albums', icon: <BsImages />, to: albumsBasePath },
   { key: 'stories', label: 'Stories', icon: <BsCollectionPlay />, to: '/#stories' },
   { key: 'messenger', label: 'Messenger', icon: <BsMessenger />, to: '/messenger' },
-  { key: 'notifications', label: 'Notifications', icon: <BsBellFill />, to: '/' },
+  { key: 'notifications', label: 'Notifications', icon: <BsBellFill />, to: notificationsBasePath },
 ];
 
 const Profile: React.FC = () => {
@@ -45,6 +45,7 @@ const Profile: React.FC = () => {
               (item.to === '/' && location.pathname === '/') ||
               (item.to === friendsBasePath && location.pathname.startsWith(friendsBasePath)) ||
               (item.to === albumsBasePath && location.pathname.startsWith(albumsBasePath)) ||
+              (item.to === notificationsBasePath && location.pathname.startsWith(notificationsBasePath)) ||
               (item.to === '/messenger' && location.pathname.startsWith('/messenger')) ||
               (item.to === profileBasePath && location.pathname.startsWith(profileBasePath));
             return (

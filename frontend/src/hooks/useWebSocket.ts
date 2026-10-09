@@ -21,6 +21,8 @@ export default function useWebSocket<T>(
   const reconnectTimer = useRef<number | null>(null);
   const handlersRef = useRef(handlers);
   const isMounted = useRef(true);
+  const reconnectAttempts = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
 
   // always keep handlersRef up to date
   useEffect(() => {
@@ -29,19 +31,19 @@ export default function useWebSocket<T>(
 
   const connect = useCallback(() => {
     if (!token || !groupName || !isMounted.current) return;
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) return;
 
-    // strip trailing /ws if your .env accidentally put one on:
-    const rawBase = process.env.REACT_APP_WEBSOCKET_URL!;
+    const rawBase = process.env.REACT_APP_WEBSOCKET_URL;
+    if (!rawBase) {
+      return;
+    }
     const cleanBase = rawBase.replace(/\/ws\/?$/, "");
-
-    // now build exactly one /ws/<groupName> path:
     const url = `${cleanBase}/ws/${groupName}/?token=${token}`;
-    console.log(`🔌 WS group "${groupName}" connecting`);
     const ws = new WebSocket(url);
     socketRef.current = ws;
 
     ws.onopen = () => {
-      console.log(`✅ WS(${groupName}) opened`);
+      reconnectAttempts.current = 0;
       handlersRef.current.onOpen?.();
     };
     ws.onmessage = (evt) => {
@@ -50,22 +52,27 @@ export default function useWebSocket<T>(
       }
       try {
         handlersRef.current.onMessage(JSON.parse(evt.data));
-      } catch (e) {
+      } catch {
         // Ignore non-JSON payloads to avoid crashing realtime handlers.
       }
     };
     ws.onerror = (err) => {
-      console.error(`⚠️ WS(${groupName}) error`, err);
       handlersRef.current.onError?.(err);
     };
     ws.onclose = (ev) => {
-      console.warn(`🚧 WS(${groupName}) closed`, ev);
       handlersRef.current.onClose?.(ev);
+      socketRef.current = null;
+      if (!token) return;
       if (ev.code !== 1000 && isMounted.current) {
-        reconnectTimer.current = window.setTimeout(connect, 5_000);
+        if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+          return;
+        }
+        reconnectAttempts.current += 1;
+        const delayMs = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts.current - 1));
+        reconnectTimer.current = window.setTimeout(connect, delayMs);
       }
     };
-  }, [token, groupName]);
+  }, [token, groupName, MAX_RECONNECT_ATTEMPTS]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -73,7 +80,9 @@ export default function useWebSocket<T>(
     return () => {
       isMounted.current = false;
       socketRef.current?.close(1000, "Component unmount");
+      socketRef.current = null;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      reconnectAttempts.current = 0;
     };
   }, [connect]);
 
@@ -81,8 +90,6 @@ export default function useWebSocket<T>(
     sendMessage: (msg: string) => {
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(msg);
-      } else {
-        console.warn(`🚫 WS(${groupName}) not open; cannot send`);
       }
     },
   };

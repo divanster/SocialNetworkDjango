@@ -9,7 +9,7 @@ import SearchBar from '../Search/SearchBar';
 import NotificationsDropdown from './NotificationsDropdown';
 import MessagesDropdown from './MessagesDropdown';
 import Avatar from '../Common/Avatar';
-import { albumsBasePath, friendsBasePath, profileBasePath } from '../../utils/profileRoutes';
+import { albumsBasePath, friendsBasePath, notificationsBasePath, profileBasePath } from '../../utils/profileRoutes';
 import './Navbar.css';
 
 const CustomNavbar: React.FC = () => {
@@ -61,6 +61,7 @@ const CustomNavbar: React.FC = () => {
   const isHome = location.pathname === '/';
   const isMessenger = location.pathname.startsWith('/messenger');
   const isFriends = location.pathname.startsWith(friendsBasePath);
+  const isNotifications = location.pathname.startsWith(notificationsBasePath);
   const docsUrl = `${API_URL.replace(/\/api\/v1$/, '')}/api/docs/`;
 
   return (
@@ -96,12 +97,14 @@ const CustomNavbar: React.FC = () => {
                     </span>
                   </Nav.Link>
                 </LinkContainer>
-                <Nav.Link className="icon-link" aria-label="Notifications" onClick={() => navigate('/')}>
+                <LinkContainer to={notificationsBasePath}>
+                  <Nav.Link className={`icon-link ${isNotifications ? 'active' : ''}`} aria-label="Notifications">
                   <span className="icon-badge-wrap">
                     <BsBellFill />
                     {unreadNotifications > 0 && <Badge bg="danger">{unreadNotifications}</Badge>}
                   </span>
-                </Nav.Link>
+                  </Nav.Link>
+                </LinkContainer>
               </Nav>
 
               <Nav className="app-navbar__right">

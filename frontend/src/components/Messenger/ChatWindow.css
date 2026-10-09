@@ -32,10 +32,49 @@
   padding: 1rem;
   overflow-y: auto;
   background-color: #e9ebee;
+  min-height: 240px;
 }
 
 .chat-input {
   padding: 1rem;
   border-top: 1px solid #ddd;
   background-color: #f6f6f6;
+}
+
+.message-item {
+  display: flex;
+}
+
+.message-mine {
+  justify-content: flex-end;
+}
+
+.message-theirs {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: min(80%, 460px);
+  background: #fff;
+  border: 1px solid #dbe0e7;
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-mine .message-bubble {
+  background: #e7f3ff;
+  border-color: #b7d8ff;
+}
+
+@media (max-width: 768px) {
+  .chat-input {
+    padding: 0.75rem;
+  }
+
+  .message-bubble {
+    max-width: 90%;
+  }
 }

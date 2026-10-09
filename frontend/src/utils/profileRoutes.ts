@@ -1,6 +1,7 @@
 export const profileBasePath = '/profile';
 export const friendsBasePath = '/friends';
 export const albumsBasePath = '/albums';
+export const notificationsBasePath = '/notifications';
 
 export const hasValidUserId = (userId?: string | null): userId is string =>
   typeof userId === 'string' && userId.trim().length > 0;

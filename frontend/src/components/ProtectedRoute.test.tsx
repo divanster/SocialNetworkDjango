@@ -45,4 +45,40 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('Login page')).toBeInTheDocument();
   });
+
+  it('redirects unauthenticated users from messenger route to login', () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: false,
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/messenger']}>
+        <Routes>
+          <Route path="/messenger" element={<ProtectedRoute><div>Messenger page</div></ProtectedRoute>} />
+          <Route path="/login" element={<div>Login page</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Login page')).toBeInTheDocument();
+  });
+
+  it('redirects unauthenticated users from notifications route to login', () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: false,
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/notifications']}>
+        <Routes>
+          <Route path="/notifications" element={<ProtectedRoute><div>Notifications page</div></ProtectedRoute>} />
+          <Route path="/login" element={<div>Login page</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Login page')).toBeInTheDocument();
+  });
 });

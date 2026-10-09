@@ -57,3 +57,29 @@
   font-style: italic;
   color: #888;
 }
+
+.messenger-back-btn {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 767.98px) {
+  .messenger-page {
+    padding: 0.5rem;
+    height: auto;
+    min-height: calc(100vh - 70px);
+  }
+
+  .contacts-column,
+  .chat-column {
+    border-right: none;
+    padding: 0.5rem;
+  }
+
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile {
+    display: block !important;
+  }
+}

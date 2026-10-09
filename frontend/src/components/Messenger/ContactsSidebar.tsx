@@ -1,9 +1,9 @@
 // frontend/src/components/Messenger/ContactsSidebar.tsx
 import React, { useEffect, useState } from 'react';
-import { ListGroup, Spinner, Alert } from 'react-bootstrap';
+import { ListGroup, Spinner, Alert, Form, Button } from 'react-bootstrap';
 import { fetchFriendsList, User } from '../../services/friendsService';
 import { useOnlineStatus } from '../../contexts/OnlineStatusContext';
-import { useAuth } from '../../contexts/AuthContext';  // <-- import where you get the logged-in user
+import { useAuth } from '../../contexts/AuthContext';
 import UserIdentityLink from '../Common/UserIdentityLink';
 import './ContactsSidebar.css';
 
@@ -13,34 +13,42 @@ interface ContactsSidebarProps {
 }
 
 const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend, selectedFriendId }) => {
-  const { user } = useAuth();      // <-- get current logged-in user from context
+  const { user } = useAuth();
   const [friends, setFriends] = useState<User[]>([]);
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const { onlineUsers } = useOnlineStatus(); // onlineUsers is an array of user IDs that are online
+  const { onlineUsers } = useOnlineStatus();
+
+  const loadFriends = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await fetchFriendsList(user.id);
+      setFriends(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch {
+      setError('Failed to load contacts.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadFriends = async () => {
-      // If user is not yet loaded, skip
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      try {
-        // Pass the *current user’s ID* to fetchFriendsList:
-        const data = await fetchFriendsList(user.id);
-        setFriends(Array.isArray(data) ? data : []);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch friends:', err);
-        setError('Failed to load friends.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadFriends();
   }, [user]);
+
+  const filteredFriends = friends.filter((friend) => {
+    if (!query.trim()) return true;
+    const value = query.trim().toLowerCase();
+    return (
+      friend.username.toLowerCase().includes(value) ||
+      (friend.full_name || '').toLowerCase().includes(value)
+    );
+  });
 
   if (loading) {
     return (
@@ -51,20 +59,41 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend, selec
   }
 
   if (error) {
-    return <Alert variant="danger">{error}</Alert>;
+    return (
+      <Alert variant="danger" className="mb-0">
+        <div className="d-flex justify-content-between align-items-center">
+          <span>{error}</span>
+          <Button size="sm" variant="outline-danger" onClick={loadFriends}>
+            Retry
+          </Button>
+        </div>
+      </Alert>
+    );
   }
 
   return (
-    <ListGroup className="contacts-sidebar">
-      {friends.map((friend) => {
+    <>
+      <Form.Group className="mb-2" controlId="messenger-contact-search">
+        <Form.Control
+          type="search"
+          placeholder="Search contacts"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label="Search contacts"
+        />
+      </Form.Group>
+      <ListGroup className="contacts-sidebar">
+      {filteredFriends.map((friend) => {
         const isOnline = onlineUsers.includes(friend.id);
         const displayName = friend.full_name || friend.username;
         return (
           <ListGroup.Item
             key={friend.id}
             action
+            type="button"
             onClick={() => onSelectFriend(friend)}
             active={selectedFriendId === friend.id}
+            aria-label={`Open conversation with ${displayName}`}
           >
             <div className="contact-item d-flex align-items-center">
               <UserIdentityLink
@@ -85,13 +114,22 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend, selec
               </UserIdentityLink>
               <div className="contact-name ms-2">
                 {displayName}
-                {isOnline && <span className="online-indicator"> ●</span>}
+                <span
+                  className={isOnline ? 'online-indicator' : 'offline-indicator'}
+                  aria-label={isOnline ? `${displayName} is online` : `${displayName} is offline`}
+                >
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
               </div>
             </div>
           </ListGroup.Item>
         );
       })}
+      {filteredFriends.length === 0 && (
+        <ListGroup.Item className="text-muted">No matching contacts.</ListGroup.Item>
+      )}
     </ListGroup>
+    </>
   );
 };
 

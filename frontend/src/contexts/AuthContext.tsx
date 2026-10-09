@@ -67,7 +67,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const expirationTime = getTokenExpirationTime(accessToken);
     if (expirationTime) {
       const delay = expirationTime - Date.now() - 60000; // 60 seconds before expiration
-      console.log(`Scheduling token refresh in ${Math.max(delay / 1000, 0)} seconds`);
       if (delay > 0) {
         setTimeout(() => {
           refreshTokenRef.current?.();
@@ -88,9 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshToken = useCallback(async (): Promise<string | null> => {
     try {
       const storedRefreshToken = localStorage.getItem('refresh_token');
-      console.log('Stored refresh token:', storedRefreshToken);
       if (!storedRefreshToken) {
-        console.log('No refresh token available.');
         await logout();
         return null;
       }
@@ -104,14 +101,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           },
         }
       );
-      console.log('Refresh token response:', response.data);
       const newAccessToken = response.data.access;
       const newRefreshToken = response.data.refresh;
       if (newAccessToken) {
-        console.log('Token refreshed successfully.');
         localStorage.setItem('access_token', newAccessToken);
         if (newRefreshToken) {
-          console.log('Refresh token rotated successfully.');
           localStorage.setItem('refresh_token', newRefreshToken);
         }
         setToken(newAccessToken);
@@ -121,7 +115,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await refreshUser();
         return newAccessToken;
       } else {
-        console.log('No access token found in refresh response.');
         await logout();
         return null;
       }
@@ -138,7 +131,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = useCallback(
     (accessToken: string, refreshTokenStr: string): void => {
-      console.log('Logging in...');
       localStorage.setItem('access_token', accessToken);
       localStorage.setItem('refresh_token', refreshTokenStr);
       setToken(accessToken);
@@ -146,9 +138,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthToken(accessToken);
       scheduleTokenRefresh(accessToken);
       refreshUser()
-        .then(() => {
-          console.log('User data fetched successfully after login.');
-        })
+        .then(() => undefined)
         .catch((error) => {
           console.error('Error fetching user data after login:', error);
         });
@@ -158,25 +148,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('Initializing authentication...');
       const storedAccessToken = localStorage.getItem('access_token');
       if (storedAccessToken) {
         const expirationTime = getTokenExpirationTime(storedAccessToken);
         if (expirationTime && expirationTime > Date.now()) {
-          console.log('Access token is valid.');
           setToken(storedAccessToken);
           setIsAuthenticated(true);
           setAuthToken(storedAccessToken);
           scheduleTokenRefresh(storedAccessToken);
           try {
             await refreshUser();
-            console.log('User data fetched successfully during initialization.');
           } catch (error) {
             console.error('Error fetching user data during initialization:', error);
             await logout();
           }
         } else {
-          console.log('Access token expired. Attempting to refresh...');
           const newToken = await refreshToken();
           if (!newToken) await logout();
         }

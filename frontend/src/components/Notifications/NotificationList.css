@@ -1,0 +1,16 @@
+.notification-item.notification-unread {
+  font-weight: 600;
+}
+
+.notification-item.notification-read {
+  opacity: 0.85;
+}
+
+.notification-sender {
+  margin-bottom: 2px;
+}
+
+.notification-list__controls {
+  display: flex;
+  justify-content: flex-end;
+}

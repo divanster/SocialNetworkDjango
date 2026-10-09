@@ -10,6 +10,7 @@ jest.mock('./pages/ProfilePage', () => () => <div>Profile Page</div>);
 jest.mock('./pages/FriendsPage', () => () => <div>Friends Page</div>);
 jest.mock('./pages/Albums', () => () => <div>Albums Page</div>);
 jest.mock('./pages/AlbumDetailPage', () => () => <div>Album Detail Page</div>);
+jest.mock('./pages/NotificationsPage', () => () => <div>Notifications Page</div>);
 jest.mock('./components/Auth/Login', () => () => <div>Login Page</div>);
 jest.mock('./components/Auth/Signup', () => () => <div>Signup Page</div>);
 jest.mock('./components/NotFound', () => () => <div>Not Found</div>);
@@ -40,4 +41,13 @@ test('renders albums route content', async () => {
     </MemoryRouter>
   );
   expect(await screen.findByText('Albums Page')).toBeInTheDocument();
+});
+
+test('renders notifications route content', async () => {
+  render(
+    <MemoryRouter initialEntries={['/notifications']}>
+      <App />
+    </MemoryRouter>
+  );
+  expect(await screen.findByText('Notifications Page')).toBeInTheDocument();
 });

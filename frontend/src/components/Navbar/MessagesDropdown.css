@@ -1,12 +1,12 @@
 /* frontend/src/components/Navbar/MessagesDropdown.css */
 
 .messages-dropdown .dropdown-item.unread {
-  background-color: #414b57;
+  background-color: #eef6ff;
   font-weight: bold;
 }
 
 .messages-dropdown .dropdown-item.read {
-  background-color: #2f3640;
+  background-color: #fff;
 }
 
 .messages-dropdown .message-content {
@@ -37,5 +37,9 @@
 .messages-dropdown .message-content div small {
   display: block;
   font-size: 0.8rem;
-  color: #aaa;
+  color: #6b7280;
+}
+
+.messages-dropdown .dropdown-menu {
+  width: min(420px, 94vw);
 }

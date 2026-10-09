@@ -34,4 +34,15 @@ describe('LeftSidebar Profile', () => {
     const albumsLink = screen.getByRole('link', { name: /Albums/i });
     expect(albumsLink).toHaveAttribute('href', '/albums');
   });
+
+  it('notifications shortcut routes to /notifications', () => {
+    render(
+      <MemoryRouter>
+        <Profile />
+      </MemoryRouter>
+    );
+
+    const notificationsLink = screen.getByRole('link', { name: /Notifications/i });
+    expect(notificationsLink).toHaveAttribute('href', '/notifications');
+  });
 });

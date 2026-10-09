@@ -3,6 +3,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Alert, Spinner } from 'react-bootstrap';
+import { buildMessengerPathForUser } from '../../utils/profileRoutes';
 import './MessagesList.css'; // Create this CSS file as needed
 
 interface User {
@@ -67,7 +68,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ messages, isLoading, handle
             )}
           </div>
           <div className="message-content flex-grow-1">
-            <Link to={`/messages/${msg.id}`} className="message-sender">
+            <Link to={buildMessengerPathForUser(String(msg.sender.id))} className="message-sender">
               <strong>{msg.sender.full_name}</strong>
             </Link>
             <p className="mb-1">

@@ -36,6 +36,17 @@ describe('Navbar', () => {
     expect(friendsLink).toHaveAttribute('href', '/friends');
   });
 
+  it('notifications control routes to /notifications', async () => {
+    render(
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>
+    );
+
+    const notificationsLink = await screen.findByRole('link', { name: 'Notifications' });
+    expect(notificationsLink).toHaveAttribute('href', '/notifications');
+  });
+
   it('account menu contains albums route', async () => {
     render(
       <MemoryRouter>
