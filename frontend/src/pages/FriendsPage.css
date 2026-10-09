@@ -1,0 +1,91 @@
+.friends-page {
+  max-width: 1180px;
+}
+
+.friends-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.friends-section-card {
+  border: 1px solid var(--sn-border);
+  border-radius: var(--sn-radius);
+  box-shadow: var(--sn-shadow);
+}
+
+.friends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.friend-card {
+  border: 1px solid var(--sn-border);
+}
+
+.friend-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.friend-card__identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.friend-card__name {
+  font-weight: 700;
+}
+
+.friend-card__username {
+  color: var(--sn-muted);
+  font-size: 0.9rem;
+}
+
+.friend-card__subtitle {
+  font-size: 0.85rem;
+  color: var(--sn-muted);
+}
+
+.friend-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.relationship-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.friends-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.friends-search-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .friends-search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-card__header {
+    flex-direction: column;
+  }
+}

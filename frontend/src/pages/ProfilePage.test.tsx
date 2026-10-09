@@ -19,6 +19,10 @@ jest.mock('../services/api', () => ({
   updateProfileData: jest.fn(),
 }));
 
+jest.mock('../hooks/useSocialGraph', () => ({
+  useSocialGraph: jest.fn(),
+}));
+
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
   return {
@@ -28,6 +32,42 @@ jest.mock('react-router-dom', () => {
 });
 
 const { useAuth } = jest.requireMock('../contexts/AuthContext') as { useAuth: jest.Mock };
+const { useSocialGraph } = jest.requireMock('../hooks/useSocialGraph') as { useSocialGraph: jest.Mock };
+
+const makeSocialGraphMock = (overrides: Partial<any> = {}) => ({
+  actionError: null,
+  actionLoading: {
+    add_friend: false,
+    cancel_request: false,
+    accept_request: false,
+    reject_request: false,
+    remove_friend: false,
+    follow: false,
+    unfollow: false,
+    block: false,
+    unblock: false,
+  },
+  deriveRelationship: jest.fn(() => ({
+    isOwnProfile: false,
+    friendState: 'none',
+    following: false,
+    blockedByCurrentUser: false,
+    blockedByOtherUserKnown: false,
+    blockedByOtherUser: false,
+    canMessage: true,
+  })),
+  addFriend: jest.fn().mockResolvedValue(undefined),
+  cancelOutgoingRequest: jest.fn().mockResolvedValue(undefined),
+  acceptIncomingRequest: jest.fn().mockResolvedValue(undefined),
+  rejectIncomingRequest: jest.fn().mockResolvedValue(undefined),
+  removeFriend: jest.fn().mockResolvedValue(undefined),
+  follow: jest.fn().mockResolvedValue(undefined),
+  unfollow: jest.fn().mockResolvedValue(undefined),
+  block: jest.fn().mockResolvedValue(undefined),
+  unblock: jest.fn().mockResolvedValue(undefined),
+  clearActionError: jest.fn(),
+  ...overrides,
+});
 
 const currentUser = {
   id: 'user-1',
@@ -85,6 +125,7 @@ describe('ProfilePage', () => {
     (axios.isAxiosError as unknown as jest.Mock).mockImplementation(
       (value: unknown) => Boolean((value as any)?.response)
     );
+    useSocialGraph.mockReturnValue(makeSocialGraphMock());
   });
 
   it('loads own profile and shows edit action', async () => {
@@ -94,6 +135,7 @@ describe('ProfilePage', () => {
 
     expect(await screen.findByText('User One')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Profile' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Friend' })).not.toBeInTheDocument();
   });
 
   it('loads another user by route id and hides edit action', async () => {
@@ -104,6 +146,8 @@ describe('ProfilePage', () => {
     expect(await screen.findByText('User Two')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Profile' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Message' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Friend' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Follow' })).toBeInTheDocument();
   });
 
   it('does not show edit action on another user profile', async () => {
@@ -160,5 +204,97 @@ describe('ProfilePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Message' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/messenger?userId=user-2');
+  });
+
+  it('renders outgoing pending state for other profile', async () => {
+    useSocialGraph.mockReturnValue(
+      makeSocialGraphMock({
+        deriveRelationship: jest.fn(() => ({
+          isOwnProfile: false,
+          friendState: 'outgoing_pending',
+          following: false,
+          blockedByCurrentUser: false,
+          blockedByOtherUserKnown: false,
+          blockedByOtherUser: false,
+          canMessage: true,
+          outgoingRequest: { id: 'req-1' },
+        })),
+      })
+    );
+    (fetchUserById as jest.Mock).mockResolvedValue(otherUser);
+
+    renderProfilePage('/profile/user-2');
+    await screen.findByText('User Two');
+    expect(screen.getByRole('button', { name: 'Cancel Request' })).toBeInTheDocument();
+  });
+
+  it('renders incoming request state with accept and reject', async () => {
+    useSocialGraph.mockReturnValue(
+      makeSocialGraphMock({
+        deriveRelationship: jest.fn(() => ({
+          isOwnProfile: false,
+          friendState: 'incoming_pending',
+          following: false,
+          blockedByCurrentUser: false,
+          blockedByOtherUserKnown: false,
+          blockedByOtherUser: false,
+          canMessage: true,
+          incomingRequest: { id: 'req-2' },
+        })),
+      })
+    );
+    (fetchUserById as jest.Mock).mockResolvedValue(otherUser);
+
+    renderProfilePage('/profile/user-2');
+    await screen.findByText('User Two');
+    expect(screen.getByRole('button', { name: 'Accept Request' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reject Request' })).toBeInTheDocument();
+  });
+
+  it('renders friend state with remove friend action', async () => {
+    useSocialGraph.mockReturnValue(
+      makeSocialGraphMock({
+        deriveRelationship: jest.fn(() => ({
+          isOwnProfile: false,
+          friendState: 'friends',
+          following: true,
+          blockedByCurrentUser: false,
+          blockedByOtherUserKnown: false,
+          blockedByOtherUser: false,
+          canMessage: true,
+          friendship: { id: 'friendship-1' },
+          follow: { id: 'follow-1' },
+        })),
+      })
+    );
+    (fetchUserById as jest.Mock).mockResolvedValue(otherUser);
+
+    renderProfilePage('/profile/user-2');
+    await screen.findByText('User Two');
+    expect(screen.getByRole('button', { name: 'Remove Friend' })).toBeInTheDocument();
+  });
+
+  it('hides interaction controls when blocked and shows unblock', async () => {
+    useSocialGraph.mockReturnValue(
+      makeSocialGraphMock({
+        deriveRelationship: jest.fn(() => ({
+          isOwnProfile: false,
+          friendState: 'none',
+          following: false,
+          blockedByCurrentUser: true,
+          blockedByOtherUserKnown: false,
+          blockedByOtherUser: false,
+          canMessage: false,
+          block: { id: 'block-1' },
+        })),
+      })
+    );
+    (fetchUserById as jest.Mock).mockResolvedValue(otherUser);
+
+    renderProfilePage('/profile/user-2');
+    await screen.findByText('User Two');
+    expect(screen.getByRole('button', { name: 'Unblock user' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Message' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Friend' })).not.toBeInTheDocument();
   });
 });

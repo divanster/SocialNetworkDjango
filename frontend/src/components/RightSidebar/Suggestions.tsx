@@ -1,11 +1,10 @@
-// frontend/src/components/RightSidebar/Suggestions.tsx
-
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import './Suggestions.css';
 import Avatar from '../Common/Avatar';
 import UserIdentityLink from '../Common/UserIdentityLink';
+import { fetchUserSuggestions, sendFriendRequest } from '../../services/socialGraphService';
+import { emitSocialGraphUpdated, subscribeSocialGraphUpdated } from '../../utils/socialGraphEvents';
 
 interface SuggestedUser {
   id: string;
@@ -15,64 +14,58 @@ interface SuggestedUser {
   mutual_friends_count: number;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
-
 const Suggestions: React.FC = () => {
   const { token } = useAuth();
   const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
   const [friendRequestsSent, setFriendRequestsSent] = useState<string[]>([]);
+  const [sendingById, setSendingById] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (!token) {
-        setSuggestedUsers([]);
-        setLoading(false);
-        return;
-      }
+  const loadSuggestions = async () => {
+    if (!token) {
+      setSuggestedUsers([]);
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const response = await axios.get(`${API_URL}/users/suggestions/`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setSuggestedUsers(Array.isArray(response.data) ? response.data : []);
-        setError(null);
-      } catch (err: any) {
-        console.error('Failed to fetch user suggestions:', err);
-        setError('Failed to load suggestions.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSuggestions();
-  }, [token]);
-
-  const sendFriendRequest = async (userId: string) => {
+    setLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/friends/friend-requests/`,
-        { receiver_id: userId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      setFriendRequestsSent((prev) => [...prev, userId]);
-      setToast({ show: true, message: 'Friend request sent!', variant: 'success' });
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      setToast({ show: true, message: 'Failed to send friend request.', variant: 'danger' });
+      const users = await fetchUserSuggestions();
+      setSuggestedUsers(Array.isArray(users) ? users : []);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load suggestions.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Toast state
+  useEffect(() => {
+    loadSuggestions();
+    const unsubscribe = subscribeSocialGraphUpdated(() => {
+      loadSuggestions();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [token]);
+
+  const handleSendFriendRequest = async (userId: string) => {
+    if (sendingById[userId]) return;
+    setSendingById((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await sendFriendRequest(userId);
+      setFriendRequestsSent((prev) => [...prev, userId]);
+      setToast({ show: true, message: 'Friend request sent!', variant: 'success' });
+      emitSocialGraphUpdated();
+    } catch (error) {
+      setToast({ show: true, message: 'Failed to send friend request.', variant: 'danger' });
+    } finally {
+      setSendingById((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
   const [toast, setToast] = useState<{ show: boolean; message: string; variant: string }>({
     show: false,
     message: '',
@@ -116,17 +109,20 @@ const Suggestions: React.FC = () => {
               <span>{user.mutual_friends_count} mutual friends</span>
             </div>
             <button
-              onClick={() => sendFriendRequest(user.id)}
-              disabled={friendRequestsSent.includes(user.id)}
+              onClick={() => handleSendFriendRequest(user.id)}
+              disabled={friendRequestsSent.includes(user.id) || Boolean(sendingById[user.id])}
               className="friend-request-button"
             >
-              {friendRequestsSent.includes(user.id) ? 'Request Sent' : 'Add Friend'}
+              {friendRequestsSent.includes(user.id)
+                ? 'Request Sent'
+                : sendingById[user.id]
+                  ? 'Sending...'
+                  : 'Add Friend'}
             </button>
           </li>
         ))}
       </ul>
 
-      {/* Toast Notifications */}
       <div className="toast-container">
         {toast.show && (
           <div className={`toast ${toast.variant}`} onClick={() => setToast({ ...toast, show: false })}>

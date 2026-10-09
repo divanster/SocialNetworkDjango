@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchProfileData, fetchUserById, updateProfileData, UserData } from '../services/api';
 import Avatar from '../components/Common/Avatar';
 import { buildMessengerPathForUser, hasValidUserId, profileBasePath } from '../utils/profileRoutes';
+import { useSocialGraph } from '../hooks/useSocialGraph';
+import RelationshipActions from '../components/Social/RelationshipActions';
 import './ProfilePage.css';
 
 type ProfileFormState = {
@@ -44,6 +46,21 @@ const ProfilePage: React.FC = () => {
   const [form, setForm] = useState<ProfileFormState>(defaultFormState);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const {
+    actionError,
+    actionLoading,
+    deriveRelationship,
+    addFriend,
+    cancelOutgoingRequest,
+    acceptIncomingRequest,
+    rejectIncomingRequest,
+    removeFriend,
+    follow,
+    unfollow,
+    block,
+    unblock,
+    clearActionError,
+  } = useSocialGraph();
 
   const viewedUserId = userId || currentUser?.id;
   const isOwnProfile = Boolean(currentUser?.id && profileUser?.id && currentUser.id === profileUser.id);
@@ -55,6 +72,10 @@ const ProfilePage: React.FC = () => {
     const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
     return fullName || profileUser.full_name || profileUser.username;
   }, [profileUser]);
+  const relationship = useMemo(
+    () => (profileUser ? deriveRelationship(profileUser.id) : null),
+    [deriveRelationship, profileUser]
+  );
 
   const resetFormFromProfile = (value: UserData) => {
     setForm({
@@ -79,6 +100,7 @@ const ProfilePage: React.FC = () => {
     setErrorMessage(null);
     setNotFound(false);
     setSaveSuccess(null);
+    clearActionError();
     try {
       const targetId = userId || currentUser.id;
       const data = targetId === currentUser.id
@@ -245,13 +267,24 @@ const ProfilePage: React.FC = () => {
                   Edit Profile
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => navigate(buildMessengerPathForUser(profileUser.id))}
-                >
-                  Message
-                </Button>
+                relationship && (
+                  <RelationshipActions
+                    relationship={relationship}
+                    targetUserId={profileUser.id}
+                    actionLoading={actionLoading}
+                    actionError={actionError}
+                    onAddFriend={addFriend}
+                    onCancelRequest={cancelOutgoingRequest}
+                    onAcceptRequest={acceptIncomingRequest}
+                    onRejectRequest={rejectIncomingRequest}
+                    onRemoveFriend={removeFriend}
+                    onFollow={follow}
+                    onUnfollow={unfollow}
+                    onBlock={block}
+                    onUnblock={unblock}
+                    onMessage={() => navigate(buildMessengerPathForUser(profileUser.id))}
+                  />
+                )
               )}
               <Button type="button" variant="outline-secondary" onClick={() => navigate('/')}>
                 Back to Home
@@ -278,7 +311,7 @@ const ProfilePage: React.FC = () => {
                 {profileUser.profile?.bio && <li><strong>Bio:</strong> {profileUser.profile.bio}</li>}
                 {profileUser.profile?.town && <li><strong>Town:</strong> {profileUser.profile.town}</li>}
                 {profileUser.profile?.country && <li><strong>Country:</strong> {profileUser.profile.country}</li>}
-                {profileUser.profile?.phone && <li><strong>Phone:</strong> {profileUser.profile.phone}</li>}
+                {isOwnProfile && profileUser.profile?.phone && <li><strong>Phone:</strong> {profileUser.profile.phone}</li>}
                 {profileUser.profile?.relationship_status && (
                   <li><strong>Relationship status:</strong> {profileUser.profile.relationship_status}</li>
                 )}
@@ -286,7 +319,7 @@ const ProfilePage: React.FC = () => {
               {!profileUser.profile?.bio &&
                 !profileUser.profile?.town &&
                 !profileUser.profile?.country &&
-                !profileUser.profile?.phone &&
+                !(isOwnProfile && profileUser.profile?.phone) &&
                 !profileUser.profile?.relationship_status && (
                 <p className="text-muted mb-0">No profile details available yet.</p>
               )}

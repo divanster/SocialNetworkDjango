@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../Common/Avatar';
 import UserIdentityLink from '../Common/UserIdentityLink';
+import { acceptFriendRequest, fetchFriendRequests, rejectFriendRequest } from '../../services/socialGraphService';
+import { emitSocialGraphUpdated, subscribeSocialGraphUpdated } from '../../utils/socialGraphEvents';
 
 interface FriendRequestUser {
   id: string;
@@ -18,59 +19,67 @@ interface FriendRequestItem {
   status: string;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
-
 const FriendRequests: React.FC = () => {
   const { token, user } = useAuth();
   const [requests, setRequests] = useState<FriendRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionLoadingById, setActionLoadingById] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
+  const loadRequests = async () => {
     if (!token || !user?.id) {
       setRequests([]);
       setLoading(false);
       return;
     }
-
-    let mounted = true;
     setLoading(true);
 
-    axios.get(`${API_URL}/friends/friend-requests/`)
-      .then((response) => {
-        if (!mounted) return;
-        const items = response.data?.results || response.data || [];
-        setRequests(Array.isArray(items) ? items : []);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error('Failed to load friend requests', err);
-        if (mounted) setError('Failed to load friend requests.');
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+    try {
+      const items = await fetchFriendRequests();
+      setRequests(items);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load friend requests.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+
+    const unsubscribe = subscribeSocialGraphUpdated(() => {
+      loadRequests();
+    });
 
     return () => {
-      mounted = false;
+      unsubscribe();
     };
   }, [token, user?.id]);
+
+  const handleRequestAction = async (requestId: string, action: 'accept' | 'reject') => {
+    if (!token) return;
+    setActionLoadingById((prev) => ({ ...prev, [requestId]: true }));
+    try {
+      if (action === 'accept') {
+        await acceptFriendRequest(requestId);
+      } else {
+        await rejectFriendRequest(requestId);
+      }
+      setRequests((prev) => prev.filter((item) => item.id !== requestId));
+      emitSocialGraphUpdated();
+      setError(null);
+    } catch (err) {
+      setError(`Failed to ${action} friend request.`);
+    } finally {
+      setActionLoadingById((prev) => ({ ...prev, [requestId]: false }));
+    }
+  };
 
   const incomingRequests = useMemo(
     () => requests.filter((item) => item.status === 'pending' && item.receiver?.id === user?.id),
     [requests, user?.id]
   );
-
-  const handleRequestAction = async (requestId: string, action: 'accept' | 'reject') => {
-    if (!token) return;
-    try {
-      await axios.post(`${API_URL}/friends/friend-requests/${requestId}/${action}/`, {});
-      setRequests((prev) => prev.filter((item) => item.id !== requestId));
-    } catch (err) {
-      console.error(`Failed to ${action} friend request`, err);
-      setError(`Failed to ${action} friend request.`);
-    }
-  };
 
   if (loading) return <div className="card-section">Loading friend requests...</div>;
   if (error) return <div className="card-section text-danger">{error}</div>;
@@ -82,6 +91,7 @@ const FriendRequests: React.FC = () => {
       <ul className="contacts-list">
         {incomingRequests.map((request) => {
           const displayName = request.sender.full_name || request.sender.username;
+          const busy = Boolean(actionLoadingById[request.id]);
           return (
             <li key={request.id} className="mb-2">
               <div className="d-flex align-items-center gap-2 mb-2">
@@ -104,15 +114,17 @@ const FriendRequests: React.FC = () => {
                   type="button"
                   className="btn btn-sm btn-primary"
                   onClick={() => handleRequestAction(request.id, 'accept')}
+                  disabled={busy}
                 >
-                  Accept
+                  {busy ? 'Working...' : 'Accept'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-secondary"
                   onClick={() => handleRequestAction(request.id, 'reject')}
+                  disabled={busy}
                 >
-                  Reject
+                  {busy ? 'Working...' : 'Reject'}
                 </button>
               </div>
             </li>

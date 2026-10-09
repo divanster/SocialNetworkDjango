@@ -7,6 +7,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 const NewsFeed = lazy(() => import('./pages/NewsFeed'));
 const Messenger = lazy(() => import('./pages/Messenger'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const FriendsPage = lazy(() => import('./pages/FriendsPage'));
 const Login = lazy(() => import('./components/Auth/Login'));
 const Signup = lazy(() => import('./components/Auth/Signup'));
 const NotFound = lazy(() => import('./components/NotFound'));
@@ -25,6 +26,7 @@ const App: React.FC = () => {
             {/* Protected */}
             <Route path="/" element={<ProtectedRoute><NewsFeed /></ProtectedRoute>} />
             <Route path="/messenger" element={<ProtectedRoute><Messenger /></ProtectedRoute>} />
+            <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             {/* 404 */}

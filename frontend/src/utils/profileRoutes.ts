@@ -1,4 +1,5 @@
 export const profileBasePath = '/profile';
+export const friendsBasePath = '/friends';
 
 export const hasValidUserId = (userId?: string | null): userId is string =>
   typeof userId === 'string' && userId.trim().length > 0;

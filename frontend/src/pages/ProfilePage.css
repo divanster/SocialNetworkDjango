@@ -29,6 +29,11 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.profile-actions .relationship-actions {
+  justify-content: flex-end;
 }
 
 .profile-type-badge {

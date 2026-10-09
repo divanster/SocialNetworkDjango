@@ -9,7 +9,7 @@ import SearchBar from '../Search/SearchBar';
 import NotificationsDropdown from './NotificationsDropdown';
 import MessagesDropdown from './MessagesDropdown';
 import Avatar from '../Common/Avatar';
-import { profileBasePath } from '../../utils/profileRoutes';
+import { friendsBasePath, profileBasePath } from '../../utils/profileRoutes';
 import './Navbar.css';
 
 const CustomNavbar: React.FC = () => {
@@ -60,6 +60,7 @@ const CustomNavbar: React.FC = () => {
 
   const isHome = location.pathname === '/';
   const isMessenger = location.pathname.startsWith('/messenger');
+  const isFriends = location.pathname.startsWith(friendsBasePath);
   const docsUrl = `${API_URL.replace(/\/api\/v1$/, '')}/api/docs/`;
 
   return (
@@ -82,9 +83,11 @@ const CustomNavbar: React.FC = () => {
                     <BsFillHouseDoorFill />
                   </Nav.Link>
                 </LinkContainer>
-                <Nav.Link className="icon-link" aria-label="Friends" onClick={() => navigate('/')}>
-                  <BsPeopleFill />
-                </Nav.Link>
+                <LinkContainer to={friendsBasePath}>
+                  <Nav.Link className={`icon-link ${isFriends ? 'active' : ''}`} aria-label="Friends">
+                    <BsPeopleFill />
+                  </Nav.Link>
+                </LinkContainer>
                 <LinkContainer to="/messenger">
                   <Nav.Link className={`icon-link ${isMessenger ? 'active' : ''}`} aria-label="Messenger">
                     <span className="icon-badge-wrap">

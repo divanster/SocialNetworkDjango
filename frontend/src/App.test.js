@@ -7,6 +7,7 @@ jest.mock('./components/ProtectedRoute', () => ({ children }) => <>{children}</>
 jest.mock('./pages/NewsFeed', () => () => <div>NewsFeed Page</div>);
 jest.mock('./pages/Messenger', () => () => <div>Messenger Page</div>);
 jest.mock('./pages/ProfilePage', () => () => <div>Profile Page</div>);
+jest.mock('./pages/FriendsPage', () => () => <div>Friends Page</div>);
 jest.mock('./components/Auth/Login', () => () => <div>Login Page</div>);
 jest.mock('./components/Auth/Signup', () => () => <div>Signup Page</div>);
 jest.mock('./components/NotFound', () => () => <div>Not Found</div>);
@@ -19,4 +20,13 @@ test('renders login route content', async () => {
   );
   expect(await screen.findByText('Login Page')).toBeInTheDocument();
   expect(screen.getByText('Navbar')).toBeInTheDocument();
+});
+
+test('renders friends route content', async () => {
+  render(
+    <MemoryRouter initialEntries={['/friends']}>
+      <App />
+    </MemoryRouter>
+  );
+  expect(await screen.findByText('Friends Page')).toBeInTheDocument();
 });
