@@ -36,25 +36,61 @@ export const handleApiError = (error: any, errorMessage: string) => {
  * =====================
  */
 
+export interface UserProfileData {
+  first_name?: string;
+  last_name?: string;
+  gender?: string;
+  date_of_birth?: string | null;
+  profile_picture?: string | null;
+  bio?: string;
+  phone?: string | null;
+  town?: string | null;
+  country?: string | null;
+  relationship_status?: string;
+}
+
+export interface UserData {
+  id: string;
+  email: string;
+  username: string;
+  full_name?: string;
+  profile: UserProfileData;
+}
+
+export interface UpdateProfilePayload {
+  username?: string;
+  profile?: Partial<UserProfileData>;
+}
+
 // Fetch user profile data
-export const fetchProfileData = async () => {
+export const fetchProfileData = async (): Promise<UserData> => {
   try {
     const response = await axios.get('/users/me/');
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching profile data');
+    throw error;
+  }
+};
+
+export const fetchUserById = async (userId: string): Promise<UserData> => {
+  try {
+    const response = await axios.get(`/users/users/${userId}/`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, `Error fetching user profile by id: ${userId}`);
+    throw error;
   }
 };
 
 // Update user profile data
-export const updateProfileData = async (formData: FormData) => {
+export const updateProfileData = async (payload: FormData | UpdateProfilePayload): Promise<UserData> => {
   try {
-    const response = await axios.patch('/users/me/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await axios.patch('/users/me/', payload);
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error updating profile data');
+    throw error;
   }
 };
 

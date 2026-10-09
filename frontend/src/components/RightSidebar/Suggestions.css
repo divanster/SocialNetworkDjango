@@ -31,6 +31,11 @@
   margin-right: 10px;
 }
 
+.suggestion-user-link {
+  margin-right: 10px;
+  display: inline-flex;
+}
+
 .suggestions li div {
   flex: 1;
 }

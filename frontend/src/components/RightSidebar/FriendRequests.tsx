@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../Common/Avatar';
+import UserIdentityLink from '../Common/UserIdentityLink';
 
 interface FriendRequestUser {
   id: string;
@@ -84,13 +85,19 @@ const FriendRequests: React.FC = () => {
           return (
             <li key={request.id} className="mb-2">
               <div className="d-flex align-items-center gap-2 mb-2">
-                <Avatar
-                  size={32}
-                  name={displayName}
-                  src={request.sender.profile_picture || undefined}
-                  alt={`${displayName} avatar`}
-                />
-                <span className="contact-name">{displayName}</span>
+                <UserIdentityLink
+                  userId={request.sender.id}
+                  className="d-flex align-items-center gap-2"
+                  ariaLabel={`Open ${displayName} profile`}
+                >
+                  <Avatar
+                    size={32}
+                    name={displayName}
+                    src={request.sender.profile_picture || undefined}
+                    alt={`${displayName} avatar`}
+                  />
+                  <span className="contact-name">{displayName}</span>
+                </UserIdentityLink>
               </div>
               <div className="d-flex gap-2">
                 <button

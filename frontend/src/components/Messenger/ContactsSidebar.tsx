@@ -4,13 +4,15 @@ import { ListGroup, Spinner, Alert } from 'react-bootstrap';
 import { fetchFriendsList, User } from '../../services/friendsService';
 import { useOnlineStatus } from '../../contexts/OnlineStatusContext';
 import { useAuth } from '../../contexts/AuthContext';  // <-- import where you get the logged-in user
+import UserIdentityLink from '../Common/UserIdentityLink';
 import './ContactsSidebar.css';
 
 interface ContactsSidebarProps {
   onSelectFriend: (friend: User) => void;
+  selectedFriendId?: string | null;
 }
 
-const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend }) => {
+const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend, selectedFriendId }) => {
   const { user } = useAuth();      // <-- get current logged-in user from context
   const [friends, setFriends] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -56,24 +58,33 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({ onSelectFriend }) => 
     <ListGroup className="contacts-sidebar">
       {friends.map((friend) => {
         const isOnline = onlineUsers.includes(friend.id);
+        const displayName = friend.full_name || friend.username;
         return (
           <ListGroup.Item
             key={friend.id}
             action
             onClick={() => onSelectFriend(friend)}
+            active={selectedFriendId === friend.id}
           >
             <div className="contact-item d-flex align-items-center">
-              {friend.profile_picture ? (
-                <img
-                  src={friend.profile_picture}
-                  alt={friend.username}
-                  className="contact-avatar"
-                />
-              ) : (
-                <div className="contact-avatar placeholder">?</div>
-              )}
+              <UserIdentityLink
+                userId={friend.id}
+                className="d-inline-flex align-items-center"
+                ariaLabel={`Open ${displayName} profile`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {friend.profile_picture ? (
+                  <img
+                    src={friend.profile_picture}
+                    alt={`${displayName} avatar`}
+                    className="contact-avatar"
+                  />
+                ) : (
+                  <div className="contact-avatar placeholder" aria-hidden="true">?</div>
+                )}
+              </UserIdentityLink>
               <div className="contact-name ms-2">
-                {friend.full_name || friend.username}
+                {displayName}
                 {isOnline && <span className="online-indicator"> ●</span>}
               </div>
             </div>

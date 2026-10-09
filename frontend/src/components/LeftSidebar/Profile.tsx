@@ -3,9 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { BsFillHouseDoorFill, BsPeopleFill, BsImages, BsCollectionPlay, BsMessenger, BsBellFill } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../Common/Avatar';
+import { profileBasePath } from '../../utils/profileRoutes';
 import './Profile.css';
 
 const shortcuts = [
+  { key: 'profile', label: 'My Profile', icon: <BsPeopleFill />, to: profileBasePath },
   { key: 'feed', label: 'Feed', icon: <BsFillHouseDoorFill />, to: '/' },
   { key: 'friends', label: 'Friends', icon: <BsPeopleFill />, to: '/' },
   { key: 'albums', label: 'Albums', icon: <BsImages />, to: '/#albums' },
@@ -29,8 +31,10 @@ const Profile: React.FC = () => {
           alt={`${displayName} avatar`}
         />
         <div>
-          <div className="left-profile-name">{displayName}</div>
-          <div className="left-profile-subtitle">View your feed</div>
+          <Link className="left-profile-name-link" to={profileBasePath}>
+            <div className="left-profile-name">{displayName}</div>
+            <div className="left-profile-subtitle">View your profile</div>
+          </Link>
         </div>
       </div>
 
@@ -39,7 +43,8 @@ const Profile: React.FC = () => {
           {shortcuts.map((item) => {
             const isActive =
               (item.to === '/' && location.pathname === '/') ||
-              (item.to === '/messenger' && location.pathname.startsWith('/messenger'));
+              (item.to === '/messenger' && location.pathname.startsWith('/messenger')) ||
+              (item.to === profileBasePath && location.pathname.startsWith(profileBasePath));
             return (
               <li key={item.key}>
                 <Link className={`shortcut-link ${isActive ? 'active' : ''}`} to={item.to}>
@@ -56,4 +61,3 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
-

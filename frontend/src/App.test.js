@@ -6,6 +6,7 @@ jest.mock('./components/Navbar/Navbar', () => () => <div>Navbar</div>);
 jest.mock('./components/ProtectedRoute', () => ({ children }) => <>{children}</>);
 jest.mock('./pages/NewsFeed', () => () => <div>NewsFeed Page</div>);
 jest.mock('./pages/Messenger', () => () => <div>Messenger Page</div>);
+jest.mock('./pages/ProfilePage', () => () => <div>Profile Page</div>);
 jest.mock('./components/Auth/Login', () => () => <div>Login Page</div>);
 jest.mock('./components/Auth/Signup', () => () => <div>Signup Page</div>);
 jest.mock('./components/NotFound', () => () => <div>Not Found</div>);

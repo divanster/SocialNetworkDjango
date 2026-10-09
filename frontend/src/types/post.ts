@@ -7,6 +7,7 @@ export interface Post {
     id: string;
     username: string;
   };
+  user?: string;
   created_at?: string;
   updated_at?: string;
   images?: { id: string; image: string }[];

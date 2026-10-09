@@ -6,6 +6,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
+import UserIdentityLink from '../Common/UserIdentityLink';
 import './NotificationsDropdown.css';
 
 interface Notification {
@@ -14,6 +15,7 @@ interface Notification {
   text: string;
   read: boolean;
   created_at: string;
+  sender_id?: string;
   sender_username: string;
   receiver_username: string;
   content_object_url: string | null;
@@ -141,6 +143,11 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
           >
             <div className="notification-content">
               <div className="notification-details">
+                {notif.sender_id && (
+                  <UserIdentityLink userId={notif.sender_id}>
+                    <strong>{notif.sender_username}</strong>
+                  </UserIdentityLink>
+                )}
                 <span>{notif.text}</span>
                 <small className="text-muted">{new Date(notif.created_at).toLocaleString()}</small>
               </div>

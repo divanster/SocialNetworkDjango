@@ -19,6 +19,16 @@
   color: var(--sn-text);
 }
 
+.left-profile-name-link {
+  text-decoration: none;
+}
+
+.left-profile-name-link:focus-visible {
+  outline: 2px solid var(--sn-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .left-profile-subtitle {
   font-size: 0.85rem;
   color: var(--sn-muted);
@@ -59,4 +69,3 @@
   justify-content: center;
   font-size: 1.05rem;
 }
-

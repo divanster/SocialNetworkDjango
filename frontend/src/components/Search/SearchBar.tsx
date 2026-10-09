@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './SearchBar.css';
 import { useAuth } from '../../contexts/AuthContext';
+import { buildProfilePath } from '../../utils/profileRoutes';
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
@@ -66,7 +67,7 @@ const SearchBar: React.FC = () => {
         <ul className="search-dropdown">
           {results.users.map((user: any) => (
             <li key={user.id}>
-              <Link to={`/profile/${user.id}`} onClick={() => setShowDropdown(false)}>
+              <Link to={buildProfilePath(String(user.id))} onClick={() => setShowDropdown(false)}>
                 <strong>{user.username}</strong>
               </Link>
             </li>

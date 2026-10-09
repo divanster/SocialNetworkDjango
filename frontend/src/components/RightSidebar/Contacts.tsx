@@ -3,6 +3,7 @@ import { fetchUsers } from '../../services/api';
 import { useOnlineStatus } from '../../contexts/OnlineStatusContext';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../Common/Avatar';
+import UserIdentityLink from '../Common/UserIdentityLink';
 
 interface User {
   id: string;
@@ -59,7 +60,11 @@ const Contacts: React.FC = () => {
           const displayName = userDetails[u.id] || u.username;
           return (
             <li key={u.id}>
-              <button type="button" className="contact-item">
+              <UserIdentityLink
+                userId={u.id}
+                className="contact-item"
+                ariaLabel={`Open ${displayName} profile`}
+              >
                 <Avatar
                   size={34}
                   name={displayName}
@@ -67,7 +72,7 @@ const Contacts: React.FC = () => {
                   showOnline={isOnline}
                 />
                 <span className="contact-name">{displayName}</span>
-              </button>
+              </UserIdentityLink>
             </li>
           );
         })}
@@ -77,4 +82,3 @@ const Contacts: React.FC = () => {
 };
 
 export default Contacts;
-

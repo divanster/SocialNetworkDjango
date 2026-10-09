@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navbar, Nav, NavDropdown, Badge, Container } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BsFillHouseDoorFill, BsPeopleFill, BsMessenger, BsBellFill } from 'react-icons/bs';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_URL, fetchMessagesCount, fetchNotificationsCount } from '../../services/api';
@@ -9,6 +9,7 @@ import SearchBar from '../Search/SearchBar';
 import NotificationsDropdown from './NotificationsDropdown';
 import MessagesDropdown from './MessagesDropdown';
 import Avatar from '../Common/Avatar';
+import { profileBasePath } from '../../utils/profileRoutes';
 import './Navbar.css';
 
 const CustomNavbar: React.FC = () => {
@@ -124,6 +125,10 @@ const CustomNavbar: React.FC = () => {
                   id="account-dropdown"
                   align="end"
                 >
+                  <NavDropdown.Item as={Link} to={profileBasePath}>
+                    My Profile
+                  </NavDropdown.Item>
+                  <NavDropdown.Divider />
                   <NavDropdown.Item
                     href={docsUrl}
                     target="_blank"

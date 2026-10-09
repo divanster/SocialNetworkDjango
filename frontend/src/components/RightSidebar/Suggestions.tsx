@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import './Suggestions.css';
-import { Link } from 'react-router-dom';
+import Avatar from '../Common/Avatar';
+import UserIdentityLink from '../Common/UserIdentityLink';
 
 interface SuggestedUser {
   id: string;
@@ -96,13 +97,22 @@ const Suggestions: React.FC = () => {
       <ul>
         {suggestedUsers.map((user) => (
           <li key={user.id}>
-            {user.profile_picture ? (
-              <img src={user.profile_picture} alt={`${user.username}'s profile`} />
-            ) : (
-              <div className="suggestion-avatar-placeholder" aria-hidden="true" />
-            )}
+            <UserIdentityLink
+              userId={user.id}
+              className="suggestion-user-link"
+              ariaLabel={`Open ${user.full_name || user.username} profile`}
+            >
+              <Avatar
+                size={40}
+                src={user.profile_picture || undefined}
+                name={user.full_name || user.username}
+                alt={`${user.username} avatar`}
+              />
+            </UserIdentityLink>
             <div>
-              <Link to={`/profile/${user.id}`}>{user.full_name}</Link>
+              <UserIdentityLink userId={user.id}>
+                {user.full_name}
+              </UserIdentityLink>
               <span>{user.mutual_friends_count} mutual friends</span>
             </div>
             <button

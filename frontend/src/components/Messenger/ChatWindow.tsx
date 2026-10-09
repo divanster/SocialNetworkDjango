@@ -8,6 +8,7 @@ import {
   Message as MessageType,
   transformMessage,
 } from '../../services/messagesService';
+import UserIdentityLink from '../Common/UserIdentityLink';
 import './ChatWindow.css';
 
 interface ChatWindowProps {
@@ -87,7 +88,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
   return (
     <div className="chat-window">
       <div className="chat-header">
-        <h5>Chat with {friendName}</h5>
+        <h5>
+          Chat with{' '}
+          <UserIdentityLink userId={friendId}>
+            {friendName}
+          </UserIdentityLink>
+        </h5>
       </div>
       <div className="chat-messages" style={{ maxHeight: '400px', overflowY: 'auto', padding: '1rem' }}>
         {loading ? (

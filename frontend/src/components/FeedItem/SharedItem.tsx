@@ -4,6 +4,7 @@ import React from 'react';
 import { SharedItem as SharedItemType } from '../../types/sharedItem';
 import './SharedItem.css'; // Ensure SharedItem.css exists or remove this line
 import { useAuth } from '../../contexts/AuthContext';
+import UserIdentityLink from '../Common/UserIdentityLink';
 
 interface SharedItemProps {
     sharedItems: SharedItemType[];
@@ -26,19 +27,23 @@ const SharedItem: React.FC<SharedItemProps> = ({ sharedItems, onDeleteSharedItem
                 return (
                     <div key={item.id} className="shared-item-card">
                         <div className="shared-item-header">
-                            <img
-                                src={item.shared_by?.profile_picture || '/default-profile.png'}
-                                alt={`${item.shared_by?.username || 'unknown_user'}'s profile`}
-                                style={{
-                                    width: '50px',
-                                    height: '50px',
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                    marginRight: '12px',
-                                }}
-                            />
+                            <UserIdentityLink userId={item.shared_by?.id} className="me-2">
+                                <img
+                                    src={item.shared_by?.profile_picture || '/default-profile.png'}
+                                    alt={`${item.shared_by?.username || 'unknown_user'} avatar`}
+                                    style={{
+                                        width: '50px',
+                                        height: '50px',
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        marginRight: '12px',
+                                    }}
+                                />
+                            </UserIdentityLink>
                             <div>
-                                <strong>{sharedByFullName}</strong> shared a post
+                                <UserIdentityLink userId={item.shared_by?.id}>
+                                    <strong>{sharedByFullName}</strong>
+                                </UserIdentityLink>{' '}shared a post
                                 <span>{new Date(item.created_at).toLocaleString()}</span>
                             </div>
                             {user && String(item.shared_by?.id) === String(user.id) && (
@@ -60,7 +65,12 @@ const SharedItem: React.FC<SharedItemProps> = ({ sharedItems, onDeleteSharedItem
                         <div className="shared-item-content">
                             <p>{item.content}</p>
                             <div className="original-content">
-                                <strong>{originalAuthorFullName}'s post:</strong>
+                                <strong>
+                                    <UserIdentityLink userId={item.original_author?.id}>
+                                        {originalAuthorFullName}
+                                    </UserIdentityLink>
+                                    {"'s post:"}
+                                </strong>
                                 <p>{item.original_content}</p>
                             </div>
                         </div>

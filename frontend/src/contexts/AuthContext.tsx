@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { API_URL, fetchProfileData } from '../services/api';
+import { API_URL, fetchProfileData, UserData } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const setAuthToken = (token: string | null): void => {
@@ -30,23 +30,7 @@ const getTokenExpirationTime = (token: string): number | null => {
   }
 };
 
-export interface User {
-  id: string;  // Changed to string to match UUIDs
-  email: string;
-  username: string;
-  profile: {
-    first_name: string;
-    last_name: string;
-    gender: string;
-    date_of_birth: string;
-    profile_picture: string;
-    bio: string;
-    phone: string;
-    town: string;
-    country: string;
-    relationship_status: string;
-  };
-}
+export type User = UserData;
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -56,6 +40,8 @@ interface AuthContextType {
   login: (accessToken: string, refreshTokenStr: string) => void;
   logout: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
+  refreshUser: () => Promise<void>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,6 +57,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
   const refreshTokenRef = useRef<(() => Promise<string | null>) | null>(null);
+
+  const refreshUser = useCallback(async (): Promise<void> => {
+    const userData = await fetchProfileData();
+    setUser(userData);
+  }, []);
 
   const scheduleTokenRefresh = useCallback((accessToken: string): void => {
     const expirationTime = getTokenExpirationTime(accessToken);
@@ -127,8 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         setAuthToken(newAccessToken);
         scheduleTokenRefresh(newAccessToken);
-        const userData = await fetchProfileData();
-        setUser(userData);
+        await refreshUser();
         return newAccessToken;
       } else {
         console.log('No access token found in refresh response.');
@@ -140,7 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await logout();
       return null;
     }
-  }, [logout, scheduleTokenRefresh]);
+  }, [logout, refreshUser, scheduleTokenRefresh]);
 
   useEffect(() => {
     refreshTokenRef.current = refreshToken;
@@ -155,16 +145,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAuthenticated(true);
       setAuthToken(accessToken);
       scheduleTokenRefresh(accessToken);
-      fetchProfileData()
-        .then((userData) => {
-          setUser(userData);
+      refreshUser()
+        .then(() => {
           console.log('User data fetched successfully after login.');
         })
         .catch((error) => {
           console.error('Error fetching user data after login:', error);
         });
     },
-    [scheduleTokenRefresh]
+    [refreshUser, scheduleTokenRefresh]
   );
 
   useEffect(() => {
@@ -180,8 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setAuthToken(storedAccessToken);
           scheduleTokenRefresh(storedAccessToken);
           try {
-            const userData = await fetchProfileData();
-            setUser(userData);
+            await refreshUser();
             console.log('User data fetched successfully during initialization.');
           } catch (error) {
             console.error('Error fetching user data during initialization:', error);
@@ -196,7 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     };
     initializeAuth();
-  }, [refreshToken, logout, scheduleTokenRefresh]);
+  }, [refreshToken, logout, refreshUser, scheduleTokenRefresh]);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -231,6 +219,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     refreshToken,
+    refreshUser,
+    setUser,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

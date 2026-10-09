@@ -7,6 +7,7 @@ import CommentSection from '../FeedItem/CommentSection'
 import { useAuth } from '../../contexts/AuthContext'
 import { Post as PostType } from '../../types/post'
 import Avatar from '../Common/Avatar'
+import UserIdentityLink from '../Common/UserIdentityLink'
 
 interface PostsProps {
   posts: PostType[]
@@ -56,12 +57,13 @@ const Posts: React.FC<PostsProps> = ({
   return (
     <>
       {posts.map((post) => {
-        const authorUsername = post.author?.username || 'Unknown User'
+        const authorUsername = post.author?.username || post.user || 'Unknown User'
+        const authorId = post.author?.id
         const iAmAuthor =
-          user &&
-          post.author &&
-          (post.author.id === user.id ||
-            post.author.username === user.username)
+          Boolean(user && (
+            (authorId && authorId === user.id) ||
+            authorUsername === user.username
+          ))
         const images = post.images ?? []
         const createdAt = formatTimestamp(post.created_at)
         const showTitle = Boolean(post.title && post.title.trim().length > 0)
@@ -70,13 +72,17 @@ const Posts: React.FC<PostsProps> = ({
           <Card key={post.id} className="mb-4 post-card">
             <Card.Body>
               <div className="post-header">
-                <Avatar
-                  size={40}
-                  name={authorUsername}
-                  alt={`${authorUsername} avatar`}
-                />
+                <UserIdentityLink userId={authorId} ariaLabel={`Open ${authorUsername} profile`}>
+                  <Avatar
+                    size={40}
+                    name={authorUsername}
+                    alt={`${authorUsername} avatar`}
+                  />
+                </UserIdentityLink>
                 <div>
-                  <div className="post-author">{authorUsername}</div>
+                  <div className="post-author">
+                    <UserIdentityLink userId={authorId}>{authorUsername}</UserIdentityLink>
+                  </div>
                   <div className="post-meta">{createdAt}</div>
                 </div>
               </div>
@@ -128,7 +134,9 @@ const Posts: React.FC<PostsProps> = ({
                 <Button
                   variant="link"
                   className="p-0 ms-3"
-                  onClick={() => console.log('Share', post.id)}
+                  type="button"
+                  aria-label="Share (coming soon)"
+                  disabled
                 >
                   🔗 Share
                 </Button>

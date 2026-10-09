@@ -109,6 +109,8 @@
   border-radius: 8px;
   padding: 8px;
   text-align: left;
+  text-decoration: none;
+  color: inherit;
 }
 
 .contact-item:hover,
@@ -166,4 +168,3 @@
     display: none;
   }
 }
-

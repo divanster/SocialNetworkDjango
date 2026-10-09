@@ -11,6 +11,8 @@ import {
   Message,
 } from '../../services/messagesService';
 import { fetchFriendsList, User } from '../../services/friendsService';
+import UserIdentityLink from '../Common/UserIdentityLink';
+import { buildMessengerPathForUser } from '../../utils/profileRoutes';
 import './MessagesDropdown.css';
 
 interface MessagesDropdownProps {
@@ -122,6 +124,7 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
         }
         id="messages-dropdown"
         align="end"
+        className="messages-dropdown"
       >
         <NavDropdown.Header className="d-flex justify-content-between align-items-center">
           <span>Messages</span>
@@ -143,22 +146,33 @@ const MessagesDropdown: React.FC<MessagesDropdownProps> = ({ unreadCount, setUnr
             <NavDropdown.Item
               key={msg.id}
               as={Link}
-              to={`/messages/${msg.id}`}
+              to={buildMessengerPathForUser(msg.sender.id)}
               onClick={() => !msg.read && markAsReadHandler(msg.id)}
               className={msg.read ? 'read' : 'unread'}
             >
               <div className="d-flex align-items-center">
-                {msg.sender.profile_picture ? (
-                  <img
-                    src={msg.sender.profile_picture}
-                    alt={msg.sender.username}
-                    className="profile-picture me-2"
-                  />
-                ) : (
-                  <div className="profile-placeholder me-2">?</div>
-                )}
+                <UserIdentityLink
+                  userId={msg.sender.id}
+                  className="me-2"
+                  ariaLabel={`Open ${msg.sender.full_name} profile`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {msg.sender.profile_picture ? (
+                    <img
+                      src={msg.sender.profile_picture}
+                      alt={`${msg.sender.username} avatar`}
+                      className="profile-picture me-2"
+                    />
+                  ) : (
+                    <div className="profile-placeholder me-2" aria-hidden="true">?</div>
+                  )}
+                </UserIdentityLink>
                 <div>
-                  <strong>{msg.sender.full_name}</strong>
+                  <strong>
+                    <UserIdentityLink userId={msg.sender.id}>
+                      {msg.sender.full_name}
+                    </UserIdentityLink>
+                  </strong>
                   <div className="text-truncate" style={{ maxWidth: '200px' }}>
                     {msg.content}
                   </div>

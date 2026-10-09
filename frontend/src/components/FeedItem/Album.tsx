@@ -3,6 +3,8 @@
 import React from 'react';
 import { Album as AlbumType } from '../../types/album';
 import EditAlbumModal from '../CentralNewsFeed/EditAlbumModal';
+import Avatar from '../Common/Avatar';
+import UserIdentityLink from '../Common/UserIdentityLink';
 import './Album.css'; // Ensure Album.css exists or remove this line
 
 interface AlbumProps {
@@ -15,17 +17,24 @@ const Album: React.FC<AlbumProps> = ({ album, onDelete, onUpdate }) => {
   const [showEditModal, setShowEditModal] = React.useState(false);
   // Use optional chaining and default values to prevent runtime errors
   const authorFullName = album.author?.full_name || 'Unknown Author';
-  const authorProfilePicture = album.author?.profile_picture || '/default-profile.png';
   const authorUsername = album.author?.username || 'unknown_user';
+  const authorId = album.author?.id;
 
   return (
     <div className="album-card">
       <div className="album-header">
-        <img src={authorProfilePicture} alt={`${authorUsername}'s profile`} />
-        <div>
-          <strong>{authorFullName}</strong>
-          <span>{new Date(album.created_at).toLocaleString()}</span>
-        </div>
+        <UserIdentityLink userId={authorId} className="album-author-link" ariaLabel={`Open ${authorFullName} profile`}>
+          <Avatar
+            size={50}
+            src={album.author?.profile_picture || undefined}
+            name={authorFullName}
+            alt={`${authorUsername} avatar`}
+          />
+          <div>
+            <strong>{authorFullName}</strong>
+            <span>{new Date(album.created_at).toLocaleString()}</span>
+          </div>
+        </UserIdentityLink>
         <button onClick={() => onDelete(album.id)} className="delete-button">
           &times;
         </button>

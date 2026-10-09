@@ -11,6 +11,22 @@
   cursor: pointer;
 }
 
+.story-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  max-width: 100%;
+}
+
+.story-user span {
+  font-size: 0.78rem;
+  color: var(--sn-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .story-wrapper img {
   width: 90px;
   height: 150px;
