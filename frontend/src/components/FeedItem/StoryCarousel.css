@@ -9,6 +9,10 @@
   flex: 0 0 90px;
   position: relative;
   cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
 }
 
 .story-user {
@@ -35,9 +39,42 @@
   box-shadow: 0 4px 8px rgba(0,0,0,.3);
 }
 
+.story-teaser p {
+  width: 90px;
+  height: 150px;
+  border-radius: 12px;
+  padding: 8px;
+  margin: 0;
+  background: #f3f4f6;
+  overflow: hidden;
+  font-size: 0.82rem;
+}
+
 .story-scroll-hint {
   align-self: center;
   font-size: 2rem;
   color: #999;
   padding-right: 8px;
+}
+
+.story-viewer-media {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.story-viewer-content {
+  white-space: pre-wrap;
+}
+
+.story-viewer-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.story-empty-state {
+  color: #666;
+  margin: 8px 0 16px;
 }

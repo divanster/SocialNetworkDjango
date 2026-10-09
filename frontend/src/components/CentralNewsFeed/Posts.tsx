@@ -89,21 +89,36 @@ const Posts: React.FC<PostsProps> = ({
               {showTitle && <Card.Title className="mt-3 mb-2">{post.title}</Card.Title>}
               <Card.Text>{post.content}</Card.Text>
               {images.length > 0 && (
-                <div className="d-flex flex-wrap mb-3">
+                <div className="d-flex flex-wrap mb-3 gap-2">
                   {images.map((img) => (
                     <img
                       key={img.id}
                       src={img.image}
                       alt={`${authorUsername} post`}
                       style={{
-                        width: 132,
-                        height: 132,
+                        width: 'min(100%, 220px)',
+                        aspectRatio: '1 / 1',
                         objectFit: 'cover',
                         borderRadius: 8,
-                        marginRight: 8,
-                        marginBottom: 8,
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/600x600?text=Image+Unavailable';
                       }}
                     />
+                  ))}
+                </div>
+              )}
+              {Array.isArray(post.tags) && post.tags.length > 0 && (
+                <div className="mb-2">
+                  <small className="text-muted me-1">Tagged:</small>
+                  {post.tags.map((tag) => (
+                    <UserIdentityLink
+                      key={`${post.id}-${tag.tagged_user_id}`}
+                      userId={tag.tagged_user_id}
+                      className="me-2"
+                    >
+                      @{tag.tagged_user_username || 'user'}
+                    </UserIdentityLink>
                   ))}
                 </div>
               )}

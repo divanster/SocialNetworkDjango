@@ -9,7 +9,7 @@ import SearchBar from '../Search/SearchBar';
 import NotificationsDropdown from './NotificationsDropdown';
 import MessagesDropdown from './MessagesDropdown';
 import Avatar from '../Common/Avatar';
-import { friendsBasePath, profileBasePath } from '../../utils/profileRoutes';
+import { albumsBasePath, friendsBasePath, profileBasePath } from '../../utils/profileRoutes';
 import './Navbar.css';
 
 const CustomNavbar: React.FC = () => {
@@ -130,6 +130,9 @@ const CustomNavbar: React.FC = () => {
                 >
                   <NavDropdown.Item as={Link} to={profileBasePath}>
                     My Profile
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to={albumsBasePath}>
+                    Albums
                   </NavDropdown.Item>
                   <NavDropdown.Divider />
                   <NavDropdown.Item

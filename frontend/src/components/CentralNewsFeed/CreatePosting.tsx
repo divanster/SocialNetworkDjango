@@ -1,46 +1,70 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Form, Button, Alert, Spinner, Modal } from 'react-bootstrap';
-import { BsImage, BsPeople, BsCameraVideo, BsEmojiSmile } from 'react-icons/bs';
+import { BsImage, BsCameraVideo, BsEmojiSmile, BsCollectionPlay, BsPeople } from 'react-icons/bs';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Post as PostType } from '../../types/post';
 import { Album as AlbumType } from '../../types/album';
 import Avatar from '../Common/Avatar';
+import UserTagPicker from '../Common/UserTagPicker';
+import { CompactUser } from '../../services/socialGraphService';
+import { createStory } from '../../services/contentService';
+import { useNavigate } from 'react-router-dom';
 import './CreatePosting.css';
 
 interface CreatePostingProps {
   onPostCreated: (newPost: PostType) => void;
   onAlbumCreated: (newAlbum: AlbumType) => void;
+  onStoryCreated?: (story: any) => void;
   sendMessage: (message: string) => void;
   sendAlbumMessage: (message: string) => void;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
-
 const CreatePosting: React.FC<CreatePostingProps> = ({
   onPostCreated,
-  onAlbumCreated,
+  onStoryCreated,
   sendMessage,
-  sendAlbumMessage,
 }) => {
+  const navigate = useNavigate();
   const { token, user } = useAuth();
 
   const [postContent, setPostContent] = useState('');
-  const [postImages, setPostImages] = useState<FileList | null>(null);
+  const [postImages, setPostImages] = useState<File[]>([]);
   const [savingPost, setSavingPost] = useState<boolean>(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [taggedUsers, setTaggedUsers] = useState<CompactUser[]>([]);
 
-  const [showAlbumModal, setShowAlbumModal] = useState<boolean>(false);
-  const [albumTitle, setAlbumTitle] = useState('');
-  const [albumDescription, setAlbumDescription] = useState('');
-  const [albumImages, setAlbumImages] = useState<FileList | null>(null);
-  const [savingAlbum, setSavingAlbum] = useState<boolean>(false);
-  const [albumError, setAlbumError] = useState<string | null>(null);
+  const [showStoryModal, setShowStoryModal] = useState<boolean>(false);
+  const [storyContent, setStoryContent] = useState<string>('');
+  const [storyVisibility, setStoryVisibility] = useState<'public' | 'friends' | 'private'>('public');
+  const [storyMediaFile, setStoryMediaFile] = useState<File | null>(null);
+  const [storyMediaPreview, setStoryMediaPreview] = useState<string | null>(null);
+  const [storyTags, setStoryTags] = useState<CompactUser[]>([]);
+  const [savingStory, setSavingStory] = useState<boolean>(false);
+  const [storyError, setStoryError] = useState<string | null>(null);
+
+  const postImagePreviews = useMemo(
+    () => postImages.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+    [postImages]
+  );
+
+  useEffect(() => () => {
+    postImagePreviews.forEach(({ preview }) => URL.revokeObjectURL(preview));
+  }, [postImagePreviews]);
+
+  const storyMediaType = useMemo<'text' | 'image' | undefined>(() => {
+    if (!storyMediaFile) return undefined;
+    return storyMediaFile.type.startsWith('image/') ? 'image' : undefined;
+  }, [storyMediaFile]);
 
   const handlePostImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setPostImages(e.target.files);
+      setPostImages(Array.from(e.target.files));
     }
+  };
+
+  const removePostImage = (indexToRemove: number) => {
+    setPostImages((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const deriveTitle = (content: string): string => {
@@ -69,118 +93,96 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
     formData.append('title', deriveTitle(postContent));
     formData.append('content', postContent);
     formData.append('visibility', 'public');
-
-    if (postImages) {
-      Array.from(postImages).forEach((file) => {
-        formData.append('image_files', file);
-      });
-    }
+    postImages.forEach((file) => formData.append('image_files', file));
+    taggedUsers.forEach((userToTag) => formData.append('tagged_user_ids', userToTag.id));
 
     try {
-      const response = await axios.post(`${API_URL}/social/`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await axios.post('/social/', formData);
       const createdPost: PostType = response.data;
       onPostCreated(createdPost);
       sendMessage(JSON.stringify({ type: 'new_post', data: createdPost }));
-
       setPostContent('');
-      setPostImages(null);
+      setPostImages([]);
+      setTaggedUsers([]);
       const fileInput = document.getElementById('post-image-input') as HTMLInputElement | null;
       if (fileInput) fileInput.value = '';
     } catch (error: any) {
-      console.error('Error creating post:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          setPostError(
-            error.response.data.detail ||
-            JSON.stringify(error.response.data) ||
-            'An error occurred while creating the post.'
-          );
-        } else if (error.request) {
-          setPostError('No response received from the server.');
-        } else {
-          setPostError(error.message);
-        }
-      } else {
-        setPostError('An unexpected error occurred.');
-      }
+      const detail = error?.response?.data?.detail;
+      setPostError(typeof detail === 'string' ? detail : 'An error occurred while creating the post.');
     } finally {
       setSavingPost(false);
     }
   };
 
-  const handleOpenAlbumModal = () => setShowAlbumModal(true);
-  const handleCloseAlbumModal = () => {
-    setShowAlbumModal(false);
-    setAlbumTitle('');
-    setAlbumDescription('');
-    setAlbumImages(null);
-    setAlbumError(null);
+  const openStoryModal = () => {
+    setStoryError(null);
+    setShowStoryModal(true);
   };
 
-  const handleAlbumSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const closeStoryModal = () => {
+    if (storyMediaPreview) {
+      URL.revokeObjectURL(storyMediaPreview);
+    }
+    setShowStoryModal(false);
+    setStoryContent('');
+    setStoryVisibility('public');
+    setStoryMediaFile(null);
+    setStoryMediaPreview(null);
+    setStoryTags([]);
+    setStoryError(null);
+  };
 
+  const handleStoryMediaChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    if (storyMediaPreview) {
+      URL.revokeObjectURL(storyMediaPreview);
+    }
+    setStoryMediaFile(file);
+    if (!file) {
+      setStoryMediaPreview(null);
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setStoryError('Only image media is currently supported for stories.');
+      setStoryMediaFile(null);
+      setStoryMediaPreview(null);
+      return;
+    }
+    setStoryError(null);
+    setStoryMediaPreview(URL.createObjectURL(file));
+  };
+
+  const handleCreateStory = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!token) {
-      setAlbumError('You must be logged in to create an album.');
+      setStoryError('You must be logged in to create a story.');
       return;
     }
-
-    if (albumTitle.trim() === '' || albumDescription.trim() === '') {
-      setAlbumError('Title and description cannot be empty.');
+    if (!storyContent.trim() && !storyMediaFile) {
+      setStoryError('Add story text or select an image.');
       return;
     }
-
-    if (!albumImages || albumImages.length === 0) {
-      setAlbumError('You must add at least one photo to create an album.');
-      return;
-    }
-
-    setSavingAlbum(true);
-    setAlbumError(null);
-
+    setSavingStory(true);
+    setStoryError(null);
     const formData = new FormData();
-    formData.append('title', albumTitle);
-    formData.append('description', albumDescription);
-    formData.append('visibility', 'public');
-    Array.from(albumImages).forEach((file) => {
-      formData.append('image_files', file);
-    });
-
-    try {
-      const response = await axios.post(`${API_URL}/albums/`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const createdAlbum: AlbumType = response.data;
-      onAlbumCreated(createdAlbum);
-      sendAlbumMessage(JSON.stringify({ type: 'new_album', data: createdAlbum }));
-      handleCloseAlbumModal();
-    } catch (error: any) {
-      console.error('Error creating album:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          setAlbumError(
-            error.response.data.detail ||
-            JSON.stringify(error.response.data) ||
-            'An error occurred while creating the album.'
-          );
-        } else if (error.request) {
-          setAlbumError('No response received from the server.');
-        } else {
-          setAlbumError(error.message);
-        }
-      } else {
-        setAlbumError('An unexpected error occurred.');
+    formData.append('content', storyContent.trim());
+    formData.append('visibility', storyVisibility);
+    if (storyMediaFile) {
+      formData.append('media_file', storyMediaFile);
+      if (storyMediaType) {
+        formData.append('media_type', storyMediaType);
       }
+    }
+    storyTags.forEach((tag) => formData.append('tagged_user_ids', tag.id));
+    try {
+      const createdStory = await createStory(formData);
+      onStoryCreated?.(createdStory);
+      closeStoryModal();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setStoryError(typeof detail === 'string' ? detail : 'Failed to create story.');
     } finally {
-      setSavingAlbum(false);
+      setSavingStory(false);
     }
   };
 
@@ -193,12 +195,7 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
 
         <Form onSubmit={handlePostSubmit}>
           <div className="composer-top">
-            <Avatar
-              size={42}
-              src={user?.profile?.profile_picture}
-              name={displayName}
-              alt={`${displayName} avatar`}
-            />
+            <Avatar size={42} src={user?.profile?.profile_picture} name={displayName} alt={`${displayName} avatar`} />
             <Form.Control
               as="textarea"
               rows={2}
@@ -233,9 +230,14 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
               />
             </label>
 
-            <button type="button" className="composer-action-btn" onClick={handleOpenAlbumModal}>
+            <button type="button" className="composer-action-btn" onClick={() => navigate('/albums')}>
               <BsPeople aria-hidden="true" />
               <span>Album</span>
+            </button>
+
+            <button type="button" className="composer-action-btn" onClick={openStoryModal}>
+              <BsCollectionPlay aria-hidden="true" />
+              <span>Story</span>
             </button>
 
             <button type="button" className="composer-action-btn" aria-label="Video (coming soon)" disabled>
@@ -249,74 +251,76 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
             </button>
           </div>
 
-          {postImages && postImages.length > 0 && (
+          <div className="mt-3">
+            <UserTagPicker label="Tag people in this post" selectedUsers={taggedUsers} onChange={setTaggedUsers} />
+          </div>
+
+          {postImagePreviews.length > 0 && (
             <div className="composer-attachments">
-              {Array.from(postImages).map((file, index) => (
-                <img
-                  key={index}
-                  src={URL.createObjectURL(file)}
-                  alt={`attachment-${index}`}
-                  className="post-attached-image"
-                />
+              {postImagePreviews.map(({ file, preview }, index) => (
+                <div key={`${file.name}-${file.size}-${index}`} className="post-attached-item">
+                  <img src={preview} alt={`attachment-${index}`} className="post-attached-image" />
+                  <button
+                    type="button"
+                    className="post-attached-remove"
+                    onClick={() => removePostImage(index)}
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    Remove
+                  </button>
+                </div>
               ))}
             </div>
           )}
         </Form>
       </div>
 
-      <Modal show={showAlbumModal} onHide={handleCloseAlbumModal} centered>
+      <Modal show={showStoryModal} onHide={closeStoryModal} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Create Album</Modal.Title>
+          <Modal.Title>Create Story</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {albumError && <Alert variant="danger">{albumError}</Alert>}
-
-          <Form onSubmit={handleAlbumSubmit}>
-            <Form.Group className="mb-3" controlId="formAlbumTitle">
-              <Form.Label>Title</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter album title"
-                value={albumTitle}
-                onChange={(e) => setAlbumTitle(e.target.value)}
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3" controlId="formAlbumDescription">
-              <Form.Label>Description</Form.Label>
+          {storyError && <Alert variant="danger">{storyError}</Alert>}
+          <Form onSubmit={handleCreateStory}>
+            <Form.Group className="mb-3">
+              <Form.Label>Story text</Form.Label>
               <Form.Control
                 as="textarea"
                 rows={3}
-                placeholder="Enter album description"
-                value={albumDescription}
-                onChange={(e) => setAlbumDescription(e.target.value)}
-                required
+                value={storyContent}
+                onChange={(e) => setStoryContent(e.target.value)}
+                placeholder="Share a quick update"
               />
             </Form.Group>
-
-            <Form.Group className="mb-3" controlId="formAlbumImages">
-              <Form.Label>Upload Photos</Form.Label>
-              <Form.Control
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => {
-                  const files = (e.currentTarget as HTMLInputElement).files;
-                  if (files) setAlbumImages(files);
-                }}
-              />
+            <Form.Group className="mb-3">
+              <Form.Label>Visibility</Form.Label>
+              <Form.Select
+                value={storyVisibility}
+                onChange={(e) => setStoryVisibility(e.target.value as 'public' | 'friends' | 'private')}
+              >
+                <option value="public">Public</option>
+                <option value="friends">Friends</option>
+                <option value="private">Private</option>
+              </Form.Select>
             </Form.Group>
-
-            <Button variant="primary" type="submit" disabled={savingAlbum}>
-              {savingAlbum ? (
-                <>
-                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Creating...
-                </>
-              ) : (
-                'Create Album'
-              )}
-            </Button>
+            <Form.Group className="mb-3">
+              <Form.Label>Story image (optional)</Form.Label>
+              <Form.Control type="file" accept="image/*" onChange={handleStoryMediaChange} />
+            </Form.Group>
+            {storyMediaPreview && (
+              <img src={storyMediaPreview} alt="Story preview" className="story-preview-image mb-3" />
+            )}
+            <Form.Group className="mb-3">
+              <UserTagPicker label="Tag people in this story" selectedUsers={storyTags} onChange={setStoryTags} />
+            </Form.Group>
+            <div className="d-flex gap-2">
+              <Button variant="secondary" onClick={closeStoryModal} disabled={savingStory}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingStory}>
+                {savingStory ? 'Creating...' : 'Create Story'}
+              </Button>
+            </div>
           </Form>
         </Modal.Body>
       </Modal>

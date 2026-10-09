@@ -1,24 +1,27 @@
-// frontend/src/components/FeedItem/Album.tsx
-
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Album as AlbumType } from '../../types/album';
 import EditAlbumModal from '../CentralNewsFeed/EditAlbumModal';
 import Avatar from '../Common/Avatar';
 import UserIdentityLink from '../Common/UserIdentityLink';
-import './Album.css'; // Ensure Album.css exists or remove this line
+import { useAuth } from '../../contexts/AuthContext';
+import { buildAlbumPath } from '../../utils/profileRoutes';
+import './Album.css';
 
 interface AlbumProps {
   album: AlbumType;
-  onDelete: (id: string) => void;
-  onUpdate: (album: AlbumType) => void;
+  onDelete?: (id: string) => void;
+  onUpdate?: (album: AlbumType) => void;
 }
 
 const Album: React.FC<AlbumProps> = ({ album, onDelete, onUpdate }) => {
+  const { user } = useAuth();
   const [showEditModal, setShowEditModal] = React.useState(false);
-  // Use optional chaining and default values to prevent runtime errors
   const authorFullName = album.author?.full_name || 'Unknown Author';
   const authorUsername = album.author?.username || 'unknown_user';
   const authorId = album.author?.id;
+  const canManage = Boolean(user?.id && album.user_id === user.id);
+  const photoCount = Array.isArray(album.photos) ? album.photos.length : 0;
 
   return (
     <div className="album-card">
@@ -35,25 +38,67 @@ const Album: React.FC<AlbumProps> = ({ album, onDelete, onUpdate }) => {
             <span>{new Date(album.created_at).toLocaleString()}</span>
           </div>
         </UserIdentityLink>
-        <button onClick={() => onDelete(album.id)} className="delete-button">
-          &times;
-        </button>
+        {canManage && onDelete && (
+          <button
+            onClick={() => {
+              if (window.confirm('Delete this album?')) onDelete(album.id);
+            }}
+            className="delete-button"
+            aria-label="Delete album"
+            type="button"
+          >
+            &times;
+          </button>
+        )}
       </div>
       <div className="album-content">
-        <h3>{album.title}</h3>
+        <h3>
+          <Link to={buildAlbumPath(album.id)} className="album-title-link">
+            {album.title}
+          </Link>
+        </h3>
         <p>{album.description}</p>
-        {/* Render album photos or other details */}
+        {Array.isArray(album.tags) && album.tags.length > 0 && (
+          <div className="mb-2">
+            <small className="text-muted me-1">Tagged:</small>
+            {album.tags.map((tag) => (
+              <UserIdentityLink
+                key={tag.id}
+                userId={tag.tagged_user?.id}
+                className="me-2"
+              >
+                @{tag.tagged_user?.username || 'user'}
+              </UserIdentityLink>
+            ))}
+          </div>
+        )}
+        <small className="text-muted d-block mt-1">
+          Visibility: {album.visibility}
+          {photoCount > 0 ? ` • ${photoCount} photo${photoCount > 1 ? 's' : ''}` : ''}
+        </small>
       </div>
-      {/* Optionally, include an edit button */}
-      <button onClick={() => setShowEditModal(true)} className="edit-button">
-        Edit
-      </button>
-      <EditAlbumModal
-        show={showEditModal}
-        onHide={() => setShowEditModal(false)}
-        album={album}
-        onSave={onUpdate}
-      />
+      <div className="album-actions-row">
+        <Link to={buildAlbumPath(album.id)} className="btn btn-outline-primary btn-sm">
+          Open Album
+        </Link>
+        {canManage && onUpdate && (
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="edit-button btn btn-primary btn-sm"
+            type="button"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+      {canManage && onUpdate && (
+        <EditAlbumModal
+          show={showEditModal}
+          onHide={() => setShowEditModal(false)}
+          album={album}
+          onSave={onUpdate}
+        />
+      )}
     </div>
   );
 };

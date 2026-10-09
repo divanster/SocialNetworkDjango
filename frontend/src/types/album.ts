@@ -30,8 +30,18 @@ export interface Photo {
 
 export interface Tag {
   id: string;
-  tagged_user: any; // or the correct interface
-  tagged_by: any;   // or the correct interface
+  tagged_user?: {
+    id: string;
+    username: string;
+    full_name?: string;
+    profile_picture?: string | null;
+  };
+  tagged_by?: {
+    id: string;
+    username: string;
+    full_name?: string;
+    profile_picture?: string | null;
+  };
   content_type: number;
   object_id: string;
   content_object: string;

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert, Spinner } from 'react-bootstrap';
 import { Album as AlbumType } from '../../types/album';
-import axios from 'axios';
-import { useAuth } from '../../contexts/AuthContext';
+import { updateAlbum } from '../../services/contentService';
 
 interface EditAlbumModalProps {
   show: boolean;
@@ -11,10 +10,7 @@ interface EditAlbumModalProps {
   onSave: (updatedAlbum: AlbumType) => void;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
-
 const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, onSave }) => {
-  const { token } = useAuth();
   const [title, setTitle] = useState<string>(album.title);
   const [description, setDescription] = useState<string>(album.description);
   const validVisibilities = ['public', 'friends', 'private'] as const;
@@ -23,7 +19,7 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
       ? (album.visibility as 'public' | 'friends' | 'private')
       : 'public'
   );
-  const [images, setImages] = useState<FileList | null>(null);
+  const [images, setImages] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -36,7 +32,7 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
           ? (album.visibility as 'public' | 'friends' | 'private')
           : 'public'
       );
-      setImages(null);
+      setImages([]);
       setError(null);
     }
   }, [show, album]);
@@ -47,39 +43,22 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
       return;
     }
 
-    if (!token) {
-      setError('You must be logged in to update an album.');
-      return;
-    }
-
     setSaving(true);
     setError(null);
 
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
+    formData.append('title', title.trim());
+    formData.append('description', description.trim());
     formData.append('visibility', visibility);
-    if (images) {
-      Array.from(images).forEach((file) => formData.append('image_files', file));
-    }
+    images.forEach((file) => formData.append('image_files', file));
 
     try {
-      const response = await axios.put(`${API_URL}/albums/${album.id}/`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const updatedAlbum: AlbumType = response.data;
+      const updatedAlbum = await updateAlbum(album.id, formData);
       onSave(updatedAlbum);
       onHide();
     } catch (err: any) {
-      console.error('Error updating album:', err);
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail || 'Failed to update album.');
-      } else {
-        setError('An unexpected error occurred.');
-      }
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Failed to update album.');
     } finally {
       setSaving(false);
     }
@@ -136,12 +115,12 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
             <Form.Control
               type="file"
               multiple
+              accept="image/*"
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 if (e.target.files) {
-                  setImages(e.target.files);
+                  setImages(Array.from(e.target.files));
                 }
               }}
-              accept="image/*"
             />
           </Form.Group>
         </Form>
@@ -153,14 +132,7 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
         <Button variant="primary" onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
-              <Spinner
-                as="span"
-                animation="border"
-                size="sm"
-                role="status"
-                aria-hidden="true"
-              />{' '}
-              Saving...
+              <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Saving...
             </>
           ) : (
             'Save Changes'

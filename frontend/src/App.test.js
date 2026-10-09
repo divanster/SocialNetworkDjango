@@ -8,6 +8,8 @@ jest.mock('./pages/NewsFeed', () => () => <div>NewsFeed Page</div>);
 jest.mock('./pages/Messenger', () => () => <div>Messenger Page</div>);
 jest.mock('./pages/ProfilePage', () => () => <div>Profile Page</div>);
 jest.mock('./pages/FriendsPage', () => () => <div>Friends Page</div>);
+jest.mock('./pages/Albums', () => () => <div>Albums Page</div>);
+jest.mock('./pages/AlbumDetailPage', () => () => <div>Album Detail Page</div>);
 jest.mock('./components/Auth/Login', () => () => <div>Login Page</div>);
 jest.mock('./components/Auth/Signup', () => () => <div>Signup Page</div>);
 jest.mock('./components/NotFound', () => () => <div>Not Found</div>);
@@ -29,4 +31,13 @@ test('renders friends route content', async () => {
     </MemoryRouter>
   );
   expect(await screen.findByText('Friends Page')).toBeInTheDocument();
+});
+
+test('renders albums route content', async () => {
+  render(
+    <MemoryRouter initialEntries={['/albums']}>
+      <App />
+    </MemoryRouter>
+  );
+  expect(await screen.findByText('Albums Page')).toBeInTheDocument();
 });

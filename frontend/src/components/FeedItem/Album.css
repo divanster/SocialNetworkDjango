@@ -63,6 +63,22 @@
   color: #555;
 }
 
+.album-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.album-title-link:hover {
+  text-decoration: underline;
+}
+
+.album-actions-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .edit-button {
   background-color: #3498db;
   color: #fff;
@@ -79,4 +95,10 @@
 
 .delete-button:hover {
   color: #c0392b;
+}
+
+@media (max-width: 640px) {
+  .album-card {
+    padding: 12px;
+  }
 }

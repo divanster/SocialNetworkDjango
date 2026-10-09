@@ -1,24 +1,23 @@
-// frontend/src/components/CentralNewsFeed/CreateAlbum.tsx
-
 import React, { useState } from 'react';
 import { Form, Button, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Album as AlbumType } from '../../types/album';
+import { createAlbum as createAlbumRequest } from '../../services/contentService';
+import UserTagPicker from '../Common/UserTagPicker';
+import { CompactUser } from '../../services/socialGraphService';
 
 interface CreateAlbumProps {
   onAlbumCreated: (newAlbum: AlbumType) => void;
   sendAlbumMessage: (message: string) => void;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
-
 const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated, sendAlbumMessage }) => {
   const { token } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public');
-  const [imageFiles, setImageFiles] = useState<FileList | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [taggedUsers, setTaggedUsers] = useState<CompactUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -39,36 +38,24 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated, sendAlbumMess
     setError(null);
 
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
+    formData.append('title', title.trim());
+    formData.append('description', description.trim());
     formData.append('visibility', visibility);
-    if (imageFiles) {
-      Array.from(imageFiles).forEach((file) => formData.append('image_files', file));
-    }
+    imageFiles.forEach((file) => formData.append('image_files', file));
+    taggedUsers.forEach((user) => formData.append('tagged_user_ids', user.id));
 
     try {
-      const response = await axios.post(`${API_URL}/albums/`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const createdAlbum: AlbumType = response.data;
-
+      const createdAlbum = await createAlbumRequest(formData);
       onAlbumCreated(createdAlbum);
       sendAlbumMessage(JSON.stringify({ type: 'new_album', data: createdAlbum }));
-
       setTitle('');
       setDescription('');
       setVisibility('public');
-      setImageFiles(null);
-    } catch (err) {
-      console.error('Error creating album:', err);
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.detail || 'An error occurred while creating the album.');
-      } else {
-        setError('An unexpected error occurred.');
-      }
+      setImageFiles([]);
+      setTaggedUsers([]);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'An error occurred while creating the album.');
     } finally {
       setSaving(false);
     }
@@ -119,25 +106,35 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated, sendAlbumMess
         <Form.Control
           type="file"
           multiple
+          accept="image/*"
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             if (e.target.files) {
-              setImageFiles(e.target.files);
+              setImageFiles(Array.from(e.target.files));
             }
           }}
+        />
+      </Form.Group>
+
+      {imageFiles.length > 0 && (
+        <ul className="small mb-3">
+          {imageFiles.map((file) => (
+            <li key={`${file.name}-${file.size}`}>{file.name}</li>
+          ))}
+        </ul>
+      )}
+
+      <Form.Group className="mb-3">
+        <UserTagPicker
+          label="Tag people in this album"
+          selectedUsers={taggedUsers}
+          onChange={setTaggedUsers}
         />
       </Form.Group>
 
       <Button variant="primary" type="submit" disabled={saving}>
         {saving ? (
           <>
-            <Spinner
-              as="span"
-              animation="border"
-              size="sm"
-              role="status"
-              aria-hidden="true"
-            />{' '}
-            Creating...
+            <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Creating...
           </>
         ) : (
           'Create Album'

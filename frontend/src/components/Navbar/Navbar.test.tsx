@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Navbar from './Navbar';
 
@@ -34,5 +34,18 @@ describe('Navbar', () => {
 
     const friendsLink = await screen.findByRole('link', { name: 'Friends' });
     expect(friendsLink).toHaveAttribute('href', '/friends');
+  });
+
+  it('account menu contains albums route', async () => {
+    render(
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>
+    );
+
+    const accountToggle = await screen.findByText('tester');
+    fireEvent.click(accountToggle);
+    const albumsItem = await screen.findByText('Albums');
+    expect(albumsItem).toHaveAttribute('href', '/albums');
   });
 });

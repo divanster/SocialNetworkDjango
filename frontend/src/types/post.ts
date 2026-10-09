@@ -11,6 +11,7 @@ export interface Post {
   created_at?: string;
   updated_at?: string;
   images?: { id: string; image: string }[];
+  tags?: { tagged_user_id: string; tagged_user_username: string | null }[];
   reactions_count?: number;   // your feed endpoint should provide this
   comments_count?: number;    // and this
 }

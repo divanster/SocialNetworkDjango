@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './SearchBar.css';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildProfilePath } from '../../utils/profileRoutes';
+import { buildAlbumPath, buildProfilePath } from '../../utils/profileRoutes';
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
@@ -72,24 +72,10 @@ const SearchBar: React.FC = () => {
               </Link>
             </li>
           ))}
-          {results.posts.map((post: any) => (
-            <li key={post.id}>
-              <Link to={`/post/${post.id}`} onClick={() => setShowDropdown(false)}>
-                <strong>{post.title}</strong>
-              </Link>
-            </li>
-          ))}
           {results.albums.map((album: any) => (
             <li key={album.id}>
-              <Link to={`/album/${album.id}`} onClick={() => setShowDropdown(false)}>
+              <Link to={buildAlbumPath(String(album.id))} onClick={() => setShowDropdown(false)}>
                 <strong>{album.title}</strong>
-              </Link>
-            </li>
-          ))}
-          {results.stories.map((story: any) => (
-            <li key={story.id}>
-              <Link to={`/story/${story.id}`} onClick={() => setShowDropdown(false)}>
-                <strong>{story.title}</strong>
               </Link>
             </li>
           ))}

@@ -1,4 +1,3 @@
-// frontend/src/pages/NewsFeed.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import useWebSocket from '../hooks/useWebSocket';
@@ -21,16 +20,18 @@ import { SharedItem as SharedItemType } from '../types/sharedItem';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnlineStatus } from '../contexts/OnlineStatusContext';
 import { Toast, ToastContainer } from 'react-bootstrap';
+import { deleteAlbum as deleteAlbumRequest, listStories, updateAlbum as updateAlbumRequest } from '../services/contentService';
 
 interface StoryType {
   id: string;
-  user: { id: string; full_name: string; profile_picture: string };
+  user?: { id: string; full_name: string; profile_picture: string } | string;
+  user_name?: string;
   content: string;
+  media_url?: string | null;
+  media_type?: 'text' | 'image' | 'video';
   created_at: string;
   updated_at: string;
 }
-
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 const NewsFeed: React.FC = () => {
   const { token, loading: authLoading } = useAuth();
@@ -52,7 +53,6 @@ const NewsFeed: React.FC = () => {
     variant: 'success',
   });
 
-  // Helpers for adding new items
   const addNewPost = (np: PostType) => {
     setPosts((p) => [np, ...p]);
     setToast({ show: true, message: 'Post created successfully!', variant: 'success' });
@@ -66,7 +66,6 @@ const NewsFeed: React.FC = () => {
     setToast({ show: true, message: 'Content shared successfully!', variant: 'success' });
   };
 
-  // Fetch feed + stories
   useEffect(() => {
     if (authLoading) return;
     if (!token) {
@@ -76,20 +75,13 @@ const NewsFeed: React.FC = () => {
     }
     (async () => {
       try {
-        const [feedRes, storiesRes] = await Promise.all([
-          axios.get(`${API_URL}/newsfeed/feed/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${API_URL}/stories/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const [feedRes, storiesData] = await Promise.all([axios.get('/newsfeed/feed/'), listStories()]);
         setPosts(feedRes.data.posts || []);
         setAlbums(feedRes.data.albums || []);
         setSharedItems(feedRes.data.shared_items || []);
-        setStories(storiesRes.data || []);
+        setStories(storiesData || []);
         setError(null);
-      } catch (e) {
+      } catch {
         setError('Failed to fetch newsfeed or stories.');
       } finally {
         setLoading(false);
@@ -97,7 +89,6 @@ const NewsFeed: React.FC = () => {
     })();
   }, [token, authLoading]);
 
-  // WebSocket handlers
   const onPostEvent = useCallback((data: any) => {
     if (data.type === 'post') addNewPost(data.message);
     else if (data.type === 'shared_item') addNewSharedItem(data.message);
@@ -110,7 +101,6 @@ const NewsFeed: React.FC = () => {
 
   const hasFeedContent = posts.length > 0 || albums.length > 0 || sharedItems.length > 0;
 
-  // CRUD handlers
   const handleDeletePost = async (id: string) => {
     if (!token) {
       setDeleteError('Login required.');
@@ -118,9 +108,7 @@ const NewsFeed: React.FC = () => {
     }
     setDeletingPostIds((ids) => [...ids, id]);
     try {
-      await axios.delete(`${API_URL}/social/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(`/social/${id}/`);
       setPosts((p) => p.filter((x) => x.id !== id));
       setDeleteSuccess('Post deleted.');
     } catch {
@@ -137,12 +125,7 @@ const NewsFeed: React.FC = () => {
     }
     setUpdatingPostIds((ids) => [...ids, up.id]);
     try {
-      const res = await axios.put(`${API_URL}/social/${up.id}/`, up, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const res = await axios.put(`/social/${up.id}/`, up);
       setPosts((p) => p.map((x) => (x.id === up.id ? res.data : x)));
       setToast({ show: true, message: 'Post updated!', variant: 'success' });
     } catch {
@@ -157,9 +140,7 @@ const NewsFeed: React.FC = () => {
       return;
     }
     try {
-      await axios.delete(`${API_URL}/albums/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteAlbumRequest(id);
       setAlbums((a) => a.filter((x) => x.id !== id));
       setToast({ show: true, message: 'Album deleted!', variant: 'success' });
     } catch {
@@ -176,12 +157,8 @@ const NewsFeed: React.FC = () => {
       fd.append('title', ua.title);
       fd.append('description', ua.description);
       fd.append('visibility', ua.visibility);
-      const res = await axios.put(`${API_URL}/albums/${ua.id}/`, fd, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setAlbums((a) => a.map((x) => (x.id === ua.id ? res.data : x)));
+      const updated = await updateAlbumRequest(ua.id, fd);
+      setAlbums((a) => a.map((x) => (x.id === ua.id ? updated : x)));
       setToast({ show: true, message: 'Album updated!', variant: 'success' });
     } catch {
       setError('Error updating album.');
@@ -193,9 +170,7 @@ const NewsFeed: React.FC = () => {
       return;
     }
     try {
-      await axios.delete(`${API_URL}/shared/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(`/shared/${id}/`);
       setSharedItems((s) => s.filter((x) => x.id !== id));
       setToast({ show: true, message: 'Shared item deleted!', variant: 'success' });
     } catch {
@@ -206,101 +181,89 @@ const NewsFeed: React.FC = () => {
   return (
     <div className="newsfeed-page">
       <div className="newsfeed-container">
-      {/* Left Sidebar */}
-      <aside className="left-sidebar">
-        <Profile />
-      </aside>
+        <aside className="left-sidebar">
+          <Profile />
+        </aside>
 
-      {/* Main Feed */}
-      <main className="main-feed" aria-label="Main feed">
-        {/* Header + online count badge */}
-        <div className="feed-header">
-          <h4>Home</h4>
-          <span className="online-badge" aria-label={`${onlineUsers.length} users online`}>
-            {onlineUsers.length} online
-          </span>
-        </div>
+        <main className="main-feed" aria-label="Main feed">
+          <div className="feed-header">
+            <h4>Home</h4>
+            <span className="online-badge" aria-label={`${onlineUsers.length} users online`}>
+              {onlineUsers.length} online
+            </span>
+          </div>
 
-        {/* Composer */}
-        <CreatePosting
-          onPostCreated={addNewPost}
-          onAlbumCreated={addNewAlbum}
-          sendMessage={sendPostMessage}
-          sendAlbumMessage={sendAlbumMessage}
-        />
+          <CreatePosting
+            onPostCreated={addNewPost}
+            onAlbumCreated={addNewAlbum}
+            onStoryCreated={(story) => setStories((prev) => [story as StoryType, ...prev])}
+            sendMessage={sendPostMessage}
+            sendAlbumMessage={sendAlbumMessage}
+          />
 
-        {/* Stories */}
-        <section id="stories">
-          <StoryCarousel stories={stories} />
-        </section>
+          <section id="stories">
+            <StoryCarousel
+              stories={stories}
+              onStoryDeleted={(storyId) =>
+                setStories((prev) => prev.filter((story) => String(story.id) !== String(storyId)))
+              }
+            />
+          </section>
 
-        {/* Loading / Errors */}
-        {loading ? (
-          <div className="text-center my-5">Loading...</div>
-        ) : (
-          <>
-            {error && <div className="alert alert-danger">{error}</div>}
-            {deleteError && <div className="alert alert-danger">{deleteError}</div>}
-            {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
+          {loading ? (
+            <div className="text-center my-5">Loading...</div>
+          ) : (
+            <>
+              {error && <div className="alert alert-danger">{error}</div>}
+              {deleteError && <div className="alert alert-danger">{deleteError}</div>}
+              {deleteSuccess && <div className="alert alert-success">{deleteSuccess}</div>}
 
-            {!hasFeedContent ? (
-              <div className="feed-empty-state">
-                <BsChatSquareHeart className="feed-empty-icon" aria-hidden="true" />
-                <h5>Your feed is quiet right now</h5>
-                <p>Create your first post to start sharing with friends.</p>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                >
-                  Create your first post
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Shared items */}
-                <SharedItem
-                  sharedItems={sharedItems}
-                  onDeleteSharedItem={handleDeleteSharedItem}
-                />
+              {!hasFeedContent ? (
+                <div className="feed-empty-state">
+                  <BsChatSquareHeart className="feed-empty-icon" aria-hidden="true" />
+                  <h5>Your feed is quiet right now</h5>
+                  <p>Create your first post to start sharing with friends.</p>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  >
+                    Create your first post
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <SharedItem sharedItems={sharedItems} onDeleteSharedItem={handleDeleteSharedItem} />
 
-                {/* Posts */}
-                <Posts
-                  posts={posts}
-                  onDeletePost={handleDeletePost}
-                  onUpdatePost={handleUpdatePost}
-                  deletingPostIds={deletingPostIds}
-                  updatingPostIds={updatingPostIds}
-                />
+                  <Posts
+                    posts={posts}
+                    onDeletePost={handleDeletePost}
+                    onUpdatePost={handleUpdatePost}
+                    deletingPostIds={deletingPostIds}
+                    updatingPostIds={updatingPostIds}
+                  />
 
-                {/* Albums */}
-                <section id="albums">
-                  {albums.map((alb) => (
-                    <div key={alb.id} className="post-card">
-                      <Album
-                        album={alb}
-                        onDelete={handleDeleteAlbum}
-                        onUpdate={handleUpdateAlbum}
-                      />
-                    </div>
-                  ))}
-                </section>
-              </>
-            )}
-          </>
-        )}
-      </main>
+                  <section id="albums">
+                    {albums.map((alb) => (
+                      <div key={alb.id} className="post-card">
+                        <Album album={alb} onDelete={handleDeleteAlbum} onUpdate={handleUpdateAlbum} />
+                      </div>
+                    ))}
+                  </section>
+                </>
+              )}
+            </>
+          )}
+        </main>
 
-      {/* Right Sidebar */}
-      <aside className="right-sidebar">
-        <Suggestions />
-        <FriendRequests />
-        <Birthdays />
-        <Contacts />
-      </aside>
+        <aside className="right-sidebar">
+          <Suggestions />
+          <FriendRequests />
+          <Birthdays />
+          <Contacts />
+        </aside>
       </div>
 
-      {/* Toast */}
       <ToastContainer position="bottom-end" className="p-3">
         <Toast
           show={toast.show}
