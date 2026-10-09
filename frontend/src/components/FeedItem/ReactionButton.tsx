@@ -14,7 +14,7 @@ const ReactionButton: React.FC<ReactionButtonProps> = ({ postId, contentType = '
   const [liked, setLiked] = useState(false)
 
   const api = axios.create({
-    baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, ''),
+    baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, ''),
     headers: { Authorization: `Bearer ${token}` },
   })
 

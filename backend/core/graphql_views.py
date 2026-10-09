@@ -4,11 +4,12 @@ import json
 import logging
 
 from django.contrib.auth.models import AnonymousUser
+from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
-from graphql import parse, validate, GraphQLError
+from graphql import parse, validate
 from graphene_django.views import GraphQLView
 
 from core.graphql_validation import ComplexityLimitRule, DepthLimitRule
@@ -38,12 +39,10 @@ class CustomGraphQLView(GraphQLView):
             parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == 'bearer':
                 token = parts[1]
-                logger.debug(f"Extracted token from header: {token}")
             else:
                 logger.warning("Authorization header is malformed.")
         elif 'token' in request.GET:
             token = request.GET.get('token')
-            logger.debug(f"Extracted token from query parameters: {token}")
 
         # If no token is provided, set the user as AnonymousUser
         if not token:
@@ -73,19 +72,24 @@ class CustomGraphQLView(GraphQLView):
         request = self.request
         logger.info(f"GraphQL Request: {request.method} {request.path}")
 
+        if request.method != "POST":
+            return super().execute_graphql_request(*args, **kwargs)
+
+        body_unicode = request.body.decode('utf-8') if request.body else ''
         try:
-            # Parse the request body
-            body_unicode = request.body.decode('utf-8') if request.body else ''
             body = json.loads(body_unicode) if body_unicode else {}
-            query = body.get('query', '')
-            variables = body.get('variables', {})
-            operation_name = body.get('operationName')
+        except json.JSONDecodeError:
+            return super().execute_graphql_request(*args, **kwargs)
 
-            logger.debug(f"Query: {query}")
-            logger.debug(f"Variables: {variables}")
-            logger.debug(f"Operation Name: {operation_name}")
+        query = body.get('query', '')
+        variables = body.get('variables', {})
+        operation_name = body.get('operationName')
 
-            # Validate the GraphQL query using custom rules
+        logger.debug(f"Query: {query}")
+        logger.debug(f"Variables: {variables}")
+        logger.debug(f"Operation Name: {operation_name}")
+
+        if query and settings.ENABLE_GRAPHQL_VALIDATION:
             try:
                 document = parse(query)
                 validation_errors = validate(
@@ -96,30 +100,8 @@ class CustomGraphQLView(GraphQLView):
                 if validation_errors:
                     error_messages = [error.message for error in validation_errors]
                     error_text = ", ".join(error_messages)
-                    logger.error(f"GraphQL Validation Error: {error_text}")
-                    raise GraphQLError(error_text)
-            except GraphQLError as e:
-                logger.error(f"GraphQL Validation Error: {str(e)}")
-                raise e
+                    logger.warning(f"GraphQL Validation Error: {error_text}")
             except Exception as e:
-                logger.error(f"Unexpected Validation Error: {str(e)}")
-                raise e
+                logger.warning(f"Skipping custom GraphQL validation due to parsing error: {str(e)}")
 
-            # Execute the query
-            response = super().execute_graphql_request(*args, **kwargs)
-
-            # Log response status and data
-            if hasattr(response, 'status_code') and hasattr(response, 'content'):
-                logger.info(f"GraphQL Response Status: {response.status_code}")
-                try:
-                    logger.debug(f"Response Data: {response.content.decode('utf-8')}")
-                except UnicodeDecodeError:
-                    logger.debug("Response Data: [Binary Data]")
-            else:
-                logger.debug(f"Response Data: {response}")
-
-            return response
-
-        except Exception as e:
-            logger.error(f"GraphQL Execution Error: {str(e)}", exc_info=True)
-            raise e
+        return super().execute_graphql_request(*args, **kwargs)

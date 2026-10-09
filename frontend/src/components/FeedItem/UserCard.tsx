@@ -3,7 +3,7 @@ import { Button } from 'react-bootstrap';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 interface UserCardProps {
   userId: string;

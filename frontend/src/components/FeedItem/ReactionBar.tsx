@@ -11,7 +11,7 @@ interface Props {
   onReacted: (emoji: string) => void;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 const ReactionBar: React.FC<Props> = ({ postId, counts, onReacted }) => {
   const { token } = useAuth();

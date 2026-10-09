@@ -13,7 +13,7 @@ interface EditPostModalProps {
   onSave: (updatedPost: PostType) => void;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 const EditPostModal: React.FC<EditPostModalProps> = ({ show, onHide, post, onSave }) => {
   const { token } = useAuth();

@@ -1,49 +1,33 @@
 # backend/config/tests/test_health_check.py
 
+from django.db.utils import OperationalError
 from django.test import TestCase
 from django.urls import reverse
-from django.test import override_settings
 from unittest.mock import patch
 
 
 class HealthCheckTests(TestCase):
-    def test_health_check_all_services_healthy(self):
+    def test_health_check_reports_application_and_database(self):
         """
-        Test that health check endpoint returns healthy when all services are up.
+        Health endpoint should return a deterministic JSON contract for
+        application + database status.
         """
         response = self.client.get(reverse('health_check'))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['application'], 'healthy')
         self.assertEqual(response.json()['database'], 'healthy')
-        self.assertEqual(response.json()['redis'], 'healthy')
-        self.assertEqual(response.json()['kafka'], 'healthy')
+        self.assertSetEqual(set(response.json().keys()), {'application', 'database'})
 
-    @patch('core.views.connection')
-    def test_health_check_database_unhealthy(self, mock_connection):
+    @patch('core.views.connection.ensure_connection')
+    def test_health_check_database_unhealthy(self, mock_ensure_connection):
         """
-        Test that health check returns database unhealthy.
+        DB connectivity failures should return 503 with database=unhealthy.
         """
-        mock_connection.ensure_connection.side_effect = Exception("Database error")
+        mock_ensure_connection.side_effect = OperationalError("Database error")
         response = self.client.get(reverse('health_check'))
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()['database'], 'unhealthy')
 
-    @patch('core.views.redis.Redis.ping')
-    def test_health_check_redis_unhealthy(self, mock_redis_ping):
-        """
-        Test that health check returns redis unhealthy.
-        """
-        mock_redis_ping.side_effect = Exception("Redis connection error")
-        response = self.client.get(reverse('health_check'))
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()['redis'], 'unhealthy')
-
-    @patch('core.views.KafkaProducer')
-    def test_health_check_kafka_unhealthy(self, mock_kafka_producer):
-        """
-        Test that health check returns kafka unhealthy.
-        """
-        mock_kafka_producer.side_effect = Exception("Kafka connection error")
-        response = self.client.get(reverse('health_check'))
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()['kafka'], 'unhealthy')
+    def test_health_check_rejects_non_get_methods(self):
+        response = self.client.post(reverse('health_check'))
+        self.assertEqual(response.status_code, 405)

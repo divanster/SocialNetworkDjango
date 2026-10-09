@@ -14,7 +14,7 @@ interface SuggestedUser {
   mutual_friends_count: number;
 }
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1').replace(/\/+$/, '');
 
 const Suggestions: React.FC = () => {
   const { token } = useAuth();

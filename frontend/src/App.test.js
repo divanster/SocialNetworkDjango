@@ -1,9 +1,21 @@
 import { render, screen } from '@testing-library/react';
-import React from 'react'; // Ensure React is imported
+import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+jest.mock('./components/Navbar/Navbar', () => () => <div>Navbar</div>);
+jest.mock('./components/ProtectedRoute', () => ({ children }) => <>{children}</>);
+jest.mock('./pages/NewsFeed', () => () => <div>NewsFeed Page</div>);
+jest.mock('./pages/Messenger', () => () => <div>Messenger Page</div>);
+jest.mock('./components/Auth/Login', () => () => <div>Login Page</div>);
+jest.mock('./components/Auth/Signup', () => () => <div>Signup Page</div>);
+jest.mock('./components/NotFound', () => () => <div>Not Found</div>);
+
+test('renders login route content', async () => {
+  render(
+    <MemoryRouter initialEntries={['/login']}>
+      <App />
+    </MemoryRouter>
+  );
+  expect(await screen.findByText('Login Page')).toBeInTheDocument();
+  expect(screen.getByText('Navbar')).toBeInTheDocument();
 });
