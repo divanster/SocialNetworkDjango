@@ -39,15 +39,18 @@ def notification_saved(sender, instance, created, **kwargs):
 
     # 2) ALSO broadcast via Channels on NEW notifications
     if created:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"user_{instance.receiver_id}",    # per-user group
-            {
-                "type":    "notify",           # invokes notify() in consumer
-                "event":   "notification",     # client sees { type, data }
-                "payload": NotificationSerializer(instance).data,
-            },
-        )
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"user_{instance.receiver_id}",    # per-user group
+                {
+                    "type":    "notify",           # invokes notify() in consumer
+                    "event":   "notification",     # client sees { type, data }
+                    "payload": NotificationSerializer(instance).data,
+                },
+            )
+        except Exception as exc:
+            logger.warning("Failed to send realtime notification event: %s", exc)
 
 
 @receiver(post_delete, sender=Notification)

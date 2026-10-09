@@ -7,21 +7,21 @@ from .consumers import (
 )
 
 websocket_urlpatterns = [
-    re_path(r"^ws/presence/?$", UserConsumer.as_asgi()),
+    re_path(r"^presence/?$", UserConsumer.as_asgi()),
 
     # —— OTHER CHANNELS ————————————————————————————————————————
-    re_path(r"^ws/posts/$",         PostConsumer.as_asgi()),
-    re_path(r"^ws/albums/$",        AlbumConsumer.as_asgi()),
-    re_path(r"^ws/comments/$",      CommentConsumer.as_asgi()),
-    re_path(r"^ws/follows/$",       FollowConsumer.as_asgi()),
-    re_path(r"^ws/friends/$",       FriendConsumer.as_asgi()),
-    re_path(r"^ws/messenger/$",     MessengerConsumer.as_asgi()),
-    re_path(r"^ws/newsfeed/$",      NewsfeedConsumer.as_asgi()),
-    re_path(r"^ws/reactions/$",     ReactionConsumer.as_asgi()),
-    re_path(r"^ws/social/$",        SocialConsumer.as_asgi()),
-    re_path(r"^ws/stories/$",       StoryConsumer.as_asgi()),
-    re_path(r"^ws/tagging/$",       TaggingConsumer.as_asgi()),
-    re_path(r"^ws/notifications/$", NotificationConsumer.as_asgi()),
+    re_path(r"^posts/?$",         PostConsumer.as_asgi()),
+    re_path(r"^albums/?$",        AlbumConsumer.as_asgi()),
+    re_path(r"^comments/?$",      CommentConsumer.as_asgi()),
+    re_path(r"^follows/?$",       FollowConsumer.as_asgi()),
+    re_path(r"^friends/?$",       FriendConsumer.as_asgi()),
+    re_path(r"^messenger/?$",     MessengerConsumer.as_asgi()),
+    re_path(r"^newsfeed/?$",      NewsfeedConsumer.as_asgi()),
+    re_path(r"^reactions/?$",     ReactionConsumer.as_asgi()),
+    re_path(r"^social/?$",        SocialConsumer.as_asgi()),
+    re_path(r"^stories/?$",       StoryConsumer.as_asgi()),
+    re_path(r"^tagging/?$",       TaggingConsumer.as_asgi()),
+    re_path(r"^notifications/?$", NotificationConsumer.as_asgi()),
 
     # fallback
     re_path(r'^.*$', DefaultConsumer.as_asgi()),

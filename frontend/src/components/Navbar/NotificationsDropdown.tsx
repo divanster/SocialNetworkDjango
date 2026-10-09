@@ -73,10 +73,20 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
   }, [fetchUserNotifications]);
 
   // Handle real-time updates via WebSocket
-  useWebSocket<Notification>('notifications', {
-    onMessage: (data) => {
-      setNotifications((prev) => [data, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+  useWebSocket<any>('notifications', {
+    onMessage: (event) => {
+      const incoming: Notification | undefined = event?.data;
+      if (!incoming || !incoming.id) return;
+
+      setNotifications((prev) => {
+        if (prev.some((notif) => notif.id === incoming.id)) {
+          return prev;
+        }
+        return [incoming, ...prev];
+      });
+      if (!incoming.read) {
+        setUnreadCount((prev) => prev + 1);
+      }
     }
   });
 
@@ -84,7 +94,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ unreadCou
   const markAsRead = async (id: string) => {
     try {
       await axios.post(
-        `${API_URL}/notifications/${id}/mark-as-read/`,
+        `${API_URL}/notifications/${id}/mark_as_read/`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },

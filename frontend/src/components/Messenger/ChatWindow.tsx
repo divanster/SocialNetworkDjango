@@ -5,10 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import useWebSocket from '../../hooks/useWebSocket';
 import {
   sendMessageToUser,
-  fetchInboxMessages,
-  broadcastMessageToAll,
   Message as MessageType,
-  transformMessage
+  transformMessage,
 } from '../../services/messagesService';
 import './ChatWindow.css';
 
@@ -24,46 +22,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Memoize onMessage callback so that the WebSocket hook doesn't reinitialize on every keystroke.
   const handleSocketMessage = useCallback((data: any) => {
-    // Expect data as { "message": { ... } }
-    if (data.message && user) {
-      const incomingMsg: MessageType = data.message;
-      // Only process if the message is for this conversation
-      if (
-        (incomingMsg.sender.id === friendId && incomingMsg.receiver.id === user.id) ||
-        (incomingMsg.sender.id === user.id && incomingMsg.receiver.id === friendId)
-      ) {
-        setMessages((prev) => [...prev, incomingMsg]);
-      }
+    if (!user) return;
+    const incomingMsg: MessageType | undefined = data?.data;
+    if (!incomingMsg || !incomingMsg.id) return;
+    if (
+      (incomingMsg.sender.id === friendId && incomingMsg.receiver.id === user.id) ||
+      (incomingMsg.sender.id === user.id && incomingMsg.receiver.id === friendId)
+    ) {
+      setMessages((prev) => {
+        if (prev.some((msg) => msg.id === incomingMsg.id)) {
+          return prev;
+        }
+        return [...prev, incomingMsg];
+      });
     }
   }, [friendId, user]);
 
-  // Use the WebSocket hook for the "messenger" group.
-  // This hook connects using the provided token and group name.
-  const { sendMessage: sendWSMessage } = useWebSocket<MessageType>(
-    'messenger',
-    { onMessage: handleSocketMessage }
-  );
+  useWebSocket<MessageType>('messenger', { onMessage: handleSocketMessage });
 
-  // Fetch past conversation via REST when the component mounts
   const fetchConversation = useCallback(async () => {
     if (!token || !user) return;
     setLoading(true);
     try {
-      const response = await axios.get('/messenger/inbox/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      let allMessages: MessageType[] = Array.isArray(response.data.results)
+      const response = await axios.get('/messenger/');
+      const allMessages: MessageType[] = Array.isArray(response.data.results)
         ? response.data.results.map(transformMessage)
-        : response.data;
-      // Filter messages for the current conversation (1-on-1)
-      const conversation = allMessages.filter((msg) => {
-        return (
-          (msg.sender.id === friendId && msg.receiver.id === user.id) ||
-          (msg.sender.id === user.id && msg.receiver.id === friendId)
-        );
-      });
+        : [];
+      const conversation = allMessages.filter((msg) => (
+        (msg.sender.id === friendId && msg.receiver.id === user.id) ||
+        (msg.sender.id === user.id && msg.receiver.id === friendId)
+      ));
       setMessages(conversation);
       setError(null);
     } catch (err: any) {
@@ -78,25 +67,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ friendId, friendName }) => {
     fetchConversation();
   }, [fetchConversation]);
 
-  // Handle sending a message via REST and then broadcasting it via WebSocket.
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
     if (!token || !user || !newMessage.trim()) return;
     try {
-      let sentMsg: MessageType;
-      if (friendId === 'all') {
-        const broadcastedMessages = await broadcastMessageToAll(newMessage.trim());
-        sentMsg = broadcastedMessages[broadcastedMessages.length - 1];
-      } else {
-        sentMsg = await sendMessageToUser(friendId, newMessage.trim());
-      }
-      // Update the UI with the new message immediately.
+      const sentMsg = await sendMessageToUser(friendId, newMessage.trim());
       setMessages((prev) => [...prev, sentMsg]);
       setNewMessage('');
-
-      // Broadcast the new message via WebSocket.
-      // Note that we are stringifying the payload into the expected format.
-      sendWSMessage(JSON.stringify({ message: sentMsg }));
     } catch (err) {
       console.error('Error sending message', err);
       setError('Error sending message');

@@ -211,7 +211,7 @@ def get_online_users(request):
         online_user_ids = [uid.decode('utf-8') for uid in redis_conn.smembers("online_users")]
     except (RedisError, NotImplementedError) as exc:
         logger.warning("Redis unavailable while fetching online users: %s", exc)
-        online_user_ids = [str(request.user.id)]
+        online_user_ids = cache.get("online_users_fallback", [str(request.user.id)])
     users = CustomUser.objects.filter(id__in=online_user_ids)
     serializer = CustomUserSerializer(users, many=True)
     return Response({"online_users": serializer.data})

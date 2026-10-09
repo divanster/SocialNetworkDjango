@@ -36,7 +36,7 @@ export default function useWebSocket<T>(
 
     // now build exactly one /ws/<groupName> path:
     const url = `${cleanBase}/ws/${groupName}/?token=${token}`;
-    console.log(`🔌 WS → ${url}`);
+    console.log(`🔌 WS group "${groupName}" connecting`);
     const ws = new WebSocket(url);
     socketRef.current = ws;
 
@@ -45,10 +45,13 @@ export default function useWebSocket<T>(
       handlersRef.current.onOpen?.();
     };
     ws.onmessage = (evt) => {
+      if (evt.data === 'ping' || evt.data === 'pong') {
+        return;
+      }
       try {
         handlersRef.current.onMessage(JSON.parse(evt.data));
       } catch (e) {
-        console.error(`❌ WS(${groupName}) parse error`, e);
+        // Ignore non-JSON payloads to avoid crashing realtime handlers.
       }
     };
     ws.onerror = (err) => {

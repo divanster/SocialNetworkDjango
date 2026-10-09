@@ -45,8 +45,11 @@ class MessageViewSet(viewsets.ModelViewSet):
         Excludes soft-deleted messages by default.
         """
         user = self.request.user
-        return Message.objects.filter(Q(receiver=user) | Q(sender=user)).order_by(
-            '-created_at')
+        return Message.objects.filter(
+            Q(receiver=user) | Q(sender=user)
+        ).select_related(
+            'sender__profile', 'receiver__profile'
+        ).order_by('-created_at')
 
     @extend_schema(
         parameters=[
@@ -78,6 +81,8 @@ class MessageViewSet(viewsets.ModelViewSet):
         """
         Update the message instance.
         """
+        if serializer.instance.sender != self.request.user:
+            raise permissions.PermissionDenied("You can only edit messages you sent.")
         instance = serializer.save()
         logger.info(f"Message updated: {instance}")
 
@@ -85,6 +90,8 @@ class MessageViewSet(viewsets.ModelViewSet):
         """
         Soft delete the message instead of hard deleting.
         """
+        if instance.sender != self.request.user:
+            raise permissions.PermissionDenied("You can only delete messages you sent.")
         instance.delete()
         logger.info(f"Message soft-deleted: {instance}")
 
@@ -130,19 +137,12 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
 
-        try:
-            message.mark_as_read()
-            logger.info(f"Message {message.id} marked as read.")
-            return Response(
-                {"detail": "Message marked as read."},
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            logger.error(f"Error marking message as read: {e}")
-            return Response(
-                {"detail": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        message.mark_as_read()
+        logger.info(f"Message {message.id} marked as read.")
+        return Response(
+            {"detail": "Message marked as read."},
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         request=serializers.Serializer,  # Define a custom serializer if needed

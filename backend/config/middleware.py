@@ -31,7 +31,11 @@ class JWTMiddleware(BaseMiddleware):
         try:
             # Validate & decode
             payload = AccessToken(token).payload
-            scope["user"] = await self._get_user(payload.get("user_id"))
+            user = await self._get_user(payload.get("user_id"))
+            if not user or not user.is_authenticated:
+                await send({"type": "websocket.close", "code": 4000})
+                return
+            scope["user"] = user
             # Hand off to next middleware/consumer
             return await super().__call__(scope, receive, send)
 

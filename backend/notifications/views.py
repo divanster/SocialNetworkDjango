@@ -24,6 +24,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'  # Changed from 'pk' to 'id' for UUID fields
     lookup_url_kwarg = 'id'
+    http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
         """
@@ -51,6 +52,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
         notification = self.get_object()
         serializer = self.get_serializer(notification)
         return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {"detail": "Notification creation is not supported via this endpoint."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
 
     @extend_schema(
         responses={200: OpenApiResponse(
@@ -103,20 +110,13 @@ class NotificationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
 
-        try:
-            notification.mark_as_read()
-            logger.info(
-                f"Notification {notification.id} marked as read by user {request.user.username}.")
-            return Response(
-                {"message": f"Notification {id} marked as read."},
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            logger.error(f"Error marking notification as read: {e}")
-            return Response(
-                {"message": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        notification.mark_as_read()
+        logger.info(
+            f"Notification {notification.id} marked as read by user {request.user.username}.")
+        return Response(
+            {"message": f"Notification {id} marked as read."},
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         responses=NotificationCountSerializer

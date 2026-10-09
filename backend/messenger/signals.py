@@ -6,12 +6,15 @@ from .models import Message
 from kafka_app.tasks.messenger_tasks import process_message_event_task
 import logging
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from kafka_app.constants import (
     MESSAGE_CREATED,
     MESSAGE_UPDATED,
     MESSAGE_DELETED,
     MESSENGER_EVENTS
 )
+from .serializers import MessageSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +34,19 @@ def message_saved(sender, instance, created, **kwargs):
     # Trigger Celery task to process message event
     process_message_event_task.delay(str(instance.id), event_type)
     logger.info(f"Triggered Celery task for message {event_type} with ID {instance.id}")
+
+    if created:
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"messenger_{instance.receiver_id}",
+                {
+                    "type": "messenger_event",
+                    "payload": MessageSerializer(instance).data,
+                }
+            )
+        except Exception as exc:
+            logger.warning("Failed to send realtime messenger event: %s", exc)
 
 
 @receiver(post_delete, sender=Message)
