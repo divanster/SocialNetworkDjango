@@ -11,7 +11,7 @@ interface CreatePostProps {
   sendMessage: (message: string) => void;
 }
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
 
 const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, sendMessage }) => {
   const { token } = useAuth();

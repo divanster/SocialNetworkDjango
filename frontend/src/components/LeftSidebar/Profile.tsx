@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_URL } from '../../services/api';
 
 interface UserProfile {
   id: number;
@@ -27,7 +28,7 @@ const Profile: React.FC = () => {
     const fetchProfile = async () => {
       if (token) {
         try {
-          const response = await fetch('http://127.0.0.1:8000/api/v1/users/me/', {
+          const response = await fetch(`${API_URL}/users/me/`, {
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,

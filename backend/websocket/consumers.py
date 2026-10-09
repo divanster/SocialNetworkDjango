@@ -11,6 +11,7 @@ from django.conf import settings
 from urllib.parse import parse_qs
 from jwt import ExpiredSignatureError, DecodeError
 from django_redis import get_redis_connection
+from redis.exceptions import RedisError
 
 from django.core.cache import cache
 
@@ -322,12 +323,15 @@ class UserConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _set_online(self, online: bool):
-        r = get_redis_connection("default")
-        if online:
-            r.sadd(REDIS_KEY, self.user_id)
-        else:
-            r.srem(REDIS_KEY, self.user_id)
-        r.expire(REDIS_KEY, 86400)
+        try:
+            r = get_redis_connection("default")
+            if online:
+                r.sadd(REDIS_KEY, self.user_id)
+            else:
+                r.srem(REDIS_KEY, self.user_id)
+            r.expire(REDIS_KEY, 86400)
+        except (RedisError, NotImplementedError) as exc:
+            logger.warning("Redis unavailable for presence tracking: %s", exc)
 
 
 class DefaultConsumer(AsyncWebsocketConsumer):

@@ -37,3 +37,10 @@ docker-compose.override.yml
 build/
 dist/
 coverage/
+
+# Local environment overrides (keep only *.example tracked)
+backend/.env.local
+frontend/.env.local
+
+# Local virtual env
+.venv/

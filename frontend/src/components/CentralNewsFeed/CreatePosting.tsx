@@ -16,7 +16,7 @@ interface CreatePostingProps {
   sendAlbumMessage: (message: string) => void;
 }
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
 
 const CreatePosting: React.FC<CreatePostingProps> = ({
   onPostCreated,

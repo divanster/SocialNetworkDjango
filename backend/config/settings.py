@@ -20,15 +20,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Initialize environment variables using django-environ
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
+# Optional local overrides for non-Docker development.
+local_env_path = os.path.join(BASE_DIR, '.env.local')
+if os.path.exists(local_env_path):
+    environ.Env.read_env(env_file=local_env_path, overwrite=True)
 
 # Validate required environment variables
+# When using SQLite for local development, PostgreSQL variables are not required
+USE_SQLITE = env.bool('USE_SQLITE', default=False)
 required_env_vars = [
     'DJANGO_SECRET_KEY',
     'SIMPLE_JWT_SIGNING_KEY',
-    'POSTGRES_DB',
-    'POSTGRES_USER',
-    'POSTGRES_PASSWORD',
 ]
+if not USE_SQLITE:
+    required_env_vars.extend([
+        'POSTGRES_DB',
+        'POSTGRES_USER',
+        'POSTGRES_PASSWORD',
+    ])
 missing_vars = [var for var in required_env_vars if not env(var, default=None)]
 if missing_vars:
     raise ImproperlyConfigured(
@@ -135,7 +144,6 @@ INSTALLED_APPS = [
     'django_celery_beat',
     'csp',
     'graphene_django',
-    'django_ratelimit',
     'graphql_jwt',
     'phonenumber_field',
     'django_filters',
@@ -157,6 +165,8 @@ INSTALLED_APPS = [
     'kafka_app.apps.KafkaAppConfig',
     'websocket.apps.WebSocketConfig',
 ]
+if not USE_SQLITE:
+    INSTALLED_APPS.append('django_ratelimit')
 
 # -----------------------------
 # Middleware Configuration
@@ -205,48 +215,67 @@ if not os.path.exists(templates_dir):
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
-# -----------------------------
-# Channels Configuration (Redis)
-# -----------------------------
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [
-                (
-                    env('REDIS_HOST', default='redis'),
-                    env.int('REDIS_PORT', default=6379))
-            ],
-        },
-    },
-}
-CHANNELS_ALLOWED_HOSTS = [
-    'localhost:3000',
-    '127.0.0.1:3000',
-    'frontend:3000',
-]
-
 REDIS_HOST = env('REDIS_HOST', default='redis')
 REDIS_PORT = env.int('REDIS_PORT', default=6379)
 
 # -----------------------------
-# Database Configuration (PostgreSQL)
+# Channels Configuration
 # -----------------------------
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('POSTGRES_DB'),
-        'USER': env('POSTGRES_USER'),
-        'PASSWORD': env('POSTGRES_PASSWORD'),
-        'HOST': env('DB_HOST', default='db'),
-        'PORT': env('DB_PORT', default='5432'),
-        'CONN_MAX_AGE': 600,
-        'TEST': {
-            'NAME': 'test_' + env('POSTGRES_DB'),
-            'ENGINE': 'django.db.backends.postgresql',
+if USE_SQLITE:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [
+                    (
+                        REDIS_HOST,
+                        REDIS_PORT)
+                ],
+            },
+        },
+    }
+CHANNELS_ALLOWED_HOSTS = env.list('CHANNELS_ALLOWED_HOSTS', default=[
+    'localhost:3002',
+    '127.0.0.1:3002',
+    'localhost:3000',
+    '127.0.0.1:3000',
+    'frontend:3000',
+])
+
+if USE_SQLITE:
+    # Local development with SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'TEST': {
+                'NAME': BASE_DIR / 'test_db.sqlite3',
+            },
+        },
+    }
+else:
+    # Docker/Production with PostgreSQL
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('POSTGRES_DB'),
+            'USER': env('POSTGRES_USER'),
+            'PASSWORD': env('POSTGRES_PASSWORD'),
+            'HOST': env('DB_HOST', default='db'),
+            'PORT': env('DB_PORT', default='5432'),
+            'CONN_MAX_AGE': 600,
+            'TEST': {
+                'NAME': 'test_' + env('POSTGRES_DB'),
+                'ENGINE': 'django.db.backends.postgresql',
+            },
+        },
+    }
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # -----------------------------
@@ -382,9 +411,17 @@ SPECTACULAR_SETTINGS = {
 # CORS Configuration
 # -----------------------------
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
+    'http://127.0.0.1:3002',
+    'http://localhost:3002',
     'http://127.0.0.1:3000',
     'http://localhost:3000',
     'http://frontend:3000',
+])
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'http://127.0.0.1:3002',
+    'http://localhost:3002',
+    'http://127.0.0.1:3000',
+    'http://localhost:3000',
 ])
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_CREDENTIALS = True
@@ -424,11 +461,19 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
 # -----------------------------
 # Celery Configuration
 # -----------------------------
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
+CELERY_BROKER_URL = env(
+    'CELERY_BROKER_URL',
+    default='memory://' if USE_SQLITE else 'redis://redis:6379/0'
+)
+CELERY_RESULT_BACKEND = env(
+    'CELERY_RESULT_BACKEND',
+    default='cache+memory://' if USE_SQLITE else 'redis://redis:6379/0'
+)
 CELERY_ACCEPT_CONTENT = env.list('CELERY_ACCEPT_CONTENT', default=['json'])
 CELERY_TASK_SERIALIZER = env('CELERY_TASK_SERIALIZER', default='json')
 CELERY_RESULT_SERIALIZER = env('CELERY_RESULT_SERIALIZER', default='json')
+CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', default=False)
+CELERY_TASK_EAGER_PROPAGATES = env.bool('CELERY_TASK_EAGER_PROPAGATES', default=False)
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULE = {
@@ -439,17 +484,24 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # -----------------------------
-# Redis Caching
+# Caching
 # -----------------------------
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+if USE_SQLITE:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
 
 # -----------------------------
 # Sentry Configuration

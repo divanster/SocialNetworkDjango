@@ -1,16 +1,5 @@
 import axios from 'axios';
-
-// Check if the app is running in local development or Docker
-const isLocal = window.location.hostname === 'localhost';
-
-// Set API and WebSocket URLs based on the environment (Docker or Local)
-const API_URL = isLocal
-  ? 'http://localhost:8000/api/v1'  // Local development API URL
-  : process.env.REACT_APP_API_URL || 'http://web:8000/api/v1';  // Docker API URL
-
-const WEBSOCKET_URL = isLocal
-  ? 'ws://localhost:8000/ws'  // Local development WebSocket URL
-  : process.env.REACT_APP_WEBSOCKET_URL || 'ws://web:8000/ws';  // Docker WebSocket URL
+import { API_URL } from './api';
 
 export const login = async (email: string, password: string) => {
   try {

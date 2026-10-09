@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { fetchProfileData } from '../services/api';
+import { API_URL, fetchProfileData } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const setAuthToken = (token: string | null): void => {
@@ -59,7 +59,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 interface AuthProviderProps {
   children: ReactNode;

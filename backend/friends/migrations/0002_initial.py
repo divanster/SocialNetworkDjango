@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='block',
-            constraint=models.CheckConstraint(condition=models.Q(('blocker', models.F('blocked')), _negated=True), name='block_self_check'),
+            constraint=models.CheckConstraint(check=models.Q(('blocker', models.F('blocked')), _negated=True), name='block_self_check'),
         ),
         migrations.AlterUniqueTogether(
             name='block',
@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='friendship',
-            constraint=models.CheckConstraint(condition=models.Q(('user1__lt', models.F('user2'))), name='user1_lt_user2'),
+            constraint=models.CheckConstraint(check=models.Q(('user1__lt', models.F('user2'))), name='user1_lt_user2'),
         ),
         migrations.AlterUniqueTogether(
             name='friendship',

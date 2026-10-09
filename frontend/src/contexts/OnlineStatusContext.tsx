@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
+import { API_URL } from '../services/api';
 import useWebSocket from '../hooks/useWebSocket';
 
 interface UserType { id: string; username: string; }
@@ -26,7 +27,7 @@ export const OnlineStatusProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!token) return;
     try {
       const { data } = await axios.get<{ online_users: UserType[] }>(
-        `${process.env.REACT_APP_API_URL}/get_online_users/`,
+        `${API_URL}/get_online_users/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const list = data.online_users;

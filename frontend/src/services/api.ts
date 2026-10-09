@@ -2,7 +2,8 @@
 
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const RAW_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+export const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
 // Set axios base URL so that relative URLs are correctly prefixed.
 axios.defaults.baseURL = API_URL;
@@ -38,7 +39,7 @@ export const handleApiError = (error: any, errorMessage: string) => {
 // Fetch user profile data
 export const fetchProfileData = async () => {
   try {
-    const response = await axios.get('/users/users/me/');
+    const response = await axios.get('/users/me/');
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching profile data');
@@ -48,7 +49,7 @@ export const fetchProfileData = async () => {
 // Update user profile data
 export const updateProfileData = async (formData: FormData) => {
   try {
-    const response = await axios.patch('/users/users/me/', formData, {
+    const response = await axios.patch('/users/me/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;

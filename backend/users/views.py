@@ -24,6 +24,7 @@ from django_ratelimit.decorators import ratelimit
 from django_redis import get_redis_connection
 from django.core.cache import cache
 import logging
+from redis.exceptions import RedisError
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -202,8 +203,12 @@ class CustomUserSignupView(CreateAPIView):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def get_online_users(request):
-    redis_conn = get_redis_connection("default")
-    online_user_ids = [uid.decode('utf-8') for uid in redis_conn.smembers("online_users")]
+    try:
+        redis_conn = get_redis_connection("default")
+        online_user_ids = [uid.decode('utf-8') for uid in redis_conn.smembers("online_users")]
+    except (RedisError, NotImplementedError) as exc:
+        logger.warning("Redis unavailable while fetching online users: %s", exc)
+        online_user_ids = [str(request.user.id)]
     users = CustomUser.objects.filter(id__in=online_user_ids)
     serializer = CustomUserSerializer(users, many=True)
     return Response({"online_users": serializer.data})
