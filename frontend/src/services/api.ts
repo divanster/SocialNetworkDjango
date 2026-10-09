@@ -66,7 +66,7 @@ export const updateProfileData = async (formData: FormData) => {
 
 export const fetchNewsFeed = async () => {
   try {
-    const response = await axios.get('/posts/');
+    const response = await axios.get('/social/');
     return response.data;
   } catch (error) {
     handleApiError(error, 'Error fetching news feed');

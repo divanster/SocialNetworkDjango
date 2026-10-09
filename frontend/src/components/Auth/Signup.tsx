@@ -34,26 +34,26 @@ const Signup = () => {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('email', email);
-        formData.append('username', username);
-        formData.append('password', password);
-        formData.append('confirm_password', confirmPassword);
-        formData.append('first_name', firstName);
-        formData.append('last_name', lastName);
-        formData.append('date_of_birth', dateOfBirth);
-        formData.append('gender', gender);
-        formData.append('bio', bio);
-        formData.append('phone', phone);
-        formData.append('town', town);
-        formData.append('country', country);
-        formData.append('relationship_status', relationshipStatus);
-        if (profilePicture) {
-            formData.append('image_file', profilePicture); // Ensure this matches the key expected by the backend
-        }
+        const payload = {
+            email,
+            username,
+            password,
+            password2: confirmPassword,
+            profile: {
+                first_name: firstName || undefined,
+                last_name: lastName || undefined,
+                date_of_birth: dateOfBirth || undefined,
+                gender: gender || undefined,
+                bio: bio || undefined,
+                phone: phone || undefined,
+                town: town || undefined,
+                country: country || undefined,
+                relationship_status: relationshipStatus || undefined,
+            },
+        };
 
         try {
-            await signup(formData);  // Ensure this function handles FormData appropriately
+            await signup(payload);
             navigate('/login');
         } catch (err) {
             setError('Error creating account');

@@ -49,6 +49,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
         if not post_id:
             raise ValidationError("`post_id` or `object_id` is required to create a comment.")
+        if not Post.objects.filter(pk=post_id).exists():
+            raise ValidationError({"post_id": "Post not found."})
 
         post_ct = ContentType.objects.get_for_model(Post)  # Get content type for Post
         instance = serializer.save(

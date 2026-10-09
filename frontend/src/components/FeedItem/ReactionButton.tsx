@@ -14,7 +14,7 @@ const ReactionButton: React.FC<ReactionButtonProps> = ({ postId, contentType = '
   const [liked, setLiked] = useState(false)
 
   const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL,
+    baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, ''),
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -25,7 +25,7 @@ const ReactionButton: React.FC<ReactionButtonProps> = ({ postId, contentType = '
       .then((res) => {
         const arr = Array.isArray(res.data) ? res.data : res.data.results ?? []
         setCount(arr.length)
-        setLiked(arr.some((r: any) => r.user === user?.username))
+        setLiked(arr.some((r: any) => r.user_username === user?.username))
       })
       .catch(console.error)
   }, [postId, token, contentType, api, user?.username])
@@ -46,7 +46,7 @@ const ReactionButton: React.FC<ReactionButtonProps> = ({ postId, contentType = '
       const res = await api.get(`/reactions/?content_type=${contentType}&object_id=${postId}`)
       const arr = Array.isArray(res.data) ? res.data : res.data.results ?? []
       setCount(arr.length)
-      setLiked(!liked)
+      setLiked(arr.some((r: any) => r.user_username === user?.username))
     } catch (err) {
       console.error('Reaction error', err)
     }

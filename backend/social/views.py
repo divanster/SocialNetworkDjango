@@ -77,7 +77,7 @@ class PostViewSet(viewsets.ModelViewSet):
         ],
         responses=PostSerializer,
     )
-    def retrieve(self, request, id=None):
+    def retrieve(self, request, *args, **kwargs):
         """
         Retrieve a specific post by its UUID.
         """

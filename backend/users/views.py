@@ -29,6 +29,7 @@ from redis.exceptions import RedisError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.contrib.auth import logout as django_logout
+from django.utils.decorators import method_decorator
 
 logger = logging.getLogger('users')
 
@@ -46,7 +47,7 @@ class CustomTokenRefreshView(generics.GenericAPIView):
         request=TokenRefreshSerializer,
         responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
     )
-    @ratelimit(key='ip', rate='5/m', block=True)
+    @method_decorator(ratelimit(key='ip', rate='5/m', block=True))
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -180,7 +181,7 @@ class CustomUserSignupView(CreateAPIView):
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    @ratelimit(key='ip', rate='3/h', block=True)
+    @method_decorator(ratelimit(key='ip', rate='3/h', block=True))
     def create(self, request, *args, **kwargs):
         logger.debug(f"Received signup request data: {request.data}")
         serializer = self.get_serializer(data=request.data)

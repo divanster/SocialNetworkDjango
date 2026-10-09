@@ -26,13 +26,27 @@ export const login = async (email: string, password: string) => {
   }
 };
 
-export const signup = async (formData: FormData) => {
+type SignupPayload = {
+  email: string;
+  username: string;
+  password: string;
+  password2: string;
+  profile?: {
+    first_name?: string;
+    last_name?: string;
+    gender?: string;
+    date_of_birth?: string;
+    bio?: string;
+    phone?: string;
+    town?: string;
+    country?: string;
+    relationship_status?: string;
+  };
+};
+
+export const signup = async (payload: SignupPayload) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/signup/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await axios.post(`${API_URL}/users/signup/`, payload);
     return response.data;
   } catch (error: unknown) {
     // Type guard to check if the error is an instance of Error

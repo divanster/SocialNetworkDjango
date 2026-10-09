@@ -16,16 +16,21 @@ class CommentSerializer(serializers.ModelSerializer):
         required=False,
         help_text="List of user UUIDs to tag in the comment."
     )
+    post_id = serializers.UUIDField(
+        write_only=True,
+        required=False,
+        help_text="UUID of the post this comment belongs to."
+    )
     user = serializers.StringRelatedField()
 
     class Meta:
         model = Comment
         fields = [
-            'id', 'user', 'content', 'content_type', 'object_id', 'created_at',
+            'id', 'user', 'content', 'content_type', 'object_id', 'post_id', 'created_at',
             'updated_at', 'tags',
             'tagged_user_ids'
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'tags']
+        read_only_fields = ['id', 'user', 'content_type', 'object_id', 'created_at', 'updated_at', 'tags']
 
     @extend_schema_field(CustomUserSerializer)  # Adding the schema field annotation
     def get_user(self, obj) -> dict:
@@ -34,6 +39,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract `tagged_user_ids` from the validated data
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
+        validated_data.pop('post_id', None)
 
         # Create the comment instance
         comment = Comment.objects.create(**validated_data)
@@ -45,6 +51,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Extract `tagged_user_ids` from the validated data
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
+        validated_data.pop('post_id', None)
 
         # Perform the base update with the validated data
         comment = super().update(instance, validated_data)

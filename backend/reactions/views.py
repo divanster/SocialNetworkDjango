@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from .models import Reaction
 from .serializers import ReactionSerializer
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class ReactionViewSet(mixins.CreateModelMixin,
 
         if content_type and object_id:
             try:
-                content_type_obj = ContentType.objects.get(model=content_type)
+                content_type_obj = ContentType.objects.get(model=content_type.lower())
                 queryset = queryset.filter(content_type=content_type_obj,
                                            object_id=object_id)
             except ContentType.DoesNotExist:
@@ -37,38 +38,7 @@ class ReactionViewSet(mixins.CreateModelMixin,
         return queryset
 
     def perform_create(self, serializer):
-        content_type = self.request.data.get('content_type')
-        object_id = self.request.data.get('object_id')
-        emoji = self.request.data.get('emoji')
-
-        try:
-            content_type_obj = ContentType.objects.get(model=content_type)
-        except ContentType.DoesNotExist:
-            return Response({"error": "Invalid content type."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if not emoji:
-            return Response({"error": "Emoji is required."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if the reaction already exists, toggle if it does
-        existing_reaction = Reaction.objects.filter(
-            user=self.request.user,
-            content_type=content_type_obj,
-            object_id=object_id,
-            emoji=emoji
-        )
-
-        if existing_reaction.exists():
-            existing_reaction.delete()  # Toggle behavior
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        serializer.save(
-            user=self.request.user,
-            content_type=content_type_obj,
-            object_id=object_id
-        )
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer.save(user=self.request.user)
 
     @action(detail=False, methods=['delete'],
             permission_classes=[permissions.IsAuthenticated])
@@ -78,15 +48,12 @@ class ReactionViewSet(mixins.CreateModelMixin,
         emoji = request.data.get('emoji')
 
         if not content_type or not object_id or not emoji:
-            return Response(
-                {"error": "Content type, object ID, and emoji are required."},
-                status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("Content type, object ID, and emoji are required.")
 
         try:
-            content_type_obj = ContentType.objects.get(model=content_type)
+            content_type_obj = ContentType.objects.get(model=content_type.lower())
         except ContentType.DoesNotExist:
-            return Response({"error": "Invalid content type."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("Invalid content type.")
 
         reaction = get_object_or_404(
             Reaction,

@@ -20,7 +20,7 @@ const ReactionBar: React.FC<Props> = ({ postId, counts, onReacted }) => {
   const sendReaction = async (emoji: string) => {
     if (!token) return;
     onReacted(emoji); // optimistic update
-    await axios.post(`${API_URL}/posts/${postId}/reactions/`, { emoji }, {
+    await axios.post(`${API_URL}/reactions/`, { content_type: 'post', object_id: postId, emoji }, {
       headers: { Authorization: `Bearer ${token}` },
     });
   };

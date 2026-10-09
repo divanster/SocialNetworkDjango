@@ -52,8 +52,7 @@ const CommentSection: React.FC<Props> = ({ postId }) => {
     try {
       const res = await api.post('/comments/comments/', {
         content: newComment,
-        content_type: 'post',
-        object_id: postId,
+        post_id: postId,
       })
       setComments((prev) => [res.data, ...prev])
       setNewComment('')

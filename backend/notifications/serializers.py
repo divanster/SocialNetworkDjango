@@ -51,8 +51,8 @@ class NotificationSerializer(serializers.ModelSerializer):
         """
         Retrieve the content object's URL if it exists.
         """
-        if obj.content_object:
-            return obj.content_object.get_absolute_url()  # Assumes related objects have get_absolute_url
+        if obj.content_object and hasattr(obj.content_object, 'get_absolute_url'):
+            return obj.content_object.get_absolute_url()
         return None
 
     def validate_receiver(self, value):
