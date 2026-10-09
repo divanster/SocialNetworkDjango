@@ -67,7 +67,6 @@ const EditAlbumModal: React.FC<EditAlbumModalProps> = ({ show, onHide, album, on
       const response = await axios.put(`${API_URL}/albums/${album.id}/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
 

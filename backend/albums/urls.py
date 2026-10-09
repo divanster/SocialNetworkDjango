@@ -8,8 +8,8 @@ app_name = 'albums'  # Adding an app name for URL namespacing, which is useful i
 
 # Create the DefaultRouter for automatically generated routes
 router = DefaultRouter()
-router.register(r'', AlbumViewSet, basename='album')  # Register AlbumViewSet with a basename of 'album'
 router.register(r'photos', PhotoViewSet, basename='photo')  # Register PhotoViewSet with a basename of 'photo'
+router.register(r'', AlbumViewSet, basename='album')  # Register AlbumViewSet with a basename of 'album'
 
 # Define urlpatterns for the albums app
 urlpatterns = [

@@ -1,13 +1,12 @@
 # backend/tagging/signals.py
 
-from django.db.models.signals import post_save, post_delete, pre_delete
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from tagging.models import TaggedItem
 from notifications.models import Notification
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from kafka_app.tasks.tagging_tasks import send_tagging_event_to_kafka  # Updated import
-from django.db.models.signals import pre_delete
 
 import logging
 
@@ -70,16 +69,3 @@ def tagged_item_deleted(sender, instance, **kwargs):
 
     logger.info(f"TaggedItem deleted: {instance}")
 
-
-@receiver(pre_delete, sender=TaggedItem)
-def handle_generic_foreign_key_delete(sender, instance, **kwargs):
-    content_object = instance.content_object
-    if content_object and hasattr(content_object, 'is_deleted') and content_object.is_deleted:
-        instance.delete()
-
-
-@receiver(post_delete, sender=TaggedItem)
-def handle_orphaned_tags(sender, instance, **kwargs):
-    # Remove tags where the related content is soft deleted or deleted
-    if not instance.content_object:
-        instance.delete()

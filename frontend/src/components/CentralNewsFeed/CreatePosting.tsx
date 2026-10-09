@@ -80,7 +80,6 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
       const response = await axios.post(`${API_URL}/social/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
 
@@ -156,7 +155,6 @@ const CreatePosting: React.FC<CreatePostingProps> = ({
       const response = await axios.post(`${API_URL}/albums/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
 

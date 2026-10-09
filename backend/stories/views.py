@@ -3,6 +3,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Story
 from .serializers import StorySerializer
 from core.permissions import IsAuthorOrReadOnly  # Use globally available permission
+from django.db.models import Q
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,12 @@ class StoryViewSet(viewsets.ModelViewSet):
         Private stories are visible only to the author.
         """
         user = self.request.user
-        return Story.objects.visible_to_user(user).order_by('-created_at')
+        visible = Story.objects.visible_to_user(user)
+        if self.action == 'list' or not user.is_authenticated:
+            return visible.order_by('-created_at')
+        return Story.objects.filter(
+            Q(id__in=visible.values('id')) | Q(user=user, is_deleted=False)
+        ).distinct().order_by('-created_at')
 
     def perform_create(self, serializer):
         """

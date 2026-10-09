@@ -48,7 +48,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, sendMessage }) =
       const response = await axios.post(`${API_URL}/social/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
 

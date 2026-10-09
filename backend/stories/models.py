@@ -1,5 +1,6 @@
 # backend/stories/models.py
 import logging
+from datetime import timedelta
 
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -27,21 +28,34 @@ def get_friends(user):
 
 class StoryQuerySet(models.QuerySet):
     def visible_to_user(self, user):
+        active_cutoff = timezone.now() - timedelta(hours=24)
         if user.is_anonymous:
-            return self.filter(visibility=VisibilityChoices.PUBLIC, is_active=True, is_deleted=False)
+            return self.filter(
+                visibility=VisibilityChoices.PUBLIC,
+                is_active=True,
+                is_deleted=False,
+                created_at__gte=active_cutoff
+            )
         else:
             public_stories = self.filter(
                 visibility=VisibilityChoices.PUBLIC,
                 is_active=True,
-                is_deleted=False
+                is_deleted=False,
+                created_at__gte=active_cutoff
             )
             friends_stories = self.filter(
                 visibility=VisibilityChoices.FRIENDS,
                 user__in=get_friends(user),
                 is_active=True,
-                is_deleted=False
+                is_deleted=False,
+                created_at__gte=active_cutoff
             )
-            own_stories = self.filter(user=user, is_deleted=False)
+            own_stories = self.filter(
+                user=user,
+                is_active=True,
+                is_deleted=False,
+                created_at__gte=active_cutoff
+            )
             return public_stories | friends_stories | own_stories
 
 

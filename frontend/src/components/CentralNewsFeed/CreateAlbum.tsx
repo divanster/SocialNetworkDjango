@@ -50,7 +50,6 @@ const CreateAlbum: React.FC<CreateAlbumProps> = ({ onAlbumCreated, sendAlbumMess
       const response = await axios.post(`${API_URL}/albums/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
 

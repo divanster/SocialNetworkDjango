@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Album as AlbumType } from '../../types/album';
+import EditAlbumModal from '../CentralNewsFeed/EditAlbumModal';
 import './Album.css'; // Ensure Album.css exists or remove this line
 
 interface AlbumProps {
@@ -11,6 +12,7 @@ interface AlbumProps {
 }
 
 const Album: React.FC<AlbumProps> = ({ album, onDelete, onUpdate }) => {
+  const [showEditModal, setShowEditModal] = React.useState(false);
   // Use optional chaining and default values to prevent runtime errors
   const authorFullName = album.author?.full_name || 'Unknown Author';
   const authorProfilePicture = album.author?.profile_picture || '/default-profile.png';
@@ -34,9 +36,15 @@ const Album: React.FC<AlbumProps> = ({ album, onDelete, onUpdate }) => {
         {/* Render album photos or other details */}
       </div>
       {/* Optionally, include an edit button */}
-      <button onClick={() => onUpdate(album)} className="edit-button">
+      <button onClick={() => setShowEditModal(true)} className="edit-button">
         Edit
       </button>
+      <EditAlbumModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        album={album}
+        onSave={onUpdate}
+      />
     </div>
   );
 };

@@ -48,6 +48,11 @@ class PostSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    image_files = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False
+    )
     images = PostImageSerializer(many=True, read_only=True)
     ratings = RatingSerializer(many=True, read_only=True)
     user = serializers.StringRelatedField(read_only=True)
@@ -56,7 +61,7 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = [
             'id', 'title', 'content', 'user', 'visibility', 'created_at',
-            'updated_at', 'tags', 'tagged_user_ids', 'images', 'ratings'
+            'updated_at', 'tags', 'tagged_user_ids', 'image_files', 'images', 'ratings'
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'tags', 'images', 'ratings']
 
@@ -80,7 +85,10 @@ class PostSerializer(serializers.ModelSerializer):
         Creates a Post instance and handles tagging.
         """
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
+        image_files = validated_data.pop('image_files', [])
         post = Post.objects.create(**validated_data)
+        for image_file in image_files:
+            PostImage.objects.create(post=post, image=image_file)
         self.create_tagged_items(post, tagged_user_ids)
         logger.info(f"[SERIALIZER] Post with ID {post.id} created and tagged users added.")
         return post
@@ -90,7 +98,10 @@ class PostSerializer(serializers.ModelSerializer):
         Updates a Post instance and handles tagging.
         """
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
+        image_files = validated_data.pop('image_files', [])
         post = super().update(instance, validated_data)
+        for image_file in image_files:
+            PostImage.objects.create(post=post, image=image_file)
 
         if tagged_user_ids is not None:
             instance.tags.all().delete()

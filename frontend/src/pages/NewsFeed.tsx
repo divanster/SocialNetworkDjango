@@ -176,11 +176,9 @@ const NewsFeed: React.FC = () => {
       fd.append('title', ua.title);
       fd.append('description', ua.description);
       fd.append('visibility', ua.visibility);
-      ua.photos?.forEach((ph) => fd.append('image_files', ph.image));
       const res = await axios.put(`${API_URL}/albums/${ua.id}/`, fd, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
         },
       });
       setAlbums((a) => a.map((x) => (x.id === ua.id ? res.data : x)));

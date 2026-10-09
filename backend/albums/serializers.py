@@ -90,19 +90,25 @@ class AlbumSerializer(serializers.ModelSerializer):
         required=False
     )
     visibility = serializers.ChoiceField(choices=VisibilityChoices.choices)
+    image_files = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = Album
         fields = [
             'id', 'user_id', 'author', 'title', 'description', 'visibility', 'created_at',
             'updated_at',
-            'photos', 'photos_upload', 'tags', 'tagged_user_ids'
+            'photos', 'photos_upload', 'image_files', 'tags', 'tagged_user_ids'
         ]
         read_only_fields = ['id', 'user_id', 'created_at', 'updated_at', 'tags', 'author']
 
     def create(self, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', [])
         photos_data = validated_data.pop('photos_upload', [])
+        image_files = validated_data.pop('image_files', [])
         album = Album.objects.create(**validated_data)
 
         # Create tagged items for the new album
@@ -115,12 +121,15 @@ class AlbumSerializer(serializers.ModelSerializer):
                 photo_serializer.save(album=album)
             else:
                 raise serializers.ValidationError(photo_serializer.errors)
+        for image_file in image_files:
+            Photo.objects.create(album=album, image=image_file)
 
         return album
 
     def update(self, instance, validated_data):
         tagged_user_ids = validated_data.pop('tagged_user_ids', None)
         photos_data = validated_data.pop('photos_upload', [])
+        image_files = validated_data.pop('image_files', [])
 
         # Ensure the user can update this album
         if self.context['request'].user != instance.user:
@@ -160,6 +169,8 @@ class AlbumSerializer(serializers.ModelSerializer):
                     photo_serializer.save(album=album)
                 else:
                     raise serializers.ValidationError(photo_serializer.errors)
+        for image_file in image_files:
+            Photo.objects.create(album=album, image=image_file)
 
         return album
 

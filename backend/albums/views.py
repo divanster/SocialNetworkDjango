@@ -11,10 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class AlbumViewSet(viewsets.ModelViewSet):
-    queryset = Album.objects.all()
     serializer_class = AlbumSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        return Album.objects.visible_to_user(self.request.user).select_related('user').prefetch_related('photos')
 
     def perform_create(self, serializer):
         album = serializer.save(user_id=self.request.user.id)
@@ -51,10 +53,16 @@ class AlbumViewSet(viewsets.ModelViewSet):
 
 
 class PhotoViewSet(viewsets.ModelViewSet):
-    queryset = Photo.objects.all()
     serializer_class = PhotoSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        queryset = Photo.objects.visible_to_user(self.request.user).select_related('album', 'album__user')
+        album_id = self.request.query_params.get('album')
+        if album_id:
+            queryset = queryset.filter(album_id=album_id)
+        return queryset
 
     def perform_create(self, serializer):
         album = serializer.validated_data['album']
