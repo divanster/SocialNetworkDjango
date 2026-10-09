@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.db.models import Q
-from rest_framework import viewsets, permissions, status, serializers
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -34,15 +34,8 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
         """
         Automatically set the sender to the authenticated user.
         """
-        try:
-            instance = serializer.save()
-            logger.info(f"Friend request created: {instance}")
-        except serializers.ValidationError as e:
-            logger.error(f"Validation error during friend request creation: {e}")
-            raise e
-        except Exception as ex:
-            logger.error(f"Error during friend request creation: {ex}")
-            raise serializers.ValidationError({'detail': 'An unexpected error occurred.'})
+        instance = serializer.save()
+        logger.info(f"Friend request created: {instance}")
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def accept(self, request, id=None):
@@ -73,23 +66,14 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 friend_request.accept()
                 logger.info(f"Friend request accepted: {friend_request}")
-
-            return Response(
-                {"detail": "Friend request accepted, friendship created."},
-                status=status.HTTP_200_OK
-            )
         except ValidationError as e:
             logger.error(f"Validation error while accepting friend request: {e}")
-            return Response(
-                {"detail": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as ex:
-            logger.error(f"Error while accepting friend request: {ex}")
-            return Response(
-                {"detail": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"detail": "Friend request accepted, friendship created."},
+            status=status.HTTP_200_OK
+        )
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def reject(self, request, id=None):
@@ -116,21 +100,11 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            with transaction.atomic():
-                friend_request.reject()
-                logger.info(f"Friend request rejected: {friend_request}")
+        with transaction.atomic():
+            friend_request.reject()
+            logger.info(f"Friend request rejected: {friend_request}")
 
-            return Response(
-                {"detail": "Friend request rejected."},
-                status=status.HTTP_200_OK
-            )
-        except Exception as ex:
-            logger.error(f"Error while rejecting friend request: {ex}")
-            return Response(
-                {"detail": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return Response({"detail": "Friend request rejected."}, status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
         """
@@ -162,7 +136,7 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         return Friendship.objects.filter(
             Q(user1=user) | Q(user2=user),
             is_deleted=False  # Exclude soft-deleted records
-        )
+        ).select_related('user1__profile', 'user2__profile')
 
     def destroy(self, request, *args, **kwargs):
         """
@@ -176,21 +150,11 @@ class FriendshipViewSet(viewsets.ModelViewSet):
             )
             raise PermissionDenied("You do not have permission to unfriend this user.")
 
-        try:
-            with transaction.atomic():
-                instance.delete()  # Soft delete
-                logger.info(f"Friendship soft-deleted: {instance}")
+        with transaction.atomic():
+            instance.delete()  # Soft delete
+            logger.info(f"Friendship soft-deleted: {instance}")
 
-            return Response(
-                {"detail": "Unfriended successfully."},
-                status=status.HTTP_204_NO_CONTENT
-            )
-        except Exception as ex:
-            logger.error(f"Error while deleting friendship: {ex}")
-            return Response(
-                {"detail": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return Response({"detail": "Unfriended successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class BlockViewSet(viewsets.ModelViewSet):

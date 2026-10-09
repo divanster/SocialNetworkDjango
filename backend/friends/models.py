@@ -62,7 +62,7 @@ class FriendRequest(SoftDeleteModel, UUIDModel, BaseModel):
                 user1, user2 = self.sender, self.receiver
             else:
                 user1, user2 = self.receiver, self.sender
-            Friendship.objects.create(user1=user1, user2=user2)
+            Friendship.objects.get_or_create(user1=user1, user2=user2)
 
     def reject(self):
         if self.status == self.Status.PENDING:

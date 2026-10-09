@@ -10,6 +10,7 @@ import Profile from '../components/LeftSidebar/Profile';
 import FriendRequests from '../components/RightSidebar/FriendRequests';
 import Birthdays from '../components/RightSidebar/Birthdays';
 import Contacts from '../components/RightSidebar/Contacts';
+import Suggestions from '../components/RightSidebar/Suggestions';
 import CreatePosting from '../components/CentralNewsFeed/CreatePosting';
 import './NewsFeed.css';
 import { BsChatSquareHeart } from 'react-icons/bs';
@@ -294,6 +295,7 @@ const NewsFeed: React.FC = () => {
 
       {/* Right Sidebar */}
       <aside className="right-sidebar">
+        <Suggestions />
         <FriendRequests />
         <Birthdays />
         <Contacts />

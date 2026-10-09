@@ -30,6 +30,8 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.contrib.auth import logout as django_logout
 from django.utils.decorators import method_decorator
+from django.db.models import Q
+from friends.models import Friendship, Block, FriendRequest
 
 logger = logging.getLogger('users')
 
@@ -232,3 +234,118 @@ def logout_view(request):
     )
     logger.info(f"Forced disconnect sent for user {user_id}")
     return Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def suggestions_view(request):
+    user = request.user
+    try:
+        limit = min(max(int(request.query_params.get('limit', 20)), 1), 50)
+    except ValueError:
+        return Response({'detail': 'Invalid limit parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    friendship_qs = Friendship.objects.filter(Q(user1=user) | Q(user2=user)).values('user1_id', 'user2_id')
+    friend_ids = set()
+    for friendship in friendship_qs:
+        friend_ids.add(friendship['user1_id'])
+        friend_ids.add(friendship['user2_id'])
+    friend_ids.discard(user.id)
+
+    blocked_ids = set(Block.objects.filter(blocker=user).values_list('blocked_id', flat=True))
+    blocked_by_ids = set(Block.objects.filter(blocked=user).values_list('blocker_id', flat=True))
+    outgoing_pending_ids = set(
+        FriendRequest.objects.filter(sender=user, status=FriendRequest.Status.PENDING).values_list('receiver_id', flat=True)
+    )
+    incoming_pending_ids = set(
+        FriendRequest.objects.filter(receiver=user, status=FriendRequest.Status.PENDING).values_list('sender_id', flat=True)
+    )
+
+    excluded_ids = {user.id, *friend_ids, *blocked_ids, *blocked_by_ids, *outgoing_pending_ids, *incoming_pending_ids}
+    candidates = CustomUser.objects.exclude(id__in=excluded_ids).select_related('profile').order_by('username')[:limit]
+
+    candidate_ids = [candidate.id for candidate in candidates]
+    candidate_friendships = Friendship.objects.filter(
+        Q(user1_id__in=candidate_ids) | Q(user2_id__in=candidate_ids)
+    ).values('user1_id', 'user2_id')
+    candidate_map = {candidate_id: set() for candidate_id in candidate_ids}
+    for friendship in candidate_friendships:
+        candidate_map.setdefault(friendship['user1_id'], set()).add(friendship['user2_id'])
+        candidate_map.setdefault(friendship['user2_id'], set()).add(friendship['user1_id'])
+
+    data = []
+    for candidate in candidates:
+        profile = getattr(candidate, 'profile', None)
+        full_name = candidate.username
+        profile_picture = None
+        if profile:
+            name = f"{profile.first_name} {profile.last_name}".strip()
+            if name:
+                full_name = name
+            if profile.profile_picture:
+                profile_picture = request.build_absolute_uri(profile.profile_picture.url)
+
+        mutual_count = len(friend_ids.intersection(candidate_map.get(candidate.id, set())))
+        data.append({
+            'id': str(candidate.id),
+            'username': candidate.username,
+            'full_name': full_name,
+            'profile_picture': profile_picture,
+            'mutual_friends_count': mutual_count,
+        })
+
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def search_view(request):
+    query = (request.query_params.get('query') or '').strip()
+    if not query:
+        return Response({'users': [], 'posts': [], 'albums': [], 'stories': []}, status=status.HTTP_200_OK)
+
+    user = request.user
+    try:
+        limit = min(max(int(request.query_params.get('limit', 20)), 1), 50)
+    except ValueError:
+        return Response({'detail': 'Invalid limit parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+    blocked_ids = set(Block.objects.filter(blocker=user).values_list('blocked_id', flat=True))
+    blocked_by_ids = set(Block.objects.filter(blocked=user).values_list('blocker_id', flat=True))
+    excluded_ids = {user.id, *blocked_ids, *blocked_by_ids}
+
+    users = CustomUser.objects.exclude(id__in=excluded_ids).filter(
+        Q(username__icontains=query) |
+        Q(profile__first_name__icontains=query) |
+        Q(profile__last_name__icontains=query)
+    ).select_related('profile').distinct().order_by('username')[:limit]
+
+    user_items = []
+    for found_user in users:
+        profile = getattr(found_user, 'profile', None)
+        full_name = found_user.username
+        profile_picture = None
+        if profile:
+            name = f"{profile.first_name} {profile.last_name}".strip()
+            if name:
+                full_name = name
+            if profile.profile_picture:
+                profile_picture = request.build_absolute_uri(profile.profile_picture.url)
+
+        user_items.append({
+            'id': str(found_user.id),
+            'username': found_user.username,
+            'full_name': full_name,
+            'profile_picture': profile_picture,
+        })
+
+    return Response(
+        {
+            'users': user_items,
+            'posts': [],
+            'albums': [],
+            'stories': [],
+        },
+        status=status.HTTP_200_OK
+    )

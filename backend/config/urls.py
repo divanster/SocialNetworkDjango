@@ -14,7 +14,7 @@ from core.views import health_check, csp_report  # Import health_check and csp_r
 
 from core.graphql_views import CustomGraphQLView
 from schema import schema
-from users.views import get_online_users
+from users.views import get_online_users, search_view
 
 urlpatterns = [
     # Admin and health endpoints
@@ -54,6 +54,7 @@ urlpatterns = [
         path('friends/', include(('friends.urls', 'friends'), namespace='friends')),
         path('newsfeed/', include(('newsfeed.urls', 'newsfeed'), namespace='newsfeed')),
         path('stories/', include(('stories.urls', 'stories'), namespace='stories')),
+        path('search/', search_view, name='search'),
     ])),
 ]
 

@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './SearchBar.css';
+import { useAuth } from '../../contexts/AuthContext';
 
 const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '');
 
 const SearchBar: React.FC = () => {
+  const { token } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any>({ users: [], posts: [], albums: [], stories: [] });
   const [isLoading, setIsLoading] = useState(false);
@@ -13,7 +15,7 @@ const SearchBar: React.FC = () => {
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSearchResults = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
+    if (!token || !searchQuery.trim()) {
       setResults({ users: [], posts: [], albums: [], stories: [] });
       return;
     }

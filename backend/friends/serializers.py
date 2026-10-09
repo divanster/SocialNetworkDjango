@@ -7,9 +7,29 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username']
+        fields = ['id', 'username', 'full_name', 'profile_picture']
+
+    def get_full_name(self, obj):
+        profile = getattr(obj, 'profile', None)
+        if profile:
+            full_name = f"{profile.first_name} {profile.last_name}".strip()
+            if full_name:
+                return full_name
+        return obj.username
+
+    def get_profile_picture(self, obj):
+        profile = getattr(obj, 'profile', None)
+        if not profile or not profile.profile_picture:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(profile.profile_picture.url)
+        return profile.profile_picture.url
 
 
 class FriendRequestSerializer(serializers.ModelSerializer):
@@ -57,6 +77,14 @@ class FriendRequestSerializer(serializers.ModelSerializer):
         ).exists():
             raise serializers.ValidationError("You are already friends with this user.")
 
+        # If the receiver already sent a pending request, avoid creating the opposite duplicate.
+        if FriendRequest.objects.filter(
+            sender=receiver,
+            receiver=user,
+            status=FriendRequest.Status.PENDING
+        ).exists():
+            raise serializers.ValidationError("This user has already sent you a friend request.")
+
         # Check if either user has blocked the other
         if Block.objects.filter(
             Q(blocker=user, blocked=receiver) |
@@ -70,12 +98,17 @@ class FriendRequestSerializer(serializers.ModelSerializer):
         """
         Override the create method to set the sender to the authenticated user.
         """
+        sender = self.context['request'].user
         receiver = validated_data.pop('receiver')
-        return FriendRequest.objects.create(
-            sender=self.context['request'].user,
-            receiver=receiver,
-            **validated_data
-        )
+        existing = FriendRequest.all_objects.filter(sender=sender, receiver=receiver).first()
+        if existing:
+            existing.status = FriendRequest.Status.PENDING
+            existing.is_deleted = False
+            existing.deleted_at = None
+            existing.save(update_fields=['status', 'is_deleted', 'deleted_at'])
+            return existing
+
+        return FriendRequest.objects.create(sender=sender, receiver=receiver, **validated_data)
 
 
 class FriendshipSerializer(serializers.ModelSerializer):

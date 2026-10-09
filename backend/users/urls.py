@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import CustomUserViewSet, UserProfileViewSet, CustomUserSignupView, \
-    CustomTokenRefreshView, get_online_users, logout_view
+    CustomTokenRefreshView, get_online_users, logout_view, suggestions_view
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'users'
@@ -27,6 +27,7 @@ urlpatterns = [
 
     # Custom signup route (you have the custom signup view)
     path('signup/', CustomUserSignupView.as_view(), name='customuser-signup'),
+    path('suggestions/', suggestions_view, name='user-suggestions'),
 
     # Include Djoser's JWT URLs for authentication (these are default paths)
     path('jwt/', include('djoser.urls.jwt')),

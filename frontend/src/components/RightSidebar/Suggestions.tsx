@@ -7,10 +7,10 @@ import './Suggestions.css';
 import { Link } from 'react-router-dom';
 
 interface SuggestedUser {
-  id: number;
+  id: string;
   username: string;
   full_name: string;
-  profile_picture: string;
+  profile_picture: string | null;
   mutual_friends_count: number;
 }
 
@@ -22,7 +22,7 @@ const Suggestions: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [friendRequestsSent, setFriendRequestsSent] = useState<number[]>([]);
+  const [friendRequestsSent, setFriendRequestsSent] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -38,7 +38,7 @@ const Suggestions: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
         });
-        setSuggestedUsers(response.data);
+        setSuggestedUsers(Array.isArray(response.data) ? response.data : []);
         setError(null);
       } catch (err: any) {
         console.error('Failed to fetch user suggestions:', err);
@@ -51,11 +51,11 @@ const Suggestions: React.FC = () => {
     fetchSuggestions();
   }, [token]);
 
-  const sendFriendRequest = async (userId: number) => {
+  const sendFriendRequest = async (userId: string) => {
     try {
       await axios.post(
-        `${API_URL}/friends/request/`,
-        { to_user: userId },
+        `${API_URL}/friends/friend-requests/`,
+        { receiver_id: userId },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -96,7 +96,11 @@ const Suggestions: React.FC = () => {
       <ul>
         {suggestedUsers.map((user) => (
           <li key={user.id}>
-            <img src={user.profile_picture} alt={`${user.username}'s profile`} />
+            {user.profile_picture ? (
+              <img src={user.profile_picture} alt={`${user.username}'s profile`} />
+            ) : (
+              <div className="suggestion-avatar-placeholder" aria-hidden="true" />
+            )}
             <div>
               <Link to={`/profile/${user.id}`}>{user.full_name}</Link>
               <span>{user.mutual_friends_count} mutual friends</span>

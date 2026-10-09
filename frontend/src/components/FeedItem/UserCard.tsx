@@ -40,7 +40,7 @@ const UserCard: React.FC<UserCardProps> = ({ userId, username, fullName, isFrien
     try {
       await axios.post(
         `${API_URL}/follows/`,
-        { user_id: userId },
+        { followed: userId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert('User followed!');
